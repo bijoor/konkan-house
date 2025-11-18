@@ -74,7 +74,7 @@ Edit `house_config.py` to customize your house:
 
 ## 🎮 Interactive Viewer
 
-View your model at: **[GitHub Pages URL]**
+View your model at: **[https://bijoor.github.io/konkan-house/](https://bijoor.github.io/konkan-house/)**
 
 The web viewer includes:
 - 🖱️ Mouse controls (drag to rotate, scroll to zoom)

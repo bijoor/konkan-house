@@ -4,9 +4,9 @@ This folder contains the interactive 3D model viewer for the Konkan House projec
 
 ## 🏠 View the Model
 
-**[Open Interactive 3D Viewer](https://YOUR_USERNAME.github.io/YOUR_REPO/)**
+**[Open Interactive 3D Viewer](https://bijoor.github.io/konkan-house/)**
 
-Replace `YOUR_USERNAME` and `YOUR_REPO` with your GitHub username and repository name.
+View the live 3D model at: https://bijoor.github.io/konkan-house/
 
 ## 📁 Files
 
