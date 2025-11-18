@@ -201,8 +201,8 @@
 
             <div class="setting-item">
                 <label>Field of View</label>
-                <input type="range" id="fov" min="20" max="60" step="5" value="30" oninput="updateFOV(this.value)">
-                <span class="value" id="fov-value">30°</span>
+                <input type="range" id="fov" min="20" max="60" step="5" value="45" oninput="updateFOV(this.value)">
+                <span class="value" id="fov-value">45°</span>
             </div>
 
             <div class="setting-item">
@@ -233,10 +233,10 @@
             shadow-softness="0.8"
             skybox-image="https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/syferfontein_18d_clear_puresky_1k.hdr"
             environment-image="https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/syferfontein_18d_clear_puresky_1k.hdr"
-            camera-orbit="45deg 75deg 50m"
-            min-camera-orbit="auto auto 10m"
-            max-camera-orbit="auto auto 200m"
-            field-of-view="30deg"
+            camera-orbit="45deg 75deg auto"
+            min-camera-orbit="auto auto auto"
+            max-camera-orbit="auto auto auto"
+            field-of-view="45deg"
             tone-mapping="commerce"
             ar
             ar-modes="webxr scene-viewer quick-look"
@@ -247,10 +247,10 @@
             <div class="ambient-light" slot="environment-image" id="ambient-light-slot"></div>
 
             <div class="controls" slot="controls">
-                <button onclick="document.getElementById('model').cameraOrbit = '0deg 90deg 50m'">Top View</button>
-                <button onclick="document.getElementById('model').cameraOrbit = '0deg 75deg 50m'">Front View</button>
-                <button onclick="document.getElementById('model').cameraOrbit = '90deg 75deg 50m'">Side View</button>
-                <button onclick="document.getElementById('model').cameraOrbit = '45deg 75deg 50m'">Reset</button>
+                <button onclick="document.getElementById('model').cameraOrbit = '0deg 90deg auto'">Top View</button>
+                <button onclick="document.getElementById('model').cameraOrbit = '0deg 75deg auto'">Front View</button>
+                <button onclick="document.getElementById('model').cameraOrbit = '90deg 75deg auto'">Side View</button>
+                <button onclick="document.getElementById('model').cameraOrbit = '45deg 75deg auto'">Reset</button>
                 <button onclick="toggleWireframe()">
                     <span id="wireframe-text">📐 Wireframe</span>
                 </button>
