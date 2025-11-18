@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Konkan House - 3D Model Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+        h1 {
+            color: #333;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+        }
+        #viewer-container {
+            flex: 1;
+            position: relative;
+        }
+        model-viewer {
+            width: 100%;
+            height: 100%;
+            background-color: #f0f0f0;
+        }
+        model-viewer.wireframe-mode {
+            --wireframe-display: block;
+        }
+        #wireframe-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: none;
+        }
+        #wireframe-canvas.active {
+            display: block;
+        }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem 1.5rem;
+            border-radius: 50px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            z-index: 10;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #333;
+            font-size: 1.2rem;
+            background: white;
+            padding: 2rem 3rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .settings-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1.5rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            min-width: 250px;
+            z-index: 10;
+            display: none;
+        }
+        .settings-panel.active {
+            display: block;
+        }
+        .settings-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 0.75rem;
+            border-radius: 50%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            cursor: pointer;
+            z-index: 11;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        .settings-toggle:hover {
+            transform: rotate(90deg);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.2);
+        }
+        .setting-item {
+            margin-bottom: 1rem;
+        }
+        .setting-item label {
+            display: block;
+            color: #333;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .setting-item input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+        .setting-item .value {
+            display: inline-block;
+            color: #667eea;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-left: 0.5rem;
+        }
+    </style>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>🏠 Konkan House</h1>
+        <div class="subtitle">3D Interactive Model Viewer</div>
+    </header>
+
+    <div id="viewer-container">
+        <div class="loading" id="loading">Loading 3D model...</div>
+
+        <div class="settings-toggle" onclick="toggleSettings()">⚙️</div>
+
+        <div class="settings-panel" id="settings-panel">
+            <h3 style="margin-top: 0; color: #333; font-size: 1rem; margin-bottom: 1rem;">Lighting & Display</h3>
+
+            <div class="setting-item">
+                <label>
+                    Exposure
+                    <span class="value" id="exposure-value">1.0</span>
+                </label>
+                <input type="range" id="exposure" min="0.5" max="2.5" step="0.1" value="1.0" oninput="updateExposure(this.value)">
+            </div>
+
+            <div class="setting-item">
+                <label>
+                    Shadow Intensity
+                    <span class="value" id="shadow-value">1.5</span>
+                </label>
+                <input type="range" id="shadow-intensity" min="0" max="2" step="0.1" value="1.5" oninput="updateShadow(this.value)">
+            </div>
+
+            <div class="setting-item">
+                <label>
+                    Shadow Softness
+                    <span class="value" id="softness-value">0.8</span>
+                </label>
+                <input type="range" id="shadow-softness" min="0" max="1" step="0.1" value="0.8" oninput="updateSoftness(this.value)">
+            </div>
+
+            <div class="setting-item">
+                <label>Field of View</label>
+                <input type="range" id="fov" min="20" max="60" step="5" value="30" oninput="updateFOV(this.value)">
+                <span class="value" id="fov-value">30°</span>
+            </div>
+
+            <div class="setting-item">
+                <label>
+                    Ambient Light
+                    <span class="value" id="ambient-value">0.5</span>
+                </label>
+                <input type="range" id="ambient-light" min="0" max="2" step="0.1" value="0.5" oninput="updateAmbientLight(this.value)">
+            </div>
+
+            <div class="setting-item">
+                <label>
+                    Direct Light
+                    <span class="value" id="direct-value">0.8</span>
+                </label>
+                <input type="range" id="direct-light" min="0" max="2" step="0.1" value="0.8" oninput="updateDirectLight(this.value)">
+            </div>
+        </div>
+
+        <model-viewer
+            id="model"
+            src="konkan_house.glb"
+            alt="Konkan House 3D Model"
+            camera-controls
+            auto-rotate
+            shadow-intensity="1.5"
+            exposure="1.0"
+            shadow-softness="0.8"
+            skybox-image="https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/syferfontein_18d_clear_puresky_1k.hdr"
+            environment-image="https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/syferfontein_18d_clear_puresky_1k.hdr"
+            camera-orbit="45deg 75deg 50m"
+            min-camera-orbit="auto auto 10m"
+            max-camera-orbit="auto auto 200m"
+            field-of-view="30deg"
+            tone-mapping="commerce"
+            ar
+            ar-modes="webxr scene-viewer quick-look"
+            max-field-of-view="60deg"
+            min-field-of-view="20deg">
+
+            <!-- Custom lighting setup -->
+            <div class="ambient-light" slot="environment-image" id="ambient-light-slot"></div>
+
+            <div class="controls" slot="controls">
+                <button onclick="document.getElementById('model').cameraOrbit = '0deg 90deg 50m'">Top View</button>
+                <button onclick="document.getElementById('model').cameraOrbit = '0deg 75deg 50m'">Front View</button>
+                <button onclick="document.getElementById('model').cameraOrbit = '90deg 75deg 50m'">Side View</button>
+                <button onclick="document.getElementById('model').cameraOrbit = '45deg 75deg 50m'">Reset</button>
+                <button onclick="toggleWireframe()">
+                    <span id="wireframe-text">📐 Wireframe</span>
+                </button>
+                <button onclick="toggleAutoRotate()">
+                    <span id="rotate-text">⏸ Pause</span>
+                </button>
+            </div>
+        </model-viewer>
+    </div>
+
+    <script>
+        const modelViewer = document.getElementById('model');
+        const loading = document.getElementById('loading');
+
+        // Hide loading message when model loads
+        modelViewer.addEventListener('load', () => {
+            loading.style.display = 'none';
+            console.log('Model loaded successfully');
+        });
+
+        // Handle loading errors
+        modelViewer.addEventListener('error', (event) => {
+            loading.innerHTML = `
+                ❌ Error loading model<br><br>
+                <small style="font-size: 0.9rem;">
+                If viewing locally, you need to run a local server.<br>
+                Try: <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">python3 -m http.server 8000</code><br>
+                Then open: <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">http://localhost:8000</code>
+                </small>
+            `;
+            loading.style.color = '#d32f2f';
+            loading.style.fontSize = '1rem';
+        });
+
+        // Toggle auto-rotate
+        function toggleAutoRotate() {
+            const rotateText = document.getElementById('rotate-text');
+            if (modelViewer.autoRotate) {
+                modelViewer.autoRotate = false;
+                rotateText.textContent = '▶ Play';
+            } else {
+                modelViewer.autoRotate = true;
+                rotateText.textContent = '⏸ Pause';
+            }
+        }
+
+        // Toggle wireframe overlay
+        let wireframeEnabled = false;
+        function toggleWireframe() {
+            const wireframeText = document.getElementById('wireframe-text');
+            wireframeEnabled = !wireframeEnabled;
+
+            if (wireframeEnabled) {
+                // Enable wireframe by adjusting material properties
+                modelViewer.model.materials.forEach(material => {
+                    material.pbrMetallicRoughness.setBaseColorFactor([0.3, 0.3, 0.3, 1]);
+                    material.pbrMetallicRoughness.setMetallicFactor(0.1);
+                    material.pbrMetallicRoughness.setRoughnessFactor(0.9);
+                });
+                modelViewer.exposure = 2.0;
+                wireframeText.textContent = '🎨 Material';
+            } else {
+                // Restore original materials
+                modelViewer.model.materials.forEach(material => {
+                    material.pbrMetallicRoughness.setMetallicFactor(0);
+                    material.pbrMetallicRoughness.setRoughnessFactor(1);
+                });
+                modelViewer.exposure = 1.0;
+                wireframeText.textContent = '📐 Wireframe';
+            }
+        }
+
+        // Toggle settings panel
+        function toggleSettings() {
+            const panel = document.getElementById('settings-panel');
+            panel.classList.toggle('active');
+        }
+
+        // Update lighting controls
+        function updateExposure(value) {
+            modelViewer.exposure = parseFloat(value);
+            document.getElementById('exposure-value').textContent = value;
+        }
+
+        function updateShadow(value) {
+            modelViewer.shadowIntensity = parseFloat(value);
+            document.getElementById('shadow-value').textContent = value;
+        }
+
+        function updateSoftness(value) {
+            modelViewer.shadowSoftness = parseFloat(value);
+            document.getElementById('softness-value').textContent = value;
+        }
+
+        function updateFOV(value) {
+            modelViewer.fieldOfView = value + 'deg';
+            document.getElementById('fov-value').textContent = value + '°';
+        }
+
+        // Update ambient light (using exposure to simulate ambient fill)
+        function updateAmbientLight(value) {
+            const ambientValue = parseFloat(value);
+            document.getElementById('ambient-value').textContent = value;
+
+            // Combine ambient with current direct light to adjust overall exposure
+            const directValue = parseFloat(document.getElementById('direct-light').value);
+            const combinedExposure = 0.6 + (ambientValue * 0.5) + (directValue * 0.3);
+            modelViewer.exposure = combinedExposure;
+
+            console.log('Ambient:', ambientValue, 'Combined Exposure:', combinedExposure);
+        }
+
+        // Update direct light (using shadow intensity to simulate directional lighting)
+        function updateDirectLight(value) {
+            const directValue = parseFloat(value);
+            document.getElementById('direct-value').textContent = value;
+
+            // Higher direct light = stronger shadows and contrast
+            modelViewer.shadowIntensity = directValue * 1.2;
+
+            // Adjust exposure based on both ambient and direct
+            const ambientValue = parseFloat(document.getElementById('ambient-light').value);
+            const combinedExposure = 0.6 + (ambientValue * 0.5) + (directValue * 0.3);
+            modelViewer.exposure = combinedExposure;
+
+            console.log('Direct:', directValue, 'Shadow Intensity:', directValue * 1.2, 'Combined Exposure:', combinedExposure);
+        }
+    </script>
+</body>
+</html>

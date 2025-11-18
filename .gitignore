@@ -1,0 +1,18 @@
+# Blender files
+*.blend1
+*.blend2
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+
+# Generated 3D model (exclude from git, regenerate locally)
+docs/*.glb
+docs/*.gltf
+docs/*.bin
