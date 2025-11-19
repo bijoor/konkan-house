@@ -20,9 +20,13 @@ GLOBAL_CONFIG = {
     # Scaling & Units
     'units_to_meters_ratio': 0.3048,  # Default: feet to meters (1 ft = 0.3048 m)
     'scale_factor': 1.0,               # Additional scaling multiplier
-    
+
     # Ground reference
     'ground_level_z': 0.0,             # Ground level Z coordinate in meters
+
+    # Model origin (center of plinth - will be set from house config)
+    'model_origin_offset_x': 0.0,      # X offset to center model
+    'model_origin_offset_y': 0.0,      # Y offset to center model
     
     # Floor configuration (heights in input units)
     'floor_heights': {
@@ -48,6 +52,24 @@ GLOBAL_CONFIG = {
         'bathroom': (0.55, 0.25, 0.15, 1.0),   # Laterite
         'bedroom': (0.55, 0.25, 0.15, 1.0),    # Laterite
         'workshop': (0.55, 0.25, 0.15, 1.0),   # Laterite
+    },
+
+    # SVG Dimension Configuration
+    'dimensions': {
+        'show_outer_dimensions': True,      # Show building perimeter dimensions
+        'show_inner_dimensions': True,      # Show interior wall dimensions
+        'show_room_dimensions': True,       # Show room size labels (Width × Length)
+        'show_opening_dimensions': True,    # Show door/window dimensions
+        'dimension_offset': 30,             # Distance from building edge (in input units)
+        'inner_dimension_offset': 15,       # Offset for interior dimensions
+        'opening_dimension_offset': 8,      # Offset for door/window dimensions
+        'min_dimension_length': 20,         # Don't dimension edges shorter than this
+        'unit_display': 'feet',             # Display unit name
+        'unit_conversion': 10.0,            # Conversion factor (10 units = 1 foot)
+        'precision': 1,                     # Decimal places for dimensions
+        'text_size': 10,                    # Font size for dimension text
+        'room_text_size': 12,               # Font size for room labels
+        'opening_text_size': 8,             # Font size for door/window dimensions
     }
 }
 
@@ -62,19 +84,42 @@ def to_meters(value: float) -> float:
 def inkscape_to_blender(x: float, y: float, z: float = 0) -> Tuple[float, float, float]:
     """
     Convert Inkscape coordinates (origin top-left, Y down) to Blender coordinates.
-    
+    Model is centered at the plinth center for symmetric 3D visualization.
+
     Args:
         x: Horizontal position (right positive)
         y: Vertical position (down positive in Inkscape)
         z: Height (up positive)
-    
+
     Returns:
         Tuple of (blender_x, blender_y, blender_z) in meters
     """
-    blender_x = to_meters(x)
-    blender_y = to_meters(-y)  # Flip Y axis
+    # Apply origin offset to center model at plinth center
+    centered_x = x - GLOBAL_CONFIG['model_origin_offset_x']
+    centered_y = y - GLOBAL_CONFIG['model_origin_offset_y']
+
+    blender_x = to_meters(centered_x)
+    blender_y = to_meters(-centered_y)  # Flip Y axis
     blender_z = to_meters(z) + GLOBAL_CONFIG['ground_level_z']
     return (blender_x, blender_y, blender_z)
+
+def set_model_origin_from_plinth(plinth_config: dict):
+    """
+    Set the model origin to the center of the plinth for symmetric 3D visualization.
+    This only affects the 3D model; SVG floor plans use original coordinates.
+
+    Args:
+        plinth_config: Dictionary with 'x', 'y', 'width', 'length' keys
+        Note: width is X-direction, length is Y-direction
+    """
+    # width is X-direction, length is Y-direction
+    center_x = plinth_config['x'] + plinth_config['width'] / 2.0
+    center_y = plinth_config['y'] + plinth_config['length'] / 2.0
+
+    GLOBAL_CONFIG['model_origin_offset_x'] = center_x
+    GLOBAL_CONFIG['model_origin_offset_y'] = center_y
+
+    print(f"Model origin set to plinth center: ({center_x:.1f}, {center_y:.1f})")
 
 def get_floor_z_offset(floor_number: int) -> float:
     """
@@ -1399,11 +1444,7 @@ def svg_draw_room(x: float, y: float, width: float, length: float,
     if 'west' in walls:
         svg += svg_draw_wall(x + t/2, y + t, x + t/2, y + length - t, thickness)
 
-    # Add room label in center
-    if name:
-        center_x = x + width / 2
-        center_y = y + length / 2
-        svg += f'<text x="{center_x}" y="{center_y}" text-anchor="middle" font-size="12" fill="#333">{name}</text>\n'
+    # Room label is now added separately with dimensions, so we don't add it here
 
     return svg
 
@@ -1454,7 +1495,7 @@ def svg_draw_window(x: float, y: float, width: float, direction: str = 'north') 
 
 def svg_draw_floor_slab(x: float, y: float, width: float, length: float) -> str:
     """
-    Generate SVG for a floor slab outline (top view).
+    Generate SVG for a floor slab (top view).
 
     Args:
         x, y: Top-left corner
@@ -1463,7 +1504,324 @@ def svg_draw_floor_slab(x: float, y: float, width: float, length: float) -> str:
     Returns:
         SVG string
     """
-    return f'<rect x="{x}" y="{y}" width="{width}" height="{length}" fill="none" stroke="#999" stroke-width="1" stroke-dasharray="5,5"/>\n'
+    return f'<rect x="{x}" y="{y}" width="{width}" height="{length}" fill="#D3D3D3" stroke="#999" stroke-width="1" opacity="0.6"/>\n'
+
+
+# ============================================================================
+# DIMENSIONING FUNCTIONS
+# ============================================================================
+
+def format_dimension(length: float) -> str:
+    """
+    Format a dimension value according to config settings.
+
+    Args:
+        length: Length in input units
+
+    Returns:
+        Formatted string like "20.5'" or "20.5 feet"
+    """
+    dim_config = GLOBAL_CONFIG['dimensions']
+    converted = length / dim_config['unit_conversion']
+    precision = dim_config['precision']
+    unit = dim_config['unit_display']
+
+    formatted_value = f"{converted:.{precision}f}"
+    return f"{formatted_value}'{'' if unit == 'feet' else ' ' + unit}"
+
+
+def normalize_edge_key(x1: float, y1: float, x2: float, y2: float) -> tuple:
+    """
+    Create a normalized key for an edge (independent of direction).
+
+    Args:
+        x1, y1: Start point
+        x2, y2: End point
+
+    Returns:
+        Tuple that's the same regardless of edge direction
+    """
+    # Sort points to create canonical representation
+    if (x1, y1) <= (x2, y2):
+        return (round(x1, 2), round(y1, 2), round(x2, 2), round(y2, 2))
+    else:
+        return (round(x2, 2), round(y2, 2), round(x1, 2), round(y1, 2))
+
+
+def extract_floor_edges(floor_config: dict) -> dict:
+    """
+    Extract all edges from floor configuration.
+
+    Returns:
+        Dictionary with 'horizontal' and 'vertical' edge lists
+    """
+    edges = {'horizontal': {}, 'vertical': {}}
+
+    if 'objects' not in floor_config:
+        return edges
+
+    wall_thickness = GLOBAL_CONFIG.get('wall_thickness', 8)
+
+    for obj in floor_config['objects']:
+        obj_type = obj.get('type')
+
+        if obj_type == 'room':
+            x, y = obj['x'], obj['y']
+            w, h = obj['width'], obj['length']
+            t = obj.get('wall_thickness', wall_thickness)
+            walls = obj.get('walls', ['north', 'south', 'east', 'west'])
+            walls = [w_name.lower() for w_name in walls]
+
+            # North wall (horizontal)
+            if 'north' in walls:
+                key = normalize_edge_key(x, y, x + w, y)
+                edges['horizontal'][key] = {'x1': x, 'y1': y, 'x2': x + w, 'y2': y, 'source': f"{obj['name']}_North"}
+
+            # South wall (horizontal)
+            if 'south' in walls:
+                key = normalize_edge_key(x, y + h, x + w, y + h)
+                edges['horizontal'][key] = {'x1': x, 'y1': y + h, 'x2': x + w, 'y2': y + h, 'source': f"{obj['name']}_South"}
+
+            # East wall (vertical)
+            if 'east' in walls:
+                key = normalize_edge_key(x + w, y, x + w, y + h)
+                edges['vertical'][key] = {'x1': x + w, 'y1': y, 'x2': x + w, 'y2': y + h, 'source': f"{obj['name']}_East"}
+
+            # West wall (vertical)
+            if 'west' in walls:
+                key = normalize_edge_key(x, y, x, y + h)
+                edges['vertical'][key] = {'x1': x, 'y1': y, 'x2': x, 'y2': y + h, 'source': f"{obj['name']}_West"}
+
+        elif obj_type == 'wall':
+            x1, y1 = obj['start_x'], obj['start_y']
+            x2, y2 = obj['end_x'], obj['end_y']
+
+            # Determine if horizontal or vertical
+            if abs(y2 - y1) < 0.01:  # Horizontal wall
+                key = normalize_edge_key(x1, y1, x2, y2)
+                edges['horizontal'][key] = {'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2, 'source': obj.get('name', 'Wall')}
+            elif abs(x2 - x1) < 0.01:  # Vertical wall
+                key = normalize_edge_key(x1, y1, x2, y2)
+                edges['vertical'][key] = {'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2, 'source': obj.get('name', 'Wall')}
+
+    return edges
+
+
+def classify_perimeter_edges(edges: dict, bounds: dict) -> dict:
+    """
+    Classify which edges are on the building perimeter.
+
+    Args:
+        edges: Dictionary with 'horizontal' and 'vertical' edge dictionaries
+        bounds: Bounding box dict with min_x, max_x, min_y, max_y
+
+    Returns:
+        Dictionary with perimeter edges classified by side
+    """
+    tolerance = 2.0  # Tolerance for considering an edge on the perimeter
+    perimeter = {'north': [], 'south': [], 'east': [], 'west': []}
+
+    # Horizontal edges
+    for edge in edges['horizontal'].values():
+        y = edge['y1']
+        # North (top)
+        if abs(y - bounds['min_y']) < tolerance:
+            perimeter['north'].append(edge)
+        # South (bottom)
+        elif abs(y - bounds['max_y']) < tolerance:
+            perimeter['south'].append(edge)
+
+    # Vertical edges
+    for edge in edges['vertical'].values():
+        x = edge['x1']
+        # West (left)
+        if abs(x - bounds['min_x']) < tolerance:
+            perimeter['west'].append(edge)
+        # East (right)
+        elif abs(x - bounds['max_x']) < tolerance:
+            perimeter['east'].append(edge)
+
+    return perimeter
+
+
+def svg_draw_dimension_line(x1: float, y1: float, x2: float, y2: float,
+                            offset: float, is_horizontal: bool = True) -> str:
+    """
+    Draw a dimension line with arrows and text.
+
+    Args:
+        x1, y1: Start point of edge being dimensioned
+        x2, y2: End point of edge being dimensioned
+        offset: Distance to offset the dimension line (positive = away from drawing)
+        is_horizontal: True for horizontal dimensions, False for vertical
+
+    Returns:
+        SVG string
+    """
+    dim_config = GLOBAL_CONFIG['dimensions']
+    text_size = dim_config['text_size']
+    min_length = dim_config['min_dimension_length']
+
+    # Calculate length
+    length = math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+
+    # Skip if too short
+    if length < min_length:
+        return ""
+
+    # Format dimension text
+    dim_text = format_dimension(length)
+
+    svg = '<g class="dimension">\n'
+
+    if is_horizontal:
+        # Dimension line offset above or below
+        dim_y = y1 + offset
+
+        # Main dimension line
+        svg += f'  <line x1="{x1}" y1="{dim_y}" x2="{x2}" y2="{dim_y}" stroke="#000" stroke-width="0.5"/>\n'
+
+        # Extension/witness lines
+        svg += f'  <line x1="{x1}" y1="{y1}" x2="{x1}" y2="{dim_y}" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>\n'
+        svg += f'  <line x1="{x2}" y1="{y2}" x2="{x2}" y2="{dim_y}" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>\n'
+
+        # Arrowheads
+        arrow_size = 3
+        if offset > 0:  # Below
+            svg += f'  <polygon points="{x1},{dim_y} {x1+arrow_size},{dim_y-arrow_size} {x1+arrow_size},{dim_y+arrow_size}" fill="#000"/>\n'
+            svg += f'  <polygon points="{x2},{dim_y} {x2-arrow_size},{dim_y-arrow_size} {x2-arrow_size},{dim_y+arrow_size}" fill="#000"/>\n'
+        else:  # Above
+            svg += f'  <polygon points="{x1},{dim_y} {x1+arrow_size},{dim_y-arrow_size} {x1+arrow_size},{dim_y+arrow_size}" fill="#000"/>\n'
+            svg += f'  <polygon points="{x2},{dim_y} {x2-arrow_size},{dim_y-arrow_size} {x2-arrow_size},{dim_y+arrow_size}" fill="#000"/>\n'
+
+        # Dimension text
+        text_y = dim_y - 5 if offset < 0 else dim_y + text_size + 3
+        svg += f'  <text x="{(x1+x2)/2}" y="{text_y}" text-anchor="middle" font-size="{text_size}" fill="#000">{dim_text}</text>\n'
+
+    else:  # Vertical
+        # Dimension line offset left or right
+        dim_x = x1 + offset
+
+        # Main dimension line
+        svg += f'  <line x1="{dim_x}" y1="{y1}" x2="{dim_x}" y2="{y2}" stroke="#000" stroke-width="0.5"/>\n'
+
+        # Extension/witness lines
+        svg += f'  <line x1="{x1}" y1="{y1}" x2="{dim_x}" y2="{y1}" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>\n'
+        svg += f'  <line x1="{x2}" y1="{y2}" x2="{dim_x}" y2="{y2}" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>\n'
+
+        # Arrowheads
+        arrow_size = 3
+        svg += f'  <polygon points="{dim_x},{y1} {dim_x-arrow_size},{y1+arrow_size} {dim_x+arrow_size},{y1+arrow_size}" fill="#000"/>\n'
+        svg += f'  <polygon points="{dim_x},{y2} {dim_x-arrow_size},{y2-arrow_size} {dim_x+arrow_size},{y2-arrow_size}" fill="#000"/>\n'
+
+        # Dimension text (rotated for vertical dimensions)
+        text_x = dim_x - text_size - 3 if offset < 0 else dim_x + text_size + 3
+        svg += f'  <text x="{text_x}" y="{(y1+y2)/2}" text-anchor="middle" font-size="{text_size}" fill="#000" transform="rotate(-90 {text_x} {(y1+y2)/2})">{dim_text}</text>\n'
+
+    svg += '</g>\n'
+    return svg
+
+
+def svg_draw_opening_dimensions(x: float, y: float, width: float, direction: str,
+                                wall_start: float, wall_end: float) -> str:
+    """
+    Draw dimensions for a door or window opening.
+
+    Args:
+        x, y: Opening position
+        width: Opening width
+        direction: Opening direction ('north', 'south', 'east', 'west')
+        wall_start: Start coordinate of the wall (x for vertical, y for horizontal)
+        wall_end: End coordinate of the wall (x for vertical, y for horizontal)
+
+    Returns:
+        SVG string with two dimensions: position from wall start and opening width
+    """
+    dim_config = GLOBAL_CONFIG['dimensions']
+    offset = dim_config['opening_dimension_offset']
+    text_size = dim_config['opening_text_size']
+
+    direction = direction.lower()
+    svg = '<g class="opening-dimension">\n'
+
+    if direction in ['north', 'south']:
+        # Horizontal wall
+        # Dimension 1: Position from wall start to opening
+        position_offset = -offset if direction == 'north' else offset
+        pos_dim_y = y + position_offset
+
+        if abs(x - wall_start) > 5:  # Only show if not at wall start
+            pos_length = abs(x - wall_start)
+            pos_dim_text = format_dimension(pos_length)
+
+            # Short dimension line from wall start to opening
+            svg += f'  <line x1="{wall_start}" y1="{pos_dim_y}" x2="{x}" y2="{pos_dim_y}" stroke="#666" stroke-width="0.3"/>\n'
+            svg += f'  <line x1="{wall_start}" y1="{y}" x2="{wall_start}" y2="{pos_dim_y}" stroke="#666" stroke-width="0.2" stroke-dasharray="1,1"/>\n'
+            svg += f'  <line x1="{x}" y1="{y}" x2="{x}" y2="{pos_dim_y}" stroke="#666" stroke-width="0.2" stroke-dasharray="1,1"/>\n'
+
+            # Small arrows
+            arrow_size = 2
+            svg += f'  <polygon points="{wall_start},{pos_dim_y} {wall_start+arrow_size},{pos_dim_y-arrow_size/2} {wall_start+arrow_size},{pos_dim_y+arrow_size/2}" fill="#666"/>\n'
+            svg += f'  <polygon points="{x},{pos_dim_y} {x-arrow_size},{pos_dim_y-arrow_size/2} {x-arrow_size},{pos_dim_y+arrow_size/2}" fill="#666"/>\n'
+
+            # Text
+            text_y = pos_dim_y - 3 if direction == 'north' else pos_dim_y + text_size + 1
+            svg += f'  <text x="{(wall_start+x)/2}" y="{text_y}" text-anchor="middle" font-size="{text_size}" fill="#666">{pos_dim_text}</text>\n'
+
+        # Dimension 2: Opening width
+        width_offset = -offset * 1.8 if direction == 'north' else offset * 1.8
+        width_dim_y = y + width_offset
+        width_dim_text = format_dimension(width)
+
+        svg += f'  <line x1="{x}" y1="{width_dim_y}" x2="{x+width}" y2="{width_dim_y}" stroke="#000" stroke-width="0.4"/>\n'
+        svg += f'  <line x1="{x}" y1="{y}" x2="{x}" y2="{width_dim_y}" stroke="#000" stroke-width="0.2" stroke-dasharray="1,1"/>\n'
+        svg += f'  <line x1="{x+width}" y1="{y}" x2="{x+width}" y2="{width_dim_y}" stroke="#000" stroke-width="0.2" stroke-dasharray="1,1"/>\n'
+
+        arrow_size = 2
+        svg += f'  <polygon points="{x},{width_dim_y} {x+arrow_size},{width_dim_y-arrow_size/2} {x+arrow_size},{width_dim_y+arrow_size/2}" fill="#000"/>\n'
+        svg += f'  <polygon points="{x+width},{width_dim_y} {x+width-arrow_size},{width_dim_y-arrow_size/2} {x+width-arrow_size},{width_dim_y+arrow_size/2}" fill="#000"/>\n'
+
+        text_y = width_dim_y - 3 if direction == 'north' else width_dim_y + text_size + 1
+        svg += f'  <text x="{x+width/2}" y="{text_y}" text-anchor="middle" font-size="{text_size}" font-weight="bold" fill="#000">{width_dim_text}</text>\n'
+
+    else:  # Vertical wall (east/west)
+        # Dimension 1: Position from wall start to opening
+        position_offset = -offset if direction == 'west' else offset
+        pos_dim_x = x + position_offset
+
+        if abs(y - wall_start) > 5:  # Only show if not at wall start
+            pos_length = abs(y - wall_start)
+            pos_dim_text = format_dimension(pos_length)
+
+            svg += f'  <line x1="{pos_dim_x}" y1="{wall_start}" x2="{pos_dim_x}" y2="{y}" stroke="#666" stroke-width="0.3"/>\n'
+            svg += f'  <line x1="{x}" y1="{wall_start}" x2="{pos_dim_x}" y2="{wall_start}" stroke="#666" stroke-width="0.2" stroke-dasharray="1,1"/>\n'
+            svg += f'  <line x1="{x}" y1="{y}" x2="{pos_dim_x}" y2="{y}" stroke="#666" stroke-width="0.2" stroke-dasharray="1,1"/>\n'
+
+            arrow_size = 2
+            svg += f'  <polygon points="{pos_dim_x},{wall_start} {pos_dim_x-arrow_size/2},{wall_start+arrow_size} {pos_dim_x+arrow_size/2},{wall_start+arrow_size}" fill="#666"/>\n'
+            svg += f'  <polygon points="{pos_dim_x},{y} {pos_dim_x-arrow_size/2},{y-arrow_size} {pos_dim_x+arrow_size/2},{y-arrow_size}" fill="#666"/>\n'
+
+            text_x = pos_dim_x - text_size - 2 if direction == 'west' else pos_dim_x + text_size + 2
+            svg += f'  <text x="{text_x}" y="{(wall_start+y)/2}" text-anchor="middle" font-size="{text_size}" fill="#666" transform="rotate(-90 {text_x} {(wall_start+y)/2})">{pos_dim_text}</text>\n'
+
+        # Dimension 2: Opening width (height in vertical orientation)
+        width_offset = -offset * 1.8 if direction == 'west' else offset * 1.8
+        width_dim_x = x + width_offset
+        width_dim_text = format_dimension(width)
+
+        svg += f'  <line x1="{width_dim_x}" y1="{y}" x2="{width_dim_x}" y2="{y+width}" stroke="#000" stroke-width="0.4"/>\n'
+        svg += f'  <line x1="{x}" y1="{y}" x2="{width_dim_x}" y2="{y}" stroke="#000" stroke-width="0.2" stroke-dasharray="1,1"/>\n'
+        svg += f'  <line x1="{x}" y1="{y+width}" x2="{width_dim_x}" y2="{y+width}" stroke="#000" stroke-width="0.2" stroke-dasharray="1,1"/>\n'
+
+        arrow_size = 2
+        svg += f'  <polygon points="{width_dim_x},{y} {width_dim_x-arrow_size/2},{y+arrow_size} {width_dim_x+arrow_size/2},{y+arrow_size}" fill="#000"/>\n'
+        svg += f'  <polygon points="{width_dim_x},{y+width} {width_dim_x-arrow_size/2},{y+width-arrow_size} {width_dim_x+arrow_size/2},{y+width-arrow_size}" fill="#000"/>\n'
+
+        text_x = width_dim_x - text_size - 2 if direction == 'west' else width_dim_x + text_size + 2
+        svg += f'  <text x="{text_x}" y="{y+width/2}" text-anchor="middle" font-size="{text_size}" font-weight="bold" fill="#000" transform="rotate(-90 {text_x} {y+width/2})">{width_dim_text}</text>\n'
+
+    svg += '</g>\n'
+    return svg
 
 
 def generate_floor_plan_svg(floor_config: dict, output_path: str = None,
@@ -1502,10 +1860,16 @@ def generate_floor_plan_svg(floor_config: dict, output_path: str = None,
                 min_y = min(min_y, obj['start_y'], obj['end_y'])
                 max_y = max(max_y, obj['start_y'], obj['end_y'])
 
-    # Add margin
-    margin = 20
+    # Add margin (extra at top for title and dimensions)
+    dim_config = GLOBAL_CONFIG['dimensions']
+    base_margin = 20
+    # Add extra margin for dimensions if enabled
+    dim_margin = (dim_config['dimension_offset'] + 20) * scale if dim_config['show_outer_dimensions'] else 0
+    margin = base_margin + dim_margin
+    top_margin = 50 + dim_margin  # Extra space for title and top dimensions
+
     width = (max_x - min_x) * scale + 2 * margin
-    height = (max_y - min_y) * scale + 2 * margin
+    height = (max_y - min_y) * scale + margin + top_margin
 
     # Start SVG
     svg = f'''<?xml version="1.0" encoding="UTF-8"?>
@@ -1516,7 +1880,7 @@ def generate_floor_plan_svg(floor_config: dict, output_path: str = None,
         text {{ font-family: Arial, sans-serif; }}
     </style>
 </defs>
-<g transform="translate({margin - min_x * scale}, {margin - min_y * scale}) scale({scale}, {scale})">
+<g transform="translate({margin - min_x * scale}, {top_margin - min_y * scale}) scale({scale}, {scale})">
 
 '''
 
@@ -1569,9 +1933,158 @@ def generate_floor_plan_svg(floor_config: dict, output_path: str = None,
                     obj.get('direction', 'north')
                 )
 
+    # Add dimensions
+    dim_config = GLOBAL_CONFIG['dimensions']
+
+    # Draw door/window dimensions
+    if dim_config['show_opening_dimensions'] and 'objects' in floor_config:
+        # First, create a map of wall names to their bounds
+        wall_bounds = {}
+
+        for obj in floor_config['objects']:
+            if obj.get('type') == 'room':
+                room_name = obj['name']
+                x, y = obj['x'], obj['y']
+                w, h = obj['width'], obj['length']
+
+                wall_bounds[f"{room_name}_North"] = {'start': x, 'end': x + w, 'coord': y, 'direction': 'north'}
+                wall_bounds[f"{room_name}_South"] = {'start': x, 'end': x + w, 'coord': y + h, 'direction': 'south'}
+                wall_bounds[f"{room_name}_East"] = {'start': y, 'end': y + h, 'coord': x + w, 'direction': 'east'}
+                wall_bounds[f"{room_name}_West"] = {'start': y, 'end': y + h, 'coord': x, 'direction': 'west'}
+
+            elif obj.get('type') == 'wall':
+                wall_name = obj.get('name', 'Wall')
+                x1, y1 = obj['start_x'], obj['start_y']
+                x2, y2 = obj['end_x'], obj['end_y']
+
+                if abs(y2 - y1) < 0.01:  # Horizontal wall
+                    direction = 'north' if y1 < (min_y + max_y) / 2 else 'south'
+                    wall_bounds[wall_name] = {'start': min(x1, x2), 'end': max(x1, x2), 'coord': y1, 'direction': direction}
+                elif abs(x2 - x1) < 0.01:  # Vertical wall
+                    direction = 'west' if x1 < (min_x + max_x) / 2 else 'east'
+                    wall_bounds[wall_name] = {'start': min(y1, y2), 'end': max(y1, y2), 'coord': x1, 'direction': direction}
+
+        # Draw dimensions for doors and windows
+        for obj in floor_config['objects']:
+            obj_type = obj.get('type')
+
+            if obj_type in ['door', 'window']:
+                # Try to find the wall this opening is on
+                direction = obj.get('direction', 'north').lower()
+                room = obj.get('room')
+                wall_name = obj.get('wall')
+
+                # Construct wall name if using room reference
+                if room and not wall_name:
+                    wall_name = f"{room}_{direction.capitalize()}"
+
+                if wall_name and wall_name in wall_bounds:
+                    wall_info = wall_bounds[wall_name]
+                    svg += svg_draw_opening_dimensions(
+                        obj['x'], obj['y'],
+                        obj['width'],
+                        direction,
+                        wall_info['start'],
+                        wall_info['end']
+                    )
+
+    if dim_config['show_outer_dimensions'] or dim_config['show_inner_dimensions']:
+        # Extract all edges
+        edges = extract_floor_edges(floor_config)
+
+        # Classify perimeter edges
+        bounds_dict = {'min_x': min_x, 'max_x': max_x, 'min_y': min_y, 'max_y': max_y}
+        perimeter = classify_perimeter_edges(edges, bounds_dict)
+
+        # Draw outer dimensions
+        if dim_config['show_outer_dimensions']:
+            offset = dim_config['dimension_offset']
+
+            # North dimensions (above)
+            for edge in perimeter['north']:
+                svg += svg_draw_dimension_line(edge['x1'], edge['y1'], edge['x2'], edge['y2'], -offset, True)
+
+            # South dimensions (below)
+            for edge in perimeter['south']:
+                svg += svg_draw_dimension_line(edge['x1'], edge['y1'], edge['x2'], edge['y2'], offset, True)
+
+            # West dimensions (left)
+            for edge in perimeter['west']:
+                svg += svg_draw_dimension_line(edge['x1'], edge['y1'], edge['x2'], edge['y2'], -offset, False)
+
+            # East dimensions (right)
+            for edge in perimeter['east']:
+                svg += svg_draw_dimension_line(edge['x1'], edge['y1'], edge['x2'], edge['y2'], offset, False)
+
+        # Draw interior dimensions
+        if dim_config['show_inner_dimensions']:
+            inner_offset = dim_config['inner_dimension_offset']
+
+            # Draw non-perimeter horizontal edges
+            for edge in edges['horizontal'].values():
+                key = normalize_edge_key(edge['x1'], edge['y1'], edge['x2'], edge['y2'])
+                is_perimeter = any(
+                    normalize_edge_key(e['x1'], e['y1'], e['x2'], e['y2']) == key
+                    for e in perimeter['north'] + perimeter['south']
+                )
+                if not is_perimeter:
+                    # Place dimension below the edge
+                    svg += svg_draw_dimension_line(edge['x1'], edge['y1'], edge['x2'], edge['y2'], inner_offset, True)
+
+            # Draw non-perimeter vertical edges
+            for edge in edges['vertical'].values():
+                key = normalize_edge_key(edge['x1'], edge['y1'], edge['x2'], edge['y2'])
+                is_perimeter = any(
+                    normalize_edge_key(e['x1'], e['y1'], e['x2'], e['y2']) == key
+                    for e in perimeter['west'] + perimeter['east']
+                )
+                if not is_perimeter:
+                    # Place dimension to the right of the edge
+                    svg += svg_draw_dimension_line(edge['x1'], edge['y1'], edge['x2'], edge['y2'], inner_offset, False)
+
+    # Add room dimension labels
+    if dim_config['show_room_dimensions'] and 'objects' in floor_config:
+        room_text_size = dim_config['room_text_size']
+        wall_thickness = GLOBAL_CONFIG.get('wall_thickness', 8)
+
+        for obj in floor_config['objects']:
+            if obj.get('type') == 'room':
+                center_x = obj['x'] + obj['width'] / 2
+                center_y = obj['y'] + obj['length'] / 2
+
+                # Calculate carpet area (interior dimensions excluding wall thickness)
+                t = obj.get('wall_thickness', wall_thickness)
+                walls = obj.get('walls', ['north', 'south', 'east', 'west'])
+                walls = [w.lower() for w in walls]
+
+                # Start with outer dimensions
+                carpet_width = obj['width']
+                carpet_length = obj['length']
+
+                # Subtract wall thickness for each wall that exists
+                if 'north' in walls:
+                    carpet_length -= t
+                if 'south' in walls:
+                    carpet_length -= t
+                if 'east' in walls:
+                    carpet_width -= t
+                if 'west' in walls:
+                    carpet_width -= t
+
+                # Format dimensions
+                width_dim = format_dimension(carpet_width)
+                length_dim = format_dimension(carpet_length)
+
+                # Room name
+                room_name = obj.get('name', 'Room')
+                svg += f'<text x="{center_x}" y="{center_y - 8}" text-anchor="middle" font-size="{room_text_size}" font-weight="bold" fill="#333">{room_name}</text>\n'
+
+                # Carpet area dimensions
+                svg += f'<text x="{center_x}" y="{center_y + 8}" text-anchor="middle" font-size="{room_text_size - 2}" fill="#666">{width_dim} × {length_dim}</text>\n'
+
     # Add title
     svg += f'''</g>
-<text x="{width/2}" y="15" text-anchor="middle" font-size="16" font-weight="bold">{floor_name}</text>
+<text x="{width/2}" y="30" text-anchor="middle" font-size="16" font-weight="bold">{floor_name}</text>
 </svg>'''
 
     # Save to file if path provided

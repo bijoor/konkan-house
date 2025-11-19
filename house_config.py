@@ -14,8 +14,9 @@ GLOBAL_CONFIG.update({
     
     'floor_heights': {
         0: 100.0,   # Ground floor: 10 feet
-        1: 150.0,    # First floor: 15 feet
-        2: 50.0,    # Second floor: 5 feet
+        1: 100.0,    # First floor: 10 feet
+        2: 42.0,    # Second floor: 5 feet
+        3: 50.0,    # Second floor: 5 feet
     },
     
     'wall_thickness': 8,     # 8 inches = 0.67 feet
@@ -100,9 +101,44 @@ HOUSE_CONFIG = {
                 {
                     'type': 'pillar',
                     'x': 4,
+                    'y': 84,
+                    'name': 'West_Pillar_1',
+                    'height': 258,
+                },
+                {
+                    'type': 'pillar',
+                    'x': 4,
                     'y': 196,
-                    'name': 'Bedroom_Pillar_1',
+                    'name': 'West_Pillar_2',
                     'height': 313,
+                },
+                {
+                    'type': 'pillar',
+                    'x': 4,
+                    'y': 286,
+                    'name': 'West_Pillar_3',
+                    'height': 258,
+                },
+                {
+                    'type': 'pillar',
+                    'x': 266,
+                    'y': 84,
+                    'name': 'East_Pillar_1',
+                    'height': 258,
+                },
+                {
+                    'type': 'pillar',
+                    'x': 266,
+                    'y': 196,
+                    'name': 'East_Pillar_2',
+                    'height': 313,
+                },
+                {
+                    'type': 'pillar',
+                    'x': 266,
+                    'y': 286,
+                    'name': 'East_Pillar_3',
+                    'height': 258,
                 },
 
                 # Rooms - only create exterior walls, not shared partition walls
@@ -491,6 +527,7 @@ HOUSE_CONFIG = {
                     'start_y': 200,
                     'end_x': 4,
                     'end_y': 290,
+                    'height': 150,
                     'material': 'living',
                 },
                 # Living_Kitchen_2 area - replaced room with individual walls for sloping roof
@@ -704,10 +741,32 @@ HOUSE_CONFIG = {
                 },
             ],
         },
-                # ============ FIRST FLOOR ============
+        # ============ LOFT FLOOR ============
         {
             'floor_number': 2,
-            'name': 'First Floor',
+            'name': 'Loft Floor',
+            'objects': [
+                # Floor slab
+                {
+                    'type': 'floor_slab',
+                    'x': 8,
+                    'y': 88,
+                    'width': 252,
+                    'length': 120,
+                },
+                {
+                    'type': 'floor_slab',
+                    'x': 176,
+                    'y': 208,
+                    'width': 84,
+                    'length': 82,
+                },
+            ]
+        },
+        # ============ ROOF FLOOR ============
+        {
+            'floor_number': 3,
+            'name': 'Roof Floor',
 
             # List of all objects on this floor
             'objects': [
@@ -769,7 +828,7 @@ HOUSE_CONFIG = {
                     'start_x': 266,
                     'start_y': 80,
                     'end_x': 266,
-                    'end_y': 200,
+                    'end_y': 192,
                     'height': 0,
                     'height_end': 47,  # Sloping wall
                     'material': 'walls',

@@ -211,7 +211,10 @@ def build_house():
     print("\n" + "="*70)
     print("BUILDING KONKAN HOUSE")
     print("="*70 + "\n")
-    
+
+    # Set model origin to center of plinth (for symmetric 3D visualization)
+    set_model_origin_from_plinth(HOUSE_CONFIG['plinth'])
+
     # Initialize scene
     init_scene()
     

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="744.0" height="674.0" viewBox="0 0 744.0 674.0">
+<title>Loft Floor - Floor Plan</title>
+<defs>
+    <style>
+        text { font-family: Arial, sans-serif; }
+    </style>
+</defs>
+<g transform="translate(104.0, -26.0) scale(2.0, 2.0)">
+
+<rect x="8" y="88" width="252" height="120" fill="#D3D3D3" stroke="#999" stroke-width="1" opacity="0.6"/>
+<rect x="176" y="208" width="84" height="82" fill="#D3D3D3" stroke="#999" stroke-width="1" opacity="0.6"/>
+</g>
+<text x="372.0" y="30" text-anchor="middle" font-size="16" font-weight="bold">Loft Floor</text>
+</svg>
