@@ -67,28 +67,42 @@ HOUSE_CONFIG = {
                     'x': 4,
                     'y': 4,
                     'name': 'Corner_Pillar_1',
-                    'height': 235,
+                    'height': 230,
                 },
                 {
                     'type': 'pillar',
                     'x': 106,
                     'y': 4,
                     'name': 'Entrance_Pillar_1',
-                    'height': 235,
+                    'height': 230,
                 },
                 {
                     'type': 'pillar',
                     'x': 164,
                     'y': 4,
                     'name': 'Entrance_Pillar_2',
-                    'height': 235,
+                    'height': 230,
                 },
                 {
                     'type': 'pillar',
                     'x': 266,
                     'y': 4,
                     'name': 'Corner_Pillar_2',
-                    'height': 235,
+                    'height': 230,
+                },
+                {
+                    'type': 'pillar',
+                    'x': 44,
+                    'y': 290,
+                    'name': 'Corner_Pillar_2',
+                    'height': 100,
+                },
+                {
+                    'type': 'pillar',
+                    'x': 4,
+                    'y': 196,
+                    'name': 'Bedroom_Pillar_1',
+                    'height': 313,
                 },
 
                 # Rooms - only create exterior walls, not shared partition walls
@@ -432,6 +446,12 @@ HOUSE_CONFIG = {
                     'length': 124,
                     'material': 'bedroom',
                     'walls': ['north','east','west','south'], # East shared with Workshop, South shared with Living_Kitchen
+                    'wall_heights': {
+                        'north': 150,
+                        'east': 100,
+                        'west': 150,
+                        'south': 100,
+                    }
                 },
                 {
                     'type': 'room',
@@ -442,6 +462,12 @@ HOUSE_CONFIG = {
                     'length': 124,
                     'material': 'workshop',
                     'walls': ['north','east','south'],  # West shared with Bedroom
+                    'wall_heights': {
+                        'north': 150,
+                        'east': 150,
+                        'west': 100,
+                        'south': 100,
+                    }
                 },
                 {
                     'type': 'room',
@@ -452,6 +478,11 @@ HOUSE_CONFIG = {
                     'length': 94,
                     'material': 'bathroom',
                     'walls': ['west','south','east'],  # North shared with Workshop, West shared with Living_Kitchen
+                    'wall_heights': {
+                        'east': 150,
+                        'west': 100,
+                        'south': 100,
+                    }
                 },
                 {
                     'type': 'wall',
@@ -716,7 +747,7 @@ HOUSE_CONFIG = {
                     'start_x': 4,
                     'start_y': 80,
                     'end_x': 4,
-                    'end_y': 200,
+                    'end_y': 192,
                     'height': 0,
                     'height_end': 47,  # Sloping wall
                     'material': 'walls',

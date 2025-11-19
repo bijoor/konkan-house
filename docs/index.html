@@ -158,6 +158,75 @@
             font-size: 0.9rem;
             margin-left: 0.5rem;
         }
+        .tabs {
+            display: flex;
+            gap: 0;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .tab {
+            padding: 0.75rem 2rem;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+        .tab:hover {
+            background: rgba(102, 126, 234, 0.1);
+            transform: none;
+            box-shadow: none;
+        }
+        .tab.active {
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.15);
+            border-bottom-color: #667eea;
+        }
+        .view-container {
+            display: none;
+            width: 100%;
+            height: 100%;
+        }
+        .view-container.active {
+            display: block;
+        }
+        .floor-plans-container {
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background: #f5f5f5;
+            padding: 2rem;
+        }
+        .floor-plan-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .floor-plan-item {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .floor-plan-item h3 {
+            margin: 0 0 1rem 0;
+            color: #333;
+            font-size: 1.2rem;
+        }
+        .floor-plan-item svg {
+            width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
     </style>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
 </head>
@@ -165,12 +234,18 @@
     <header>
         <h1>🏠 Konkan House</h1>
         <div class="subtitle">3D Interactive Model Viewer</div>
+        <div class="tabs" style="margin-top: 1rem;">
+            <button class="tab active" onclick="switchView('3d')">🏗️ 3D Model</button>
+            <button class="tab" onclick="switchView('plans')">📐 Floor Plans</button>
+        </div>
     </header>
 
     <div id="viewer-container">
-        <div class="loading" id="loading">Loading 3D model...</div>
+        <!-- 3D Model View -->
+        <div id="view-3d" class="view-container active">
+            <div class="loading" id="loading">Loading 3D model...</div>
 
-        <div class="settings-toggle" onclick="toggleSettings()">⚙️</div>
+            <div class="settings-toggle" onclick="toggleSettings()">⚙️</div>
 
         <div class="settings-panel" id="settings-panel">
             <h3 style="margin-top: 0; color: #333; font-size: 1rem; margin-bottom: 1rem;">Lighting & Display</h3>
@@ -259,6 +334,18 @@
                 </button>
             </div>
         </model-viewer>
+        </div>
+        <!-- End 3D Model View -->
+
+        <!-- Floor Plans View -->
+        <div id="view-plans" class="view-container">
+            <div class="floor-plans-container">
+                <div class="floor-plan-grid" id="floor-plans-grid">
+                    <!-- Floor plans will be loaded here dynamically -->
+                </div>
+            </div>
+        </div>
+        <!-- End Floor Plans View -->
     </div>
 
     <script>
@@ -377,6 +464,78 @@
             modelViewer.exposure = combinedExposure;
 
             console.log('Direct:', directValue, 'Shadow Intensity:', directValue * 1.2, 'Combined Exposure:', combinedExposure);
+        }
+
+        // View switching
+        function switchView(view) {
+            // Update tabs
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update views
+            document.querySelectorAll('.view-container').forEach(container => {
+                container.classList.remove('active');
+            });
+
+            if (view === '3d') {
+                document.getElementById('view-3d').classList.add('active');
+            } else if (view === 'plans') {
+                document.getElementById('view-plans').classList.add('active');
+                loadFloorPlans();
+            }
+        }
+
+        // Load floor plans dynamically
+        let floorPlansLoaded = false;
+        async function loadFloorPlans() {
+            if (floorPlansLoaded) return;
+
+            const grid = document.getElementById('floor-plans-grid');
+            const floorPlanFiles = [
+                { num: 0, name: 'Ground_Floor' },
+                { num: 1, name: 'First_Floor' },
+                { num: 2, name: 'Second_Floor' }
+            ];
+
+            grid.innerHTML = '<p style="text-align: center; color: #666;">Loading floor plans...</p>';
+
+            let loadedAny = false;
+            for (const floor of floorPlanFiles) {
+                const filename = `floor_plan_${floor.num}_${floor.name}.svg`;
+
+                try {
+                    const response = await fetch(filename);
+                    if (response.ok) {
+                        const svgContent = await response.text();
+
+                        const item = document.createElement('div');
+                        item.className = 'floor-plan-item';
+                        item.innerHTML = `
+                            <h3>${floor.name.replace(/_/g, ' ')}</h3>
+                            ${svgContent}
+                        `;
+
+                        if (!loadedAny) {
+                            grid.innerHTML = '';
+                            loadedAny = true;
+                        }
+                        grid.appendChild(item);
+                    }
+                } catch (error) {
+                    console.log(`Floor plan ${filename} not found`);
+                }
+            }
+
+            if (!loadedAny) {
+                grid.innerHTML = `
+                    <div style="text-align: center; padding: 3rem; color: #666;">
+                        <h3>No floor plans available</h3>
+                        <p>Floor plans will appear here after running the Blender script with floor plan generation enabled.</p>
+                    </div>
+                `;
+            }
+
+            floorPlansLoaded = true;
         }
     </script>
 </body>

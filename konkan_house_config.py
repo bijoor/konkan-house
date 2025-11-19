@@ -71,7 +71,8 @@ def build_floor(floor_config: dict):
                     height=obj.get('height'),
                     wall_thickness=obj.get('wall_thickness'),
                     material_name=obj.get('material', 'walls'),
-                    walls=obj.get('walls')  # Optional list of which walls to create
+                    walls=obj.get('walls'),  # Optional list of which walls to create
+                    wall_heights=obj.get('wall_heights')  # Optional dict of individual wall heights
                 )
 
             elif obj_type == 'wall':
@@ -277,6 +278,15 @@ def build_house():
 
 if __name__ == "__main__":
     build_house()
+
+    # ========================================================================
+    # FLOOR PLAN EXPORT - Generate 2D SVG floor plans
+    # ========================================================================
+    # This will create SVG files for each floor showing top-view layouts
+    # Useful for visualizing room layouts, door/window positions, etc.
+    # ========================================================================
+
+    generate_all_floor_plans(HOUSE_CONFIG)  # Comment to skip floor plans
 
     # ========================================================================
     # WEB EXPORT - Uncomment to export for GitHub Pages

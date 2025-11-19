@@ -477,7 +477,8 @@ def create_room(name: str, x: float, y: float, width: float, length: float,
                 height: Optional[float] = None,
                 wall_thickness: Optional[float] = None,
                 material_name: str = 'walls',
-                walls: Optional[List[str]] = None) -> List[bpy.types.Object]:
+                walls: Optional[List[str]] = None,
+                wall_heights: Optional[dict] = None) -> List[bpy.types.Object]:
     """
     Create a room with specified walls (no floor).
 
@@ -487,10 +488,13 @@ def create_room(name: str, x: float, y: float, width: float, length: float,
         width: Width in X direction (input units)
         length: Length in Y direction (input units)
         floor_number: Which floor (0=ground, 1=first, etc.)
-        height: Wall height (input units), uses floor config if None
+        height: Default wall height (input units), uses floor config if None
         wall_thickness: Wall thickness (input units), uses config default if None
         material_name: Material to apply to walls
         walls: List of walls to create ['north', 'south', 'east', 'west'], or None for all 4
+        wall_heights: Optional dict with individual wall heights, e.g.:
+                     {'north': 100, 'south': 150, 'east': {'start': 100, 'end': 150}, 'west': 120}
+                     Can specify single height or {'start': height1, 'end': height2} for sloped walls
 
     Returns:
         List of created wall objects
@@ -516,14 +520,29 @@ def create_room(name: str, x: float, y: float, width: float, length: float,
     t = wall_thickness
     created_walls = []
 
+    # Helper function to get wall height
+    def get_wall_height(wall_name: str):
+        """Get height for a specific wall, returns (height, height_end)"""
+        if wall_heights and wall_name in wall_heights:
+            wall_config = wall_heights[wall_name]
+            if isinstance(wall_config, dict):
+                # Sloped wall: {'start': h1, 'end': h2}
+                return wall_config.get('start', height), wall_config.get('end', height)
+            else:
+                # Single height value
+                return wall_config, None
+        return height, None
+
     # North wall - outer edge at y, inner edge at y+t
     # Centerline at y + t/2, spans from x to x+width
     if 'north' in walls:
+        wall_height, wall_height_end = get_wall_height('north')
         north_wall = create_wall(
             x, y + t/2,
             x + width, y + t/2,
             floor_number=floor_number,
-            height=height,
+            height=wall_height,
+            height_end=wall_height_end,
             thickness=wall_thickness,
             name=f"{name}_North",
             material_name=material_name,
@@ -534,11 +553,13 @@ def create_room(name: str, x: float, y: float, width: float, length: float,
     # South wall - inner edge at y+length-t, outer edge at y+length
     # Centerline at y + length - t/2, spans from x to x+width
     if 'south' in walls:
+        wall_height, wall_height_end = get_wall_height('south')
         south_wall = create_wall(
             x, y + length - t/2,
             x + width, y + length - t/2,
             floor_number=floor_number,
-            height=height,
+            height=wall_height,
+            height_end=wall_height_end,
             thickness=wall_thickness,
             name=f"{name}_South",
             material_name=material_name,
@@ -549,11 +570,13 @@ def create_room(name: str, x: float, y: float, width: float, length: float,
     # East wall - inner edge at x+width-t, outer edge at x+width
     # Centerline at x + width - t/2, spans from y+t to y+length-t (fits between N/S)
     if 'east' in walls:
+        wall_height, wall_height_end = get_wall_height('east')
         east_wall = create_wall(
             x + width - t/2, y + t,
             x + width - t/2, y + length - t,
             floor_number=floor_number,
-            height=height,
+            height=wall_height,
+            height_end=wall_height_end,
             thickness=wall_thickness,
             name=f"{name}_East",
             material_name=material_name,
@@ -564,11 +587,13 @@ def create_room(name: str, x: float, y: float, width: float, length: float,
     # West wall - outer edge at x, inner edge at x+t
     # Centerline at x + t/2, spans from y+t to y+length-t (fits between N/S)
     if 'west' in walls:
+        wall_height, wall_height_end = get_wall_height('west')
         west_wall = create_wall(
             x + t/2, y + t,
             x + t/2, y + length - t,
             floor_number=floor_number,
-            height=height,
+            height=wall_height,
+            height_end=wall_height_end,
             thickness=wall_thickness,
             name=f"{name}_West",
             material_name=material_name,
@@ -1286,6 +1311,319 @@ def export_to_web(filepath: str = None):
         print(f"  The static viewer files should be in the docs/ folder", flush=True)
 
     print("="*70 + "\n", flush=True)
+
+    return filepath
+
+
+# ============================================================================
+# SVG FLOOR PLAN GENERATION
+# ============================================================================
+
+def svg_draw_wall(start_x: float, start_y: float, end_x: float, end_y: float,
+                  thickness: float, color: str = "#8B4513") -> str:
+    """
+    Generate SVG for a wall (top view).
+
+    Args:
+        start_x, start_y: Wall start point
+        end_x, end_y: Wall end point
+        thickness: Wall thickness
+        color: Wall fill color
+
+    Returns:
+        SVG path string
+    """
+    # Calculate perpendicular offset for thickness
+    import math
+    dx = end_x - start_x
+    dy = end_y - start_y
+    length = math.sqrt(dx*dx + dy*dy)
+
+    if length == 0:
+        return ""
+
+    # Perpendicular unit vector
+    px = -dy / length
+    py = dx / length
+
+    # Wall corners
+    offset = thickness / 2
+    x1 = start_x + px * offset
+    y1 = start_y + py * offset
+    x2 = start_x - px * offset
+    y2 = start_y - py * offset
+    x3 = end_x - px * offset
+    y3 = end_y - py * offset
+    x4 = end_x + px * offset
+    y4 = end_y + py * offset
+
+    return f'<polygon points="{x1},{y1} {x4},{y4} {x3},{y3} {x2},{y2}" fill="{color}" stroke="#000" stroke-width="0.5"/>\n'
+
+
+def svg_draw_room(x: float, y: float, width: float, length: float,
+                  thickness: float, name: str = "",
+                  walls: list = None) -> str:
+    """
+    Generate SVG for a room (top view).
+
+    Args:
+        x, y: Top-left corner
+        width, length: Room dimensions
+        thickness: Wall thickness
+        name: Room name for label
+        walls: List of walls to draw ['north', 'south', 'east', 'west']
+
+    Returns:
+        SVG string with walls and label
+    """
+    if walls is None:
+        walls = ['north', 'south', 'east', 'west']
+
+    walls = [w.lower() for w in walls]
+    svg = ""
+    t = thickness
+
+    # North wall
+    if 'north' in walls:
+        svg += svg_draw_wall(x, y + t/2, x + width, y + t/2, thickness)
+
+    # South wall
+    if 'south' in walls:
+        svg += svg_draw_wall(x, y + length - t/2, x + width, y + length - t/2, thickness)
+
+    # East wall
+    if 'east' in walls:
+        svg += svg_draw_wall(x + width - t/2, y + t, x + width - t/2, y + length - t, thickness)
+
+    # West wall
+    if 'west' in walls:
+        svg += svg_draw_wall(x + t/2, y + t, x + t/2, y + length - t, thickness)
+
+    # Add room label in center
+    if name:
+        center_x = x + width / 2
+        center_y = y + length / 2
+        svg += f'<text x="{center_x}" y="{center_y}" text-anchor="middle" font-size="12" fill="#333">{name}</text>\n'
+
+    return svg
+
+
+def svg_draw_door(x: float, y: float, width: float, direction: str = 'north') -> str:
+    """
+    Generate SVG for a door (top view).
+
+    Args:
+        x, y: Door position
+        width: Door width
+        direction: Door direction ('north', 'south', 'east', 'west')
+
+    Returns:
+        SVG string
+    """
+    direction = direction.lower()
+
+    if direction in ['north', 'south']:
+        # Horizontal door
+        return f'<rect x="{x}" y="{y-2}" width="{width}" height="4" fill="#A0522D" stroke="#000" stroke-width="0.5"/>\n'
+    else:
+        # Vertical door
+        return f'<rect x="{x-2}" y="{y}" width="4" height="{width}" fill="#A0522D" stroke="#000" stroke-width="0.5"/>\n'
+
+
+def svg_draw_window(x: float, y: float, width: float, direction: str = 'north') -> str:
+    """
+    Generate SVG for a window (top view).
+
+    Args:
+        x, y: Window position
+        width: Window width
+        direction: Window direction ('north', 'south', 'east', 'west')
+
+    Returns:
+        SVG string
+    """
+    direction = direction.lower()
+
+    if direction in ['north', 'south']:
+        # Horizontal window
+        return f'<rect x="{x}" y="{y-1}" width="{width}" height="2" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>\n'
+    else:
+        # Vertical window
+        return f'<rect x="{x-1}" y="{y}" width="2" height="{width}" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>\n'
+
+
+def svg_draw_floor_slab(x: float, y: float, width: float, length: float) -> str:
+    """
+    Generate SVG for a floor slab outline (top view).
+
+    Args:
+        x, y: Top-left corner
+        width, length: Slab dimensions
+
+    Returns:
+        SVG string
+    """
+    return f'<rect x="{x}" y="{y}" width="{width}" height="{length}" fill="none" stroke="#999" stroke-width="1" stroke-dasharray="5,5"/>\n'
+
+
+def generate_floor_plan_svg(floor_config: dict, output_path: str = None,
+                            scale: float = 2.0) -> str:
+    """
+    Generate an SVG floor plan from a floor configuration.
+
+    Args:
+        floor_config: Floor configuration dictionary
+        output_path: Path to save SVG file (if None, returns SVG string only)
+        scale: Pixels per unit (default: 2 pixels per unit)
+
+    Returns:
+        SVG content as string
+    """
+    floor_num = floor_config.get('floor_number', 0)
+    floor_name = floor_config.get('name', f'Floor {floor_num}')
+
+    # Find bounds
+    min_x, min_y = float('inf'), float('inf')
+    max_x, max_y = float('-inf'), float('-inf')
+
+    if 'objects' in floor_config:
+        for obj in floor_config['objects']:
+            obj_type = obj.get('type')
+
+            if obj_type in ['floor_slab', 'room']:
+                x, y = obj['x'], obj['y']
+                w, l = obj['width'], obj['length']
+                min_x, min_y = min(min_x, x), min(min_y, y)
+                max_x, max_y = max(max_x, x + w), max(max_y, y + l)
+
+            elif obj_type == 'wall':
+                min_x = min(min_x, obj['start_x'], obj['end_x'])
+                max_x = max(max_x, obj['start_x'], obj['end_x'])
+                min_y = min(min_y, obj['start_y'], obj['end_y'])
+                max_y = max(max_y, obj['start_y'], obj['end_y'])
+
+    # Add margin
+    margin = 20
+    width = (max_x - min_x) * scale + 2 * margin
+    height = (max_y - min_y) * scale + 2 * margin
+
+    # Start SVG
+    svg = f'''<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
+<title>{floor_name} - Floor Plan</title>
+<defs>
+    <style>
+        text {{ font-family: Arial, sans-serif; }}
+    </style>
+</defs>
+<g transform="translate({margin - min_x * scale}, {margin - min_y * scale}) scale({scale}, {scale})">
+
+'''
+
+    # Draw floor slabs first (background)
+    if 'objects' in floor_config:
+        for obj in floor_config['objects']:
+            if obj.get('type') == 'floor_slab':
+                svg += svg_draw_floor_slab(obj['x'], obj['y'], obj['width'], obj['length'])
+
+    # Draw walls and rooms
+    wall_thickness = GLOBAL_CONFIG.get('wall_thickness', 8)
+
+    if 'objects' in floor_config:
+        for obj in floor_config['objects']:
+            obj_type = obj.get('type')
+
+            if obj_type == 'room':
+                svg += svg_draw_room(
+                    obj['x'], obj['y'],
+                    obj['width'], obj['length'],
+                    obj.get('wall_thickness', wall_thickness),
+                    obj.get('name', ''),
+                    obj.get('walls')
+                )
+
+            elif obj_type == 'wall':
+                thickness = obj.get('thickness', wall_thickness)
+                svg += svg_draw_wall(
+                    obj['start_x'], obj['start_y'],
+                    obj['end_x'], obj['end_y'],
+                    thickness
+                )
+
+    # Draw doors and windows
+    if 'objects' in floor_config:
+        for obj in floor_config['objects']:
+            obj_type = obj.get('type')
+
+            if obj_type == 'door':
+                svg += svg_draw_door(
+                    obj['x'], obj['y'],
+                    obj['width'],
+                    obj.get('direction', 'north')
+                )
+
+            elif obj_type == 'window':
+                svg += svg_draw_window(
+                    obj['x'], obj['y'],
+                    obj['width'],
+                    obj.get('direction', 'north')
+                )
+
+    # Add title
+    svg += f'''</g>
+<text x="{width/2}" y="15" text-anchor="middle" font-size="16" font-weight="bold">{floor_name}</text>
+</svg>'''
+
+    # Save to file if path provided
+    if output_path:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(svg)
+        print(f"✓ Floor plan saved to: {output_path}")
+
+    return svg
+
+
+def generate_all_floor_plans(house_config: dict, output_dir: str = None):
+    """
+    Generate SVG floor plans for all floors in the house configuration.
+
+    Args:
+        house_config: Complete house configuration
+        output_dir: Directory to save SVG files (defaults to docs folder for web deployment)
+    """
+    import os
+
+    if output_dir is None:
+        # Get the blend file directory
+        blend_filepath = bpy.data.filepath
+        if blend_filepath:
+            blend_dir = os.path.dirname(blend_filepath)
+        else:
+            blend_dir = os.getcwd()
+
+        # Save to docs folder for web deployment
+        output_dir = os.path.join(blend_dir, "docs")
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    print("\n" + "="*70)
+    print("GENERATING FLOOR PLANS (SVG)")
+    print("="*70)
+
+    for floor_config in house_config.get('floors', []):
+        floor_num = floor_config.get('floor_number', 0)
+        floor_name = floor_config.get('name', f'Floor_{floor_num}')
+
+        # Clean filename
+        filename = f"floor_plan_{floor_num}_{floor_name.replace(' ', '_')}.svg"
+        filepath = os.path.join(output_dir, filename)
+
+        print(f"\nGenerating {floor_name}...")
+        generate_floor_plan_svg(floor_config, filepath)
+
+    print("\n" + "="*70)
+    print("✓ ALL FLOOR PLANS GENERATED")
+    print("="*70 + "\n")
 
     return filepath
 

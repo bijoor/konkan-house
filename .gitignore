@@ -1,8 +1,14 @@
 # Blender files
+*.blend
 *.blend1
 *.blend2
 __pycache__/
 *.pyc
+
+# Large image files (screenshots, samples)
+sample-*.png
+*.jpg
+*.jpeg
 
 # OS files
 .DS_Store
