@@ -1,0 +1,100 @@
+{
+  "view_type": "front",
+  "floor_number": 1,
+  "current_z": 146.0,
+  "walls": [
+    {
+      "name": "Living_Kitchen_2_South",
+      "depth": -446,
+      "x": 8,
+      "width": 254,
+      "height": 70,
+      "height_end": 70,
+      "num_openings": 3,
+      "openings": [
+        {
+          "type": "window",
+          "x": 24,
+          "y": 442,
+          "width": 60,
+          "height": 60,
+          "room": null,
+          "direction": "south",
+          "sill_height": 5
+        },
+        {
+          "type": "window",
+          "x": 98.5,
+          "y": 442,
+          "width": 75,
+          "height": 60,
+          "room": null,
+          "direction": "south",
+          "sill_height": 5
+        },
+        {
+          "type": "window",
+          "x": 187.5,
+          "y": 442,
+          "width": 60,
+          "height": 60,
+          "room": null,
+          "direction": "south",
+          "sill_height": 5
+        }
+      ]
+    },
+    {
+      "name": "Bedroom_2_north",
+      "depth": -80,
+      "x": 0,
+      "width": 124,
+      "height": 150,
+      "height_end": null,
+      "num_openings": 1,
+      "openings": [
+        {
+          "type": "window",
+          "x": 25,
+          "y": 80,
+          "width": 80,
+          "height": 65,
+          "room": "Bedroom_2",
+          "direction": "north",
+          "sill_height": 5
+        }
+      ]
+    },
+    {
+      "name": "Bedroom_3_north",
+      "depth": -80,
+      "x": 116,
+      "width": 154,
+      "height": 150,
+      "height_end": null,
+      "num_openings": 1,
+      "openings": [
+        {
+          "type": "window",
+          "x": 135,
+          "y": 80,
+          "width": 80,
+          "height": 65,
+          "room": "Bedroom_3",
+          "direction": "north",
+          "sill_height": 5
+        }
+      ]
+    },
+    {
+      "name": "Upper_Verandah_north",
+      "depth": 0,
+      "x": 0,
+      "width": 270,
+      "height": 30,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    }
+  ]
+}

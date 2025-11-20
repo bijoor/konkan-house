@@ -1,0 +1,35 @@
+{
+  "view_type": "back",
+  "floor_number": 2,
+  "current_z": 246.0,
+  "objects": [
+    {
+      "type": "floor_slab",
+      "name": "Slab_",
+      "depth": 208,
+      "priority": 1,
+      "x": 8,
+      "width": 252,
+      "height": 8,
+      "z": 246.0,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "floor_slab",
+      "name": "Slab_",
+      "depth": 300,
+      "priority": 1,
+      "x": 176,
+      "width": 84,
+      "height": 8,
+      "z": 246.0,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    }
+  ]
+}

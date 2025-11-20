@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="840.0" height="1004.0" viewBox="0 0 840.0 1004.0">
+<title>Front Elevation</title>
+<defs>
+    <style>
+        text { font-family: Arial, sans-serif; }
+    </style>
+</defs>
+<g transform="translate(150, 210) scale(2.0, 2.0)">
+
+<line x1="0" y1="322.0" x2="270" y2="322.0" stroke="#666" stroke-width="2" stroke-dasharray="5,5"/>
+<rect x="0" y="292.0" width="270" height="30.0" fill="#A0826D" stroke="#000" stroke-width="1"/>
+<rect x="0" y="184.0" width="270" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
+<rect x="96.5" y="219.0" width="75" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
+<rect x="186" y="219.0" width="60" height="40.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
+<rect x="22.5" y="219.0" width="60" height="40.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
+<rect x="0" y="91.0" width="270" height="85.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
+<rect x="186" y="111.0" width="60" height="60.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
+<rect x="96.5" y="111.0" width="75" height="60.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
+<rect x="22.5" y="111.0" width="60" height="60.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
+<rect x="8" y="176.0" width="254" height="8.0" fill="#654321" stroke="#000" stroke-width="0.5"/>
+<rect x="0" y="176.0" width="8" height="8.0" fill="#654321" stroke="#000" stroke-width="0.5"/>
+<rect x="0" y="184.0" width="94" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
+<rect x="0" y="76.0" width="94" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
+<rect x="94" y="184.0" width="40" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
+<rect x="0" y="18.0" width="270" height="8.0" fill="#654321" stroke="#000" stroke-width="0.5"/>
+<rect x="222.0" y="184.0" width="8" height="100.0" fill="#000" stroke="#000" stroke-width="0.5"/>
+<rect x="262.0" y="26.0" width="8" height="258.0" fill="#000" stroke="#000" stroke-width="0.5"/>
+<rect x="0.0" y="26.0" width="8" height="258.0" fill="#000" stroke="#000" stroke-width="0.5"/>
+<rect x="0" y="176.0" width="230" height="8.0" fill="#808080" stroke="#000" stroke-width="0.5"/>
+<rect x="262" y="176.0" width="8" height="8.0" fill="#654321" stroke="#000" stroke-width="0.5"/>
+<rect x="10" y="68.0" width="84" height="8.0" fill="#808080" stroke="#000" stroke-width="0.5"/>
+<rect x="146" y="184.0" width="124" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
+<rect x="150" y="219.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
+<rect x="0" y="184.0" width="154" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
+<rect x="116" y="219.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
+<rect x="146" y="76.0" width="124" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
+<rect x="150" y="111.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
+<rect x="0" y="76.0" width="154" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
+<rect x="116" y="111.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
+<rect x="262.0" y="-29.0" width="8" height="313.0" fill="#000" stroke="#000" stroke-width="0.5"/>
+<rect x="0.0" y="-29.0" width="8" height="313.0" fill="#000" stroke="#000" stroke-width="0.5"/>
+<rect x="262" y="18.0" width="8" height="8.0" fill="#654321" stroke="#000" stroke-width="0.5"/>
+<rect x="0" y="18.0" width="8" height="8.0" fill="#654321" stroke="#000" stroke-width="0.5"/>
+<rect x="10" y="68.0" width="252" height="8.0" fill="#808080" stroke="#000" stroke-width="0.5"/>
+<rect x="0" y="18.0" width="270" height="8.0" fill="#654321" stroke="#000" stroke-width="0.5"/>
+<rect x="146" y="184.0" width="124" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
+<rect x="185" y="219.0" width="50" height="40.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
+<rect x="0" y="184.0" width="154" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
+<rect x="116" y="219.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
+<rect x="33" y="219.0" width="50" height="40.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
+<rect x="146" y="26.0" width="124" height="150.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
+<rect x="165" y="106.0" width="80" height="65.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
+<rect x="0" y="26.0" width="154" height="150.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
+<rect x="55" y="106.0" width="80" height="65.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
+<rect x="262.0" y="26.0" width="8" height="258.0" fill="#000" stroke="#000" stroke-width="0.5"/>
+<rect x="0.0" y="26.0" width="8" height="258.0" fill="#000" stroke="#000" stroke-width="0.5"/>
+<rect x="0" y="284.0" width="270" height="8.0" fill="#808080" stroke="#000" stroke-width="0.5"/>
+<rect x="0" y="176.0" width="270" height="8.0" fill="#808080" stroke="#000" stroke-width="0.5"/>
+<rect x="0" y="254.0" width="270" height="30.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
+<rect x="110" y="214.0" width="50" height="70.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
+<rect x="0" y="146.0" width="270" height="30.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
+<rect x="262.0" y="49.0" width="8" height="235.0" fill="#000" stroke="#000" stroke-width="0.5"/>
+<rect x="160.0" y="49.0" width="8" height="235.0" fill="#000" stroke="#000" stroke-width="0.5"/>
+<rect x="102.0" y="49.0" width="8" height="235.0" fill="#000" stroke="#000" stroke-width="0.5"/>
+<rect x="0.0" y="49.0" width="8" height="235.0" fill="#000" stroke="#000" stroke-width="0.5"/>
+<g class="dimension">
+  <line x1="300" y1="284.0" x2="300" y2="184.0" stroke="#000" stroke-width="0.5"/>
+  <line x1="270" y1="284.0" x2="300" y2="284.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="270" y1="184.0" x2="300" y2="184.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="300,284.0 297,287.0 303,287.0" fill="#000"/>
+  <polygon points="300,184.0 297,181.0 303,181.0" fill="#000"/>
+  <text x="313" y="234.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 313 234.0)">10.0'</text>
+</g>
+<g class="dimension">
+  <line x1="300" y1="176.0" x2="300" y2="76.0" stroke="#000" stroke-width="0.5"/>
+  <line x1="270" y1="176.0" x2="300" y2="176.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="270" y1="76.0" x2="300" y2="76.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="300,176.0 297,179.0 303,179.0" fill="#000"/>
+  <polygon points="300,76.0 297,73.0 303,73.0" fill="#000"/>
+  <text x="313" y="126.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 313 126.0)">10.0'</text>
+</g>
+<g class="dimension">
+  <line x1="300" y1="68.0" x2="300" y2="26.0" stroke="#000" stroke-width="0.5"/>
+  <line x1="270" y1="68.0" x2="300" y2="68.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="270" y1="26.0" x2="300" y2="26.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="300,68.0 297,71.0 303,71.0" fill="#000"/>
+  <polygon points="300,26.0 297,23.0 303,23.0" fill="#000"/>
+  <text x="313" y="47.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 313 47.0)">4.2'</text>
+</g>
+<g class="dimension">
+  <line x1="300" y1="18.0" x2="300" y2="-32.0" stroke="#000" stroke-width="0.5"/>
+  <line x1="270" y1="18.0" x2="300" y2="18.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="270" y1="-32.0" x2="300" y2="-32.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="300,18.0 297,21.0 303,21.0" fill="#000"/>
+  <polygon points="300,-32.0 297,-35.0 303,-35.0" fill="#000"/>
+  <text x="313" y="-7.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 313 -7.0)">5.0'</text>
+</g>
+<g class="dimension">
+  <line x1="0" y1="-30.0" x2="270" y2="-30.0" stroke="#000" stroke-width="0.5"/>
+  <line x1="0" y1="0.0" x2="0" y2="-30.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="270" y1="0.0" x2="270" y2="-30.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="0,-30.0 3,-33.0 3,-27.0" fill="#000"/>
+  <polygon points="270,-30.0 267,-33.0 267,-27.0" fill="#000"/>
+  <text x="135.0" y="-35.0" text-anchor="middle" font-size="10" fill="#000">27.0'</text>
+</g>
+<g class="dimension">
+  <line x1="160" y1="299.0" x2="270" y2="299.0" stroke="#000" stroke-width="0.5"/>
+  <line x1="160" y1="284.0" x2="160" y2="299.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="270" y1="284.0" x2="270" y2="299.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="160,299.0 163,296.0 163,302.0" fill="#000"/>
+  <polygon points="270,299.0 267,296.0 267,302.0" fill="#000"/>
+  <text x="215.0" y="312.0" text-anchor="middle" font-size="10" fill="#000">11.0'</text>
+</g>
+<g class="dimension">
+  <line x1="110" y1="299.0" x2="160" y2="299.0" stroke="#000" stroke-width="0.5"/>
+  <line x1="110" y1="284.0" x2="110" y2="299.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="160" y1="284.0" x2="160" y2="299.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="110,299.0 113,296.0 113,302.0" fill="#000"/>
+  <polygon points="160,299.0 157,296.0 157,302.0" fill="#000"/>
+  <text x="135.0" y="312.0" text-anchor="middle" font-size="10" fill="#000">5.0'</text>
+</g>
+</g>
+<text x="420.0" y="40.0" text-anchor="middle" font-size="18" font-weight="bold" fill="#333">Front Elevation</text>
+</svg>

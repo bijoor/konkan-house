@@ -13,13 +13,22 @@ import importlib
 # This allows importing konkan_house_lib.py from the same folder
 sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender')
 
-# Import and reload to pick up changes
+# Force reload all modules to ensure we're using the latest code
+# Order matters: reload dependencies first
+import config
+import svg_2d
+import blender_3d
 import konkan_house_lib
-importlib.reload(konkan_house_lib)
-from konkan_house_lib import *
-
 import house_config
+
+importlib.reload(config)
+importlib.reload(svg_2d)
+importlib.reload(blender_3d)
+importlib.reload(konkan_house_lib)
 importlib.reload(house_config)
+
+# Now import from the reloaded modules
+from konkan_house_lib import *
 from house_config import HOUSE_CONFIG, GLOBAL_CONFIG
 
 # ============================================================================
@@ -57,6 +66,18 @@ def build_floor(floor_config: dict):
                     floor_number=floor_num,
                     thickness=obj.get('thickness'),
                     material_name=obj.get('material', 'floor'),
+                    name=obj.get('name')
+                )
+
+            elif obj_type == 'beam':
+                create_beam(
+                    x=obj['x'],
+                    y=obj['y'],
+                    width=obj['width'],
+                    length=obj['length'],
+                    floor_number=floor_num,
+                    thickness=obj.get('thickness'),
+                    material_name=obj.get('material', 'beam'),
                     name=obj.get('name')
                 )
 
@@ -290,6 +311,28 @@ if __name__ == "__main__":
     # ========================================================================
 
     generate_all_floor_plans(HOUSE_CONFIG)  # Comment to skip floor plans
+
+    # ========================================================================
+    # ELEVATION VIEWS - Generate side and front/back views
+    # ========================================================================
+    # This will create SVG elevation views for:
+    #   - Front elevation (north view)
+    #   - Back elevation (south view)
+    #   - Left elevation (west view)
+    #   - Right elevation (east view)
+    # ========================================================================
+
+    generate_all_elevations(HOUSE_CONFIG)  # Comment to skip elevation views
+
+    # ========================================================================
+    # COMBINED VIEWS - Generate composite SVGs for easy comparison
+    # ========================================================================
+    # Combined floor plans: all floors side-by-side
+    # Combined elevations: left, front, right, back in standard order
+    # ========================================================================
+
+    generate_combined_floor_plans(HOUSE_CONFIG)  # Comment to skip
+    generate_combined_elevations(HOUSE_CONFIG)   # Comment to skip
 
     # ========================================================================
     # WEB EXPORT - Uncomment to export for GitHub Pages

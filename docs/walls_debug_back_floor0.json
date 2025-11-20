@@ -1,0 +1,220 @@
+{
+  "view_type": "back",
+  "floor_number": 0,
+  "current_z": 38,
+  "walls": [
+    {
+      "name": "Pillar_Corner_Pillar_1",
+      "depth": 4,
+      "x": 0.0,
+      "width": 8,
+      "height": 230,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Pillar_Entrance_Pillar_1",
+      "depth": 4,
+      "x": 102.0,
+      "width": 8,
+      "height": 230,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Pillar_Entrance_Pillar_2",
+      "depth": 4,
+      "x": 160.0,
+      "width": 8,
+      "height": 230,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Pillar_Corner_Pillar_2",
+      "depth": 4,
+      "x": 262.0,
+      "width": 8,
+      "height": 230,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Pillar_West_Pillar_1",
+      "depth": 84,
+      "x": 0.0,
+      "width": 8,
+      "height": 258,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Pillar_East_Pillar_1",
+      "depth": 84,
+      "x": 262.0,
+      "width": 8,
+      "height": 258,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Pillar_West_Pillar_2",
+      "depth": 196,
+      "x": 0.0,
+      "width": 8,
+      "height": 313,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Pillar_East_Pillar_2",
+      "depth": 196,
+      "x": 262.0,
+      "width": 8,
+      "height": 313,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Bedroom_1_south",
+      "depth": 204,
+      "x": 0,
+      "width": 124,
+      "height": 100.0,
+      "height_end": null,
+      "num_openings": 1,
+      "openings": [
+        {
+          "type": "door",
+          "x": 90,
+          "y": 196,
+          "width": 30,
+          "height": 65,
+          "room": "Bedroom_1",
+          "direction": "south",
+          "sill_height": null
+        }
+      ]
+    },
+    {
+      "name": "Workshop_south",
+      "depth": 204,
+      "x": 116,
+      "width": 154,
+      "height": 100.0,
+      "height_end": null,
+      "num_openings": 1,
+      "openings": [
+        {
+          "type": "door",
+          "x": 124,
+          "y": 196,
+          "width": 30,
+          "height": 65,
+          "room": "Workshop",
+          "direction": "south",
+          "sill_height": null
+        }
+      ]
+    },
+    {
+      "name": "Washbasin_Wall",
+      "depth": 296,
+      "x": 136,
+      "width": 40,
+      "height": 100.0,
+      "height_end": 100.0,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Pillar_Staircase_Pillar",
+      "depth": 296,
+      "x": 40.0,
+      "width": 8,
+      "height": 100,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Pillar_West_Pillar_3",
+      "depth": 296,
+      "x": 0.0,
+      "width": 8,
+      "height": 258,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Pillar_East_Pillar_3",
+      "depth": 296,
+      "x": 262.0,
+      "width": 8,
+      "height": 258,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Bathroom_1_south",
+      "depth": 300,
+      "x": 176,
+      "width": 94,
+      "height": 100.0,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Living_Kitchen_south",
+      "depth": 450,
+      "x": 0,
+      "width": 270,
+      "height": 100.0,
+      "height_end": null,
+      "num_openings": 3,
+      "openings": [
+        {
+          "type": "door",
+          "x": 98.5,
+          "y": 442,
+          "width": 75,
+          "height": 65,
+          "room": "Living_Kitchen",
+          "direction": "south",
+          "sill_height": null
+        },
+        {
+          "type": "window",
+          "x": 24,
+          "y": 442,
+          "width": 60,
+          "height": 40,
+          "room": "Living_Kitchen",
+          "direction": "south",
+          "sill_height": 25
+        },
+        {
+          "type": "window",
+          "x": 187.5,
+          "y": 442,
+          "width": 60,
+          "height": 40,
+          "room": "Living_Kitchen",
+          "direction": "south",
+          "sill_height": 25
+        }
+      ]
+    }
+  ]
+}

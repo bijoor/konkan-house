@@ -1,0 +1,100 @@
+{
+  "view_type": "back",
+  "floor_number": 1,
+  "current_z": 146.0,
+  "walls": [
+    {
+      "name": "Bedroom_2_south",
+      "depth": 204,
+      "x": 0,
+      "width": 124,
+      "height": 100,
+      "height_end": null,
+      "num_openings": 1,
+      "openings": [
+        {
+          "type": "door",
+          "x": 90,
+          "y": 196,
+          "width": 30,
+          "height": 65,
+          "room": "Bedroom_2",
+          "direction": "south",
+          "sill_height": null
+        }
+      ]
+    },
+    {
+      "name": "Bedroom_3_south",
+      "depth": 204,
+      "x": 116,
+      "width": 154,
+      "height": 100,
+      "height_end": null,
+      "num_openings": 1,
+      "openings": [
+        {
+          "type": "door",
+          "x": 124,
+          "y": 196,
+          "width": 30,
+          "height": 65,
+          "room": "Bedroom_3",
+          "direction": "south",
+          "sill_height": null
+        }
+      ]
+    },
+    {
+      "name": "Bathroom_2_south",
+      "depth": 300,
+      "x": 176,
+      "width": 94,
+      "height": 100,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Living_Kitchen_2_South",
+      "depth": 446,
+      "x": 8,
+      "width": 254,
+      "height": 70,
+      "height_end": 70,
+      "num_openings": 3,
+      "openings": [
+        {
+          "type": "window",
+          "x": 24,
+          "y": 442,
+          "width": 60,
+          "height": 60,
+          "room": null,
+          "direction": "south",
+          "sill_height": 5
+        },
+        {
+          "type": "window",
+          "x": 98.5,
+          "y": 442,
+          "width": 75,
+          "height": 60,
+          "room": null,
+          "direction": "south",
+          "sill_height": 5
+        },
+        {
+          "type": "window",
+          "x": 187.5,
+          "y": 442,
+          "width": 60,
+          "height": 60,
+          "room": null,
+          "direction": "south",
+          "sill_height": 5
+        }
+      ]
+    }
+  ]
+}

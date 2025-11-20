@@ -1,0 +1,47 @@
+{
+  "view_type": "right",
+  "floor_number": 3,
+  "current_z": 304.0,
+  "walls": [
+    {
+      "name": "Roof_Wall_West_1",
+      "depth": 4,
+      "x": 80,
+      "width": 112,
+      "height": 0,
+      "height_end": 47,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Roof_Wall_West_2",
+      "depth": 4,
+      "x": 200,
+      "width": 90,
+      "height": 47,
+      "height_end": 0,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Roof_Wall_East_1",
+      "depth": 266,
+      "x": 80,
+      "width": 112,
+      "height": 0,
+      "height_end": 47,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Roof_Wall_East_2",
+      "depth": 266,
+      "x": 200,
+      "width": 90,
+      "height": 47,
+      "height_end": 0,
+      "num_openings": 0,
+      "openings": []
+    }
+  ]
+}

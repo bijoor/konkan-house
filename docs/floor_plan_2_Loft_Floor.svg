@@ -1,15 +1,99 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="744.0" height="674.0" viewBox="0 0 744.0 674.0">
+<svg xmlns="http://www.w3.org/2000/svg" width="1144.0" height="1094.0" viewBox="0 0 1144.0 1094.0">
 <title>Loft Floor - Floor Plan</title>
 <defs>
     <style>
         text { font-family: Arial, sans-serif; }
     </style>
 </defs>
-<g transform="translate(104.0, -26.0) scale(2.0, 2.0)">
+<g transform="translate(304.0, 174.0) scale(2.0, 2.0)">
 
 <rect x="8" y="88" width="252" height="120" fill="#D3D3D3" stroke="#999" stroke-width="1" opacity="0.6"/>
-<rect x="176" y="208" width="84" height="82" fill="#D3D3D3" stroke="#999" stroke-width="1" opacity="0.6"/>
+<rect x="176" y="208" width="84" height="92" fill="#D3D3D3" stroke="#999" stroke-width="1" opacity="0.6"/>
+<g class="dimension">
+  <line x1="8" y1="8.0" x2="260" y2="8.0" stroke="#000" stroke-width="0.5"/>
+  <line x1="8" y1="88" x2="8" y2="8.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="260" y1="88" x2="260" y2="8.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="8,8.0 11,5.0 11,11.0" fill="#000"/>
+  <polygon points="260,8.0 257,5.0 257,11.0" fill="#000"/>
+  <text x="134.0" y="3.0" text-anchor="middle" font-size="10" fill="#000">25.2'</text>
 </g>
-<text x="372.0" y="30" text-anchor="middle" font-size="16" font-weight="bold">Loft Floor</text>
+<g class="dimension">
+  <line x1="8" y1="380.0" x2="260" y2="380.0" stroke="#000" stroke-width="0.5"/>
+  <line x1="8" y1="300" x2="8" y2="380.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="260" y1="300" x2="260" y2="380.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="8,380.0 11,377.0 11,383.0" fill="#000"/>
+  <polygon points="260,380.0 257,377.0 257,383.0" fill="#000"/>
+  <text x="134.0" y="393.0" text-anchor="middle" font-size="10" fill="#000">25.2'</text>
+</g>
+<g class="dimension">
+  <line x1="-72.0" y1="88" x2="-72.0" y2="300" stroke="#000" stroke-width="0.5"/>
+  <line x1="8" y1="88" x2="-72.0" y2="88" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="8" y1="300" x2="-72.0" y2="300" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="-72.0,88 -75.0,91 -69.0,91" fill="#000"/>
+  <polygon points="-72.0,300 -75.0,297 -69.0,297" fill="#000"/>
+  <text x="-85.0" y="194.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 -85.0 194.0)">21.2'</text>
+</g>
+<g class="dimension">
+  <line x1="340.0" y1="88" x2="340.0" y2="300" stroke="#000" stroke-width="0.5"/>
+  <line x1="260" y1="88" x2="340.0" y2="88" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="260" y1="300" x2="340.0" y2="300" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="340.0,88 337.0,91 343.0,91" fill="#000"/>
+  <polygon points="340.0,300 337.0,297 343.0,297" fill="#000"/>
+  <text x="353.0" y="194.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 353.0 194.0)">21.2'</text>
+</g>
+<g class="floor-slab-dimension">
+<g class="dimension">
+  <line x1="-57.0" y1="88" x2="-57.0" y2="208" stroke="#000" stroke-width="0.5"/>
+  <line x1="8" y1="88" x2="-57.0" y2="88" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="8" y1="208" x2="-57.0" y2="208" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="-57.0,88 -60.0,91 -54.0,91" fill="#000"/>
+  <polygon points="-57.0,208 -60.0,205 -54.0,205" fill="#000"/>
+  <text x="-70.0" y="148.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 -70.0 148.0)">12.0'</text>
+</g>
+<g class="dimension">
+  <line x1="325.0" y1="88" x2="325.0" y2="208" stroke="#000" stroke-width="0.5"/>
+  <line x1="260" y1="88" x2="325.0" y2="88" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="260" y1="208" x2="325.0" y2="208" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="325.0,88 322.0,91 328.0,91" fill="#000"/>
+  <polygon points="325.0,208 322.0,205 328.0,205" fill="#000"/>
+  <text x="338.0" y="148.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 338.0 148.0)">12.0'</text>
+</g>
+</g>
+<g class="floor-slab-dimension">
+<g class="dimension">
+  <line x1="176" y1="143.0" x2="260" y2="143.0" stroke="#000" stroke-width="0.5"/>
+  <line x1="176" y1="208" x2="176" y2="143.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="260" y1="208" x2="260" y2="143.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="176,143.0 179,140.0 179,146.0" fill="#000"/>
+  <polygon points="260,143.0 257,140.0 257,146.0" fill="#000"/>
+  <text x="218.0" y="138.0" text-anchor="middle" font-size="10" fill="#000">8.4'</text>
+</g>
+<g class="dimension">
+  <line x1="176" y1="365.0" x2="260" y2="365.0" stroke="#000" stroke-width="0.5"/>
+  <line x1="176" y1="300" x2="176" y2="365.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="260" y1="300" x2="260" y2="365.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="176,365.0 179,362.0 179,368.0" fill="#000"/>
+  <polygon points="260,365.0 257,362.0 257,368.0" fill="#000"/>
+  <text x="218.0" y="378.0" text-anchor="middle" font-size="10" fill="#000">8.4'</text>
+</g>
+<g class="dimension">
+  <line x1="111.0" y1="208" x2="111.0" y2="300" stroke="#000" stroke-width="0.5"/>
+  <line x1="176" y1="208" x2="111.0" y2="208" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="176" y1="300" x2="111.0" y2="300" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="111.0,208 108.0,211 114.0,211" fill="#000"/>
+  <polygon points="111.0,300 108.0,297 114.0,297" fill="#000"/>
+  <text x="98.0" y="254.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 98.0 254.0)">9.2'</text>
+</g>
+<g class="dimension">
+  <line x1="325.0" y1="208" x2="325.0" y2="300" stroke="#000" stroke-width="0.5"/>
+  <line x1="260" y1="208" x2="325.0" y2="208" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="260" y1="300" x2="325.0" y2="300" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="325.0,208 322.0,211 328.0,211" fill="#000"/>
+  <polygon points="325.0,300 322.0,297 328.0,297" fill="#000"/>
+  <text x="338.0" y="254.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 338.0 254.0)">9.2'</text>
+</g>
+</g>
+</g>
+<text x="572.0" y="30" text-anchor="middle" font-size="16" font-weight="bold">Loft Floor</text>
 </svg>

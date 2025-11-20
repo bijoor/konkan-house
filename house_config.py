@@ -68,34 +68,34 @@ HOUSE_CONFIG = {
                     'x': 4,
                     'y': 4,
                     'name': 'Corner_Pillar_1',
-                    'height': 230,
+                    'height': 235,
                 },
                 {
                     'type': 'pillar',
                     'x': 106,
                     'y': 4,
                     'name': 'Entrance_Pillar_1',
-                    'height': 230,
+                    'height': 235,
                 },
                 {
                     'type': 'pillar',
                     'x': 164,
                     'y': 4,
                     'name': 'Entrance_Pillar_2',
-                    'height': 230,
+                    'height': 235,
                 },
                 {
                     'type': 'pillar',
                     'x': 266,
                     'y': 4,
                     'name': 'Corner_Pillar_2',
-                    'height': 230,
+                    'height': 235,
                 },
                 {
                     'type': 'pillar',
                     'x': 44,
-                    'y': 290,
-                    'name': 'Corner_Pillar_2',
+                    'y': 296,
+                    'name': 'Staircase_Pillar',
                     'height': 100,
                 },
                 {
@@ -108,14 +108,14 @@ HOUSE_CONFIG = {
                 {
                     'type': 'pillar',
                     'x': 4,
-                    'y': 196,
+                    'y': 200,
                     'name': 'West_Pillar_2',
                     'height': 313,
                 },
                 {
                     'type': 'pillar',
                     'x': 4,
-                    'y': 286,
+                    'y': 296,
                     'name': 'West_Pillar_3',
                     'height': 258,
                 },
@@ -129,14 +129,14 @@ HOUSE_CONFIG = {
                 {
                     'type': 'pillar',
                     'x': 266,
-                    'y': 196,
+                    'y': 200,
                     'name': 'East_Pillar_2',
                     'height': 313,
                 },
                 {
                     'type': 'pillar',
                     'x': 266,
-                    'y': 286,
+                    'y': 296,
                     'name': 'East_Pillar_3',
                     'height': 258,
                 },
@@ -179,7 +179,7 @@ HOUSE_CONFIG = {
                     'x': 176,
                     'y': 196,
                     'width': 94,
-                    'length': 94,
+                    'length': 104,
                     'material': 'bathroom',
                     'walls': ['west','south'],  # North shared with Workshop, West shared with Living_Kitchen
                 },
@@ -198,9 +198,9 @@ HOUSE_CONFIG = {
                     'type': 'wall',
                     'name': 'Washbasin_Wall',
                     'start_x': 136,
-                    'start_y': 286,
+                    'start_y': 296,
                     'end_x': 176,
-                    'end_y': 286,
+                    'end_y': 296,
                     'material': 'bathroom',
                 },
 
@@ -295,7 +295,7 @@ HOUSE_CONFIG = {
                     'type': 'window',
                     'name': 'Bedroom_1_Window_West',
                     'x': 0,
-                    'y': 115,
+                    'y': 117,
                     'width': 50,        # 4 feet wide
                     'height': 40,       # 4 feet tall
                     'sill_height': 25,  # 2 feet from floor
@@ -440,21 +440,21 @@ HOUSE_CONFIG = {
                     'length': 100,
                 },
                 {
-                    'type': 'floor_slab',
+                    'type': 'beam',
                     'x': 0,
                     'y': 230,
                     'width': 8,
                     'length': 220,
                 },
                 {
-                    'type': 'floor_slab',
+                    'type': 'beam',
                     'x': 262,
                     'y': 330,
                     'width': 8,
                     'length': 120,
                 },
                 {
-                    'type': 'floor_slab',
+                    'type': 'beam',
                     'x': 8,
                     'y': 442,
                     'width': 254,
@@ -511,7 +511,7 @@ HOUSE_CONFIG = {
                     'x': 176,
                     'y': 196,
                     'width': 94,
-                    'length': 94,
+                    'length': 104,
                     'material': 'bathroom',
                     'walls': ['west','south','east'],  # North shared with Workshop, West shared with Living_Kitchen
                     'wall_heights': {
@@ -526,7 +526,7 @@ HOUSE_CONFIG = {
                     'start_x': 4,
                     'start_y': 200,
                     'end_x': 4,
-                    'end_y': 290,
+                    'end_y': 300,
                     'height': 150,
                     'material': 'living',
                 },
@@ -535,32 +535,32 @@ HOUSE_CONFIG = {
                     'type': 'wall',
                     'name': 'Living_Kitchen_2_East',
                     'start_x': 266,
-                    'start_y': 290,
+                    'start_y': 300,
                     'end_x': 266,
                     'end_y': 450,
                     'height': 158,
-                    'height_end': 70,  # Sloping wall
+                    'height_end': 85,  # Sloping wall
                     'material': 'walls',
                 },
                 {
                     'type': 'wall',
                     'name': 'Living_Kitchen_2_West',
                     'start_x': 4,
-                    'start_y': 290,
+                    'start_y': 300,
                     'end_x': 4,
                     'end_y': 450,
                     'height': 158,
-                    'height_end': 70,  # Sloping wall
+                    'height_end': 85,  # Sloping wall
                     'material': 'walls',
                 },
                 {
                     'type': 'wall',
                     'name': 'Living_Kitchen_2_South',
-                    'start_x': 8,
+                    'start_x': 0,
                     'start_y': 446,
-                    'end_x': 262,
+                    'end_x': 270,
                     'end_y': 446,
-                    'height': 70,
+                    'height': 85,
                     'material': 'walls',
                 },
                 # Doors
@@ -686,7 +686,7 @@ HOUSE_CONFIG = {
                 },
                 {
                     'type': 'window',
-                    'name': ' Above_Stairs_Window_1',
+                    'name': 'Above_Stairs_Window_1',
                     'x': 0,
                     'y': 310,
                     'width': 50,        # 4 feet wide
@@ -759,7 +759,7 @@ HOUSE_CONFIG = {
                     'x': 176,
                     'y': 208,
                     'width': 84,
-                    'length': 82,
+                    'length': 92,
                 },
             ]
         },
@@ -770,34 +770,34 @@ HOUSE_CONFIG = {
 
             # List of all objects on this floor
             'objects': [
-                 # Floor slab
+                 # Beams
                 {
-                    'type': 'floor_slab',
+                    'type': 'beam',
                     'x': 0,
                     'y': 80,
                     'width': 270,
                     'length': 8,
                 },
                 {
-                    'type': 'floor_slab',
+                    'type': 'beam',
                     'x': 0,
-                    'y': 282,
+                    'y': 292,
                     'width': 270,
                     'length': 8,
                 },
                 {
-                    'type': 'floor_slab',
+                    'type': 'beam',
                     'x': 0,
                     'y': 88,
                     'width': 8,
-                    'length': 194,
+                    'length': 204,
                 },
                 {
-                    'type': 'floor_slab',
+                    'type': 'beam',
                     'x': 262,
                     'y': 88,
                     'width': 8,
-                    'length': 194,
+                    'length': 204,
                 },
                 # Walls
                 {
@@ -806,7 +806,7 @@ HOUSE_CONFIG = {
                     'start_x': 4,
                     'start_y': 80,
                     'end_x': 4,
-                    'end_y': 192,
+                    'end_y': 196,
                     'height': 0,
                     'height_end': 47,  # Sloping wall
                     'material': 'walls',
@@ -815,9 +815,9 @@ HOUSE_CONFIG = {
                     'type': 'wall',
                     'name': 'Roof_Wall_West_2',
                     'start_x': 4,
-                    'start_y': 200,
+                    'start_y': 204,
                     'end_x': 4,
-                    'end_y': 290,
+                    'end_y': 300,
                     'height': 47,
                     'height_end': 0,  # Sloping wall
                     'material': 'walls',
@@ -828,7 +828,7 @@ HOUSE_CONFIG = {
                     'start_x': 266,
                     'start_y': 80,
                     'end_x': 266,
-                    'end_y': 192,
+                    'end_y': 196,
                     'height': 0,
                     'height_end': 47,  # Sloping wall
                     'material': 'walls',
@@ -837,9 +837,9 @@ HOUSE_CONFIG = {
                     'type': 'wall',
                     'name': 'Roof_Wall_East_2',
                     'start_x': 266,
-                    'start_y': 200,
+                    'start_y': 204,
                     'end_x': 266,
-                    'end_y': 290,
+                    'end_y': 300,
                     'height': 47,
                     'height_end': 0,  # Sloping wall
                     'material': 'walls',

@@ -37,26 +37,12 @@
         #viewer-container {
             flex: 1;
             position: relative;
+            overflow: hidden;
         }
         model-viewer {
             width: 100%;
             height: 100%;
             background-color: #f0f0f0;
-        }
-        model-viewer.wireframe-mode {
-            --wireframe-display: block;
-        }
-        #wireframe-canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            display: none;
-        }
-        #wireframe-canvas.active {
-            display: block;
         }
         .controls {
             position: absolute;
@@ -190,42 +176,132 @@
         }
         .view-container {
             display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
+            overflow: hidden;
         }
         .view-container.active {
             display: block;
         }
-        .floor-plans-container {
+        .svg-views-container {
             width: 100%;
             height: 100%;
-            overflow: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
             background: #f5f5f5;
             padding: 2rem;
+            position: relative;
         }
-        .floor-plan-grid {
+        .svg-views-container::-webkit-scrollbar {
+            width: 12px;
+        }
+        .svg-views-container::-webkit-scrollbar-track {
+            background: #e0e0e0;
+            border-radius: 10px;
+        }
+        .svg-views-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .svg-views-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .svg-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
             gap: 2rem;
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
+            padding-bottom: 2rem;
         }
-        .floor-plan-item {
+        .svg-item {
             background: white;
             border-radius: 10px;
             padding: 1.5rem;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
         }
-        .floor-plan-item h3 {
+        .svg-item:hover {
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            transform: translateY(-4px);
+        }
+        .svg-item h3 {
             margin: 0 0 1rem 0;
             color: #333;
             font-size: 1.2rem;
         }
-        .floor-plan-item svg {
+        .svg-item svg {
             width: 100%;
             height: auto;
             border: 1px solid #ddd;
             border-radius: 5px;
+        }
+        .section-header {
+            text-align: center;
+            color: #333;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .svg-full-width {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: white;
+            cursor: grab;
+        }
+        .svg-full-width.grabbing {
+            cursor: grabbing;
+        }
+        .svg-full-width svg {
+            transform-origin: 0 0;
+            transition: transform 0.1s ease-out;
+        }
+        .zoom-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 0.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            z-index: 10;
+        }
+        .zoom-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        .zoom-btn:hover {
+            background: #5568d3;
+            transform: scale(1.1);
+        }
+        .zoom-info {
+            text-align: center;
+            font-size: 0.85rem;
+            color: #666;
+            padding: 0.25rem;
+            font-weight: 600;
         }
     </style>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
@@ -237,6 +313,9 @@
         <div class="tabs" style="margin-top: 1rem;">
             <button class="tab active" onclick="switchView('3d')">🏗️ 3D Model</button>
             <button class="tab" onclick="switchView('plans')">📐 Floor Plans</button>
+            <button class="tab" onclick="switchView('all-plans')">📊 All Floor Plans</button>
+            <button class="tab" onclick="switchView('elevations')">📏 Elevations</button>
+            <button class="tab" onclick="switchView('all-elevations')">🏛️ All Elevations</button>
         </div>
     </header>
 
@@ -339,13 +418,57 @@
 
         <!-- Floor Plans View -->
         <div id="view-plans" class="view-container">
-            <div class="floor-plans-container">
-                <div class="floor-plan-grid" id="floor-plans-grid">
+            <div class="svg-views-container">
+                <h2 class="section-header">Floor Plans</h2>
+                <div class="svg-grid" id="floor-plans-grid">
                     <!-- Floor plans will be loaded here dynamically -->
                 </div>
             </div>
         </div>
         <!-- End Floor Plans View -->
+
+        <!-- Elevations View -->
+        <div id="view-elevations" class="view-container">
+            <div class="svg-views-container">
+                <h2 class="section-header">Elevation Views</h2>
+                <div class="svg-grid" id="elevations-grid">
+                    <!-- Elevations will be loaded here dynamically -->
+                </div>
+            </div>
+        </div>
+        <!-- End Elevations View -->
+
+        <!-- All Floor Plans Combined View -->
+        <div id="view-all-plans" class="view-container">
+            <div class="svg-views-container">
+                <div class="svg-full-width" id="all-plans-container">
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" onclick="zoomIn('all-plans-container')" title="Zoom In">+</button>
+                        <div class="zoom-info" id="all-plans-zoom">100%</div>
+                        <button class="zoom-btn" onclick="zoomOut('all-plans-container')" title="Zoom Out">−</button>
+                        <button class="zoom-btn" onclick="resetZoom('all-plans-container')" title="Reset">⟲</button>
+                    </div>
+                    <p style="color: #666; text-align: center; padding: 2rem;">Loading combined floor plans...</p>
+                </div>
+            </div>
+        </div>
+        <!-- End All Floor Plans View -->
+
+        <!-- All Elevations Combined View -->
+        <div id="view-all-elevations" class="view-container">
+            <div class="svg-views-container">
+                <div class="svg-full-width" id="all-elevations-container">
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" onclick="zoomIn('all-elevations-container')" title="Zoom In">+</button>
+                        <div class="zoom-info" id="all-elevations-zoom">100%</div>
+                        <button class="zoom-btn" onclick="zoomOut('all-elevations-container')" title="Zoom Out">−</button>
+                        <button class="zoom-btn" onclick="resetZoom('all-elevations-container')" title="Reset">⟲</button>
+                    </div>
+                    <p style="color: #666; text-align: center; padding: 2rem;">Loading combined elevations...</p>
+                </div>
+            </div>
+        </div>
+        <!-- End All Elevations View -->
     </div>
 
     <script>
@@ -482,6 +605,15 @@
             } else if (view === 'plans') {
                 document.getElementById('view-plans').classList.add('active');
                 loadFloorPlans();
+            } else if (view === 'elevations') {
+                document.getElementById('view-elevations').classList.add('active');
+                loadElevations();
+            } else if (view === 'all-plans') {
+                document.getElementById('view-all-plans').classList.add('active');
+                loadCombinedFloorPlans();
+            } else if (view === 'all-elevations') {
+                document.getElementById('view-all-elevations').classList.add('active');
+                loadCombinedElevations();
             }
         }
 
@@ -492,9 +624,10 @@
 
             const grid = document.getElementById('floor-plans-grid');
             const floorPlanFiles = [
-                { num: 0, name: 'Ground_Floor' },
-                { num: 1, name: 'First_Floor' },
-                { num: 2, name: 'Second_Floor' }
+                { num: 0, name: 'Ground_Floor', displayName: 'Ground Floor' },
+                { num: 1, name: 'First_Floor', displayName: 'First Floor' },
+                { num: 2, name: 'Loft_Floor', displayName: 'Loft Floor' },
+                { num: 3, name: 'Roof_Floor', displayName: 'Roof Floor' }
             ];
 
             grid.innerHTML = '<p style="text-align: center; color: #666;">Loading floor plans...</p>';
@@ -509,9 +642,9 @@
                         const svgContent = await response.text();
 
                         const item = document.createElement('div');
-                        item.className = 'floor-plan-item';
+                        item.className = 'svg-item';
                         item.innerHTML = `
-                            <h3>${floor.name.replace(/_/g, ' ')}</h3>
+                            <h3>${floor.displayName}</h3>
                             ${svgContent}
                         `;
 
@@ -522,7 +655,7 @@
                         grid.appendChild(item);
                     }
                 } catch (error) {
-                    console.log(`Floor plan ${filename} not found`);
+                    console.log(`Floor plan ${filename} not found:`, error);
                 }
             }
 
@@ -530,12 +663,280 @@
                 grid.innerHTML = `
                     <div style="text-align: center; padding: 3rem; color: #666;">
                         <h3>No floor plans available</h3>
-                        <p>Floor plans will appear here after running the Blender script with floor plan generation enabled.</p>
+                        <p>Floor plans will appear here after generation.</p>
                     </div>
                 `;
             }
 
             floorPlansLoaded = true;
+        }
+
+        // Load elevations dynamically
+        let elevationsLoaded = false;
+        async function loadElevations() {
+            if (elevationsLoaded) return;
+
+            const grid = document.getElementById('elevations-grid');
+            const elevationFiles = [
+                { name: 'front', displayName: 'Front Elevation' },
+                { name: 'back', displayName: 'Back Elevation' },
+                { name: 'left', displayName: 'Left Elevation' },
+                { name: 'right', displayName: 'Right Elevation' }
+            ];
+
+            grid.innerHTML = '<p style="text-align: center; color: #666;">Loading elevations...</p>';
+
+            let loadedAny = false;
+            for (const elevation of elevationFiles) {
+                const filename = `elevation_${elevation.name}.svg`;
+
+                try {
+                    const response = await fetch(filename);
+                    if (response.ok) {
+                        const svgContent = await response.text();
+
+                        const item = document.createElement('div');
+                        item.className = 'svg-item';
+                        item.innerHTML = `
+                            <h3>${elevation.displayName}</h3>
+                            ${svgContent}
+                        `;
+
+                        if (!loadedAny) {
+                            grid.innerHTML = '';
+                            loadedAny = true;
+                        }
+                        grid.appendChild(item);
+                    }
+                } catch (error) {
+                    console.log(`Elevation ${filename} not found:`, error);
+                }
+            }
+
+            if (!loadedAny) {
+                grid.innerHTML = `
+                    <div style="text-align: center; padding: 3rem; color: #666;">
+                        <h3>No elevation views available</h3>
+                        <p>Elevation views will appear here after generation.</p>
+                    </div>
+                `;
+            }
+
+            elevationsLoaded = true;
+        }
+
+        // Zoom and Pan state for combined views
+        const viewStates = {
+            'all-plans-container': { scale: 1, translateX: 0, translateY: 0, isDragging: false, startX: 0, startY: 0 },
+            'all-elevations-container': { scale: 1, translateX: 0, translateY: 0, isDragging: false, startX: 0, startY: 0 }
+        };
+
+        // Load combined floor plans
+        let combinedFloorPlansLoaded = false;
+        async function loadCombinedFloorPlans() {
+            if (combinedFloorPlansLoaded) return;
+
+            const container = document.getElementById('all-plans-container');
+
+            try {
+                const response = await fetch('floor_plans_combined.svg');
+                if (response.ok) {
+                    const svgContent = await response.text();
+                    // Keep zoom controls and add SVG
+                    const controls = container.querySelector('.zoom-controls');
+                    container.innerHTML = svgContent;
+                    if (controls) {
+                        container.insertBefore(controls, container.firstChild);
+                    }
+                    setupPanZoom('all-plans-container');
+                    combinedFloorPlansLoaded = true;
+                } else {
+                    container.innerHTML = `
+                        <div style="padding: 3rem; color: #666;">
+                            <h3>Combined floor plans not available</h3>
+                            <p>The combined floor plans view will appear here after generation.</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.log('Combined floor plans not found:', error);
+                container.innerHTML = `
+                    <div style="padding: 3rem; color: #666;">
+                        <h3>Error loading combined floor plans</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Load combined elevations
+        let combinedElevationsLoaded = false;
+        async function loadCombinedElevations() {
+            if (combinedElevationsLoaded) return;
+
+            const container = document.getElementById('all-elevations-container');
+
+            try {
+                const response = await fetch('elevations_combined.svg');
+                if (response.ok) {
+                    const svgContent = await response.text();
+                    // Keep zoom controls and add SVG
+                    const controls = container.querySelector('.zoom-controls');
+                    container.innerHTML = svgContent;
+                    if (controls) {
+                        container.insertBefore(controls, container.firstChild);
+                    }
+                    setupPanZoom('all-elevations-container');
+                    combinedElevationsLoaded = true;
+                } else {
+                    container.innerHTML = `
+                        <div style="padding: 3rem; color: #666;">
+                            <h3>Combined elevations not available</h3>
+                            <p>The combined elevations view will appear here after generation.</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.log('Combined elevations not found:', error);
+                container.innerHTML = `
+                    <div style="padding: 3rem; color: #666;">
+                        <h3>Error loading combined elevations</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Setup pan and zoom for a container
+        function setupPanZoom(containerId) {
+            const container = document.getElementById(containerId);
+            const svg = container.querySelector('svg');
+            if (!svg) return;
+
+            const state = viewStates[containerId];
+
+            // Mouse wheel zoom
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                const rect = container.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                const newScale = state.scale * delta;
+                if (newScale < 0.1 || newScale > 10) return;
+
+                // Zoom towards mouse position
+                state.translateX = x - (x - state.translateX) * delta;
+                state.translateY = y - (y - state.translateY) * delta;
+                state.scale = newScale;
+
+                updateTransform(containerId);
+            });
+
+            // Pan with mouse drag
+            container.addEventListener('mousedown', (e) => {
+                if (e.target.closest('.zoom-controls')) return;
+                state.isDragging = true;
+                state.startX = e.clientX - state.translateX;
+                state.startY = e.clientY - state.translateY;
+                container.classList.add('grabbing');
+            });
+
+            container.addEventListener('mousemove', (e) => {
+                if (!state.isDragging) return;
+                state.translateX = e.clientX - state.startX;
+                state.translateY = e.clientY - state.startY;
+                updateTransform(containerId);
+            });
+
+            container.addEventListener('mouseup', () => {
+                state.isDragging = false;
+                container.classList.remove('grabbing');
+            });
+
+            container.addEventListener('mouseleave', () => {
+                state.isDragging = false;
+                container.classList.remove('grabbing');
+            });
+
+            // Touch support for mobile
+            let touchStartDistance = 0;
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    touchStartDistance = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                } else if (e.touches.length === 1) {
+                    state.isDragging = true;
+                    state.startX = e.touches[0].clientX - state.translateX;
+                    state.startY = e.touches[0].clientY - state.translateY;
+                }
+            });
+
+            container.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (e.touches.length === 2 && touchStartDistance > 0) {
+                    const newDistance = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    const delta = newDistance / touchStartDistance;
+                    const newScale = state.scale * delta;
+                    if (newScale >= 0.1 && newScale <= 10) {
+                        state.scale = newScale;
+                        touchStartDistance = newDistance;
+                        updateTransform(containerId);
+                    }
+                } else if (e.touches.length === 1 && state.isDragging) {
+                    state.translateX = e.touches[0].clientX - state.startX;
+                    state.translateY = e.touches[0].clientY - state.startY;
+                    updateTransform(containerId);
+                }
+            });
+
+            container.addEventListener('touchend', () => {
+                state.isDragging = false;
+                touchStartDistance = 0;
+            });
+        }
+
+        function updateTransform(containerId) {
+            const container = document.getElementById(containerId);
+            const svg = container.querySelector('svg');
+            if (!svg) return;
+
+            const state = viewStates[containerId];
+            svg.style.transform = `translate(${state.translateX}px, ${state.translateY}px) scale(${state.scale})`;
+
+            // Update zoom percentage display
+            const zoomInfo = document.getElementById(containerId.replace('-container', '-zoom'));
+            if (zoomInfo) {
+                zoomInfo.textContent = Math.round(state.scale * 100) + '%';
+            }
+        }
+
+        function zoomIn(containerId) {
+            const state = viewStates[containerId];
+            if (state.scale >= 10) return;
+            state.scale *= 1.2;
+            updateTransform(containerId);
+        }
+
+        function zoomOut(containerId) {
+            const state = viewStates[containerId];
+            if (state.scale <= 0.1) return;
+            state.scale *= 0.8;
+            updateTransform(containerId);
+        }
+
+        function resetZoom(containerId) {
+            const state = viewStates[containerId];
+            state.scale = 1;
+            state.translateX = 0;
+            state.translateY = 0;
+            updateTransform(containerId);
         }
     </script>
 </body>

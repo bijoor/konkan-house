@@ -1,0 +1,199 @@
+{
+  "view_type": "right",
+  "floor_number": 0,
+  "current_z": 38,
+  "walls": [
+    {
+      "name": "Pillar_Corner_Pillar_1",
+      "depth": 4,
+      "x": 0.0,
+      "width": 8,
+      "height": 230,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Pillar_West_Pillar_1",
+      "depth": 4,
+      "x": 80.0,
+      "width": 8,
+      "height": 258,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Pillar_West_Pillar_2",
+      "depth": 4,
+      "x": 192.0,
+      "width": 8,
+      "height": 313,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Pillar_West_Pillar_3",
+      "depth": 4,
+      "x": 292.0,
+      "width": 8,
+      "height": 258,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Pillar_Staircase_Pillar",
+      "depth": 44,
+      "x": 292.0,
+      "width": 8,
+      "height": 100,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Pillar_Entrance_Pillar_1",
+      "depth": 106,
+      "x": 0.0,
+      "width": 8,
+      "height": 230,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Bedroom_1_east",
+      "depth": 124,
+      "x": 80,
+      "width": 124,
+      "height": 100.0,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Pillar_Entrance_Pillar_2",
+      "depth": 164,
+      "x": 0.0,
+      "width": 8,
+      "height": 230,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Pillar_Corner_Pillar_2",
+      "depth": 266,
+      "x": 0.0,
+      "width": 8,
+      "height": 230,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Pillar_East_Pillar_1",
+      "depth": 266,
+      "x": 80.0,
+      "width": 8,
+      "height": 258,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Pillar_East_Pillar_2",
+      "depth": 266,
+      "x": 192.0,
+      "width": 8,
+      "height": 313,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Pillar_East_Pillar_3",
+      "depth": 266,
+      "x": 292.0,
+      "width": 8,
+      "height": 258,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Workshop_east",
+      "depth": 270,
+      "x": 80,
+      "width": 124,
+      "height": 100.0,
+      "height_end": null,
+      "num_openings": 1,
+      "openings": [
+        {
+          "type": "window",
+          "x": 262,
+          "y": 115,
+          "width": 50,
+          "height": 40,
+          "room": "Workshop",
+          "direction": "east",
+          "sill_height": 25
+        }
+      ]
+    },
+    {
+      "name": "Verandah_east",
+      "depth": 270,
+      "x": 0,
+      "width": 88,
+      "height": 30,
+      "height_end": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "name": "Living_Kitchen_east",
+      "depth": 270,
+      "x": 196,
+      "width": 254,
+      "height": 100.0,
+      "height_end": null,
+      "num_openings": 3,
+      "openings": [
+        {
+          "type": "window",
+          "x": 262,
+          "y": 214,
+          "width": 20,
+          "height": 20,
+          "room": "Living_Kitchen",
+          "direction": "east",
+          "sill_height": 45
+        },
+        {
+          "type": "window",
+          "x": 262,
+          "y": 254,
+          "width": 20,
+          "height": 20,
+          "room": "Living_Kitchen",
+          "direction": "east",
+          "sill_height": 45
+        },
+        {
+          "type": "window",
+          "x": 262,
+          "y": 310,
+          "width": 60,
+          "height": 30,
+          "room": "Living_Kitchen",
+          "direction": "east",
+          "sill_height": 35
+        }
+      ]
+    }
+  ]
+}

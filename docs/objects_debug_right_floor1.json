@@ -1,0 +1,322 @@
+{
+  "view_type": "right",
+  "floor_number": 1,
+  "current_z": 138.0,
+  "objects": [
+    {
+      "type": "wall",
+      "name": "Bathroom_2_west",
+      "depth": -184,
+      "priority": 2,
+      "x": 196,
+      "width": 104,
+      "height": 100,
+      "z": 146.0,
+      "height_end": null,
+      "coord_key": "y",
+      "num_openings": 1,
+      "openings": [
+        {
+          "type": "door",
+          "wall": "Bathroom_2_west",
+          "x": 176,
+          "y": 228,
+          "width": 30,
+          "height": 65,
+          "room": "Bathroom_2",
+          "direction": "west",
+          "sill_height": null
+        }
+      ]
+    },
+    {
+      "type": "wall",
+      "name": "Upper_Verandah_west",
+      "depth": -8,
+      "priority": 2,
+      "x": 0,
+      "width": 88,
+      "height": 30,
+      "z": 146.0,
+      "height_end": null,
+      "coord_key": "y",
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "wall",
+      "name": "Bedroom_2_west",
+      "depth": -8,
+      "priority": 2,
+      "x": 80,
+      "width": 124,
+      "height": 150,
+      "z": 146.0,
+      "height_end": null,
+      "coord_key": "y",
+      "num_openings": 1,
+      "openings": [
+        {
+          "type": "window",
+          "wall": "Bedroom_2_west",
+          "x": 0,
+          "y": 115,
+          "width": 50,
+          "height": 40,
+          "room": "Bedroom_2",
+          "direction": "west",
+          "sill_height": 25
+        }
+      ]
+    },
+    {
+      "type": "wall",
+      "name": "Staircase_Landing_West",
+      "depth": 4,
+      "priority": 2,
+      "x": 200,
+      "width": 100,
+      "height": 150,
+      "z": 146.0,
+      "height_end": 150,
+      "coord_key": "y",
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "wall",
+      "name": "Living_Kitchen_2_West",
+      "depth": 4,
+      "priority": 2,
+      "x": 300,
+      "width": 150,
+      "height": 158,
+      "z": 146.0,
+      "height_end": 85,
+      "coord_key": "y",
+      "num_openings": 2,
+      "openings": [
+        {
+          "type": "window",
+          "wall": "Living_Kitchen_2_West",
+          "x": 0,
+          "y": 310,
+          "width": 50,
+          "height": 60,
+          "room": null,
+          "direction": "west",
+          "sill_height": 5
+        },
+        {
+          "type": "window",
+          "wall": "Living_Kitchen_2_West",
+          "x": 0,
+          "y": 375,
+          "width": 50,
+          "height": 60,
+          "room": null,
+          "direction": "west",
+          "sill_height": 5
+        }
+      ]
+    },
+    {
+      "type": "beam",
+      "name": "Beam_",
+      "depth": 8,
+      "priority": 0,
+      "x": 230,
+      "width": 220,
+      "height": 8,
+      "z": 138.0,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "wall",
+      "name": "Bedroom_2_east",
+      "depth": 124,
+      "priority": 2,
+      "x": 80,
+      "width": 124,
+      "height": 100,
+      "z": 146.0,
+      "height_end": null,
+      "coord_key": "y",
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "beam",
+      "name": "Beam_",
+      "depth": 262,
+      "priority": 0,
+      "x": 442,
+      "width": 8,
+      "height": 8,
+      "z": 138.0,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "wall",
+      "name": "Living_Kitchen_2_East",
+      "depth": 266,
+      "priority": 2,
+      "x": 300,
+      "width": 150,
+      "height": 158,
+      "z": 146.0,
+      "height_end": 85,
+      "coord_key": "y",
+      "num_openings": 2,
+      "openings": [
+        {
+          "type": "window",
+          "wall": "Living_Kitchen_2_East",
+          "x": 262,
+          "y": 310,
+          "width": 50,
+          "height": 60,
+          "room": null,
+          "direction": "east",
+          "sill_height": 5
+        },
+        {
+          "type": "window",
+          "wall": "Living_Kitchen_2_East",
+          "x": 262,
+          "y": 375,
+          "width": 50,
+          "height": 60,
+          "room": null,
+          "direction": "east",
+          "sill_height": 5
+        }
+      ]
+    },
+    {
+      "type": "beam",
+      "name": "Beam_",
+      "depth": 270,
+      "priority": 0,
+      "x": 330,
+      "width": 120,
+      "height": 8,
+      "z": 138.0,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "floor_slab",
+      "name": "Slab_",
+      "depth": 270,
+      "priority": 1,
+      "x": 234,
+      "width": 100,
+      "height": 8,
+      "z": 138.0,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "floor_slab",
+      "name": "Slab_",
+      "depth": 270,
+      "priority": 1,
+      "x": 0,
+      "width": 234,
+      "height": 8,
+      "z": 138.0,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "wall",
+      "name": "Bathroom_2_east",
+      "depth": 270,
+      "priority": 2,
+      "x": 196,
+      "width": 104,
+      "height": 150,
+      "z": 146.0,
+      "height_end": null,
+      "coord_key": "y",
+      "num_openings": 2,
+      "openings": [
+        {
+          "type": "window",
+          "wall": "Bathroom_2_east",
+          "x": 262,
+          "y": 214,
+          "width": 20,
+          "height": 20,
+          "room": "Bathroom_2",
+          "direction": "east",
+          "sill_height": 45
+        },
+        {
+          "type": "window",
+          "wall": "Bathroom_2_east",
+          "x": 262,
+          "y": 254,
+          "width": 20,
+          "height": 20,
+          "room": "Bathroom_2",
+          "direction": "east",
+          "sill_height": 45
+        }
+      ]
+    },
+    {
+      "type": "wall",
+      "name": "Bedroom_3_east",
+      "depth": 270,
+      "priority": 2,
+      "x": 80,
+      "width": 124,
+      "height": 150,
+      "z": 146.0,
+      "height_end": null,
+      "coord_key": "y",
+      "num_openings": 1,
+      "openings": [
+        {
+          "type": "window",
+          "wall": "Bedroom_3_east",
+          "x": 262,
+          "y": 115,
+          "width": 50,
+          "height": 40,
+          "room": "Bedroom_3",
+          "direction": "east",
+          "sill_height": 25
+        }
+      ]
+    },
+    {
+      "type": "wall",
+      "name": "Upper_Verandah_east",
+      "depth": 270,
+      "priority": 2,
+      "x": 0,
+      "width": 88,
+      "height": 30,
+      "z": 146.0,
+      "height_end": null,
+      "coord_key": "y",
+      "num_openings": 0,
+      "openings": []
+    }
+  ]
+}

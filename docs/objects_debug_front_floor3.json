@@ -1,0 +1,63 @@
+{
+  "view_type": "front",
+  "floor_number": 3,
+  "current_z": 296.0,
+  "objects": [
+    {
+      "type": "beam",
+      "name": "Beam_",
+      "depth": -292,
+      "priority": 0,
+      "x": 0,
+      "width": 270,
+      "height": 8,
+      "z": 296.0,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "beam",
+      "name": "Beam_",
+      "depth": -88,
+      "priority": 0,
+      "x": 0,
+      "width": 8,
+      "height": 8,
+      "z": 296.0,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "beam",
+      "name": "Beam_",
+      "depth": -88,
+      "priority": 0,
+      "x": 262,
+      "width": 8,
+      "height": 8,
+      "z": 296.0,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "beam",
+      "name": "Beam_",
+      "depth": -80,
+      "priority": 0,
+      "x": 0,
+      "width": 270,
+      "height": 8,
+      "z": 296.0,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    }
+  ]
+}
