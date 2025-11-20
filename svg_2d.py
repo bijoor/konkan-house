@@ -1531,6 +1531,9 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
     # Track walls with non-standard heights for dimensioning
     walls_with_custom_heights = []
 
+    # Collect roof SVG to draw last (so it's not hidden by walls)
+    roof_svg = ""
+
     # Draw each floor
     slab_thickness = GLOBAL_CONFIG.get('floor_slab_thickness', 4)
     wall_thickness = GLOBAL_CONFIG.get('wall_thickness', 8)
@@ -2074,7 +2077,7 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
         # Step 3: Add objects from this floor to the global collection
         all_objects_to_draw.extend(objects_to_draw)
 
-        # Draw roof if exists
+        # Collect roof data (to draw last, so it's not hidden by walls)
         if 'objects' in floor_config:
             for obj in floor_config['objects']:
                 if obj.get('type') == 'gable_roof':
@@ -2088,7 +2091,7 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                     left_slope_length = obj.get('left_slope_length', 0)
                     right_slope_angle = obj.get('right_slope_angle', 26)
                     right_slope_length = obj.get('right_slope_length', 0)
-                    roof_thickness = GLOBAL_CONFIG.get('roof_thickness', 8)
+                    roof_thickness_val = GLOBAL_CONFIG.get('roof_thickness', 8)
 
                     # Ridge Z is relative to the floor's base (current_z), just like in the 3D model
                     # This is the bottom of this floor's slab
@@ -2112,7 +2115,7 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                     if view_type in ['left', 'right']:
                         # Show gable end (triangle) - looking along X, showing Y-Z
                         # This shows the roof profile with thickness
-                        ridge_svg_y = z_to_y(ridge_z + roof_thickness)
+                        ridge_svg_y = z_to_y(ridge_z + roof_thickness_val)
                         left_eave_svg_y = z_to_y(left_eave_z)
                         right_eave_svg_y = z_to_y(right_eave_z)
 
@@ -2120,20 +2123,36 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                         left_eave_svg_x = world_to_svg_x(left_eave_y, 0)
                         right_eave_svg_x = world_to_svg_x(right_eave_y, 0)
 
-                        # Draw left slope as thick line
-                        svg += f'<line x1="{left_eave_svg_x}" y1="{left_eave_svg_y}" x2="{ridge_svg_x}" y2="{ridge_svg_y}" stroke="#8B4513" stroke-width="{roof_thickness}"/>\n'
-                        # Draw right slope as thick line
-                        svg += f'<line x1="{ridge_svg_x}" y1="{ridge_svg_y}" x2="{right_eave_svg_x}" y2="{right_eave_svg_y}" stroke="#8B4513" stroke-width="{roof_thickness}"/>\n'
+                        # Collect roof SVG (draw last)
+                        roof_svg += f'<line x1="{left_eave_svg_x}" y1="{left_eave_svg_y}" x2="{ridge_svg_x}" y2="{ridge_svg_y}" stroke="#8B4513" stroke-width="{roof_thickness_val}"/>\n'
+                        roof_svg += f'<line x1="{ridge_svg_x}" y1="{ridge_svg_y}" x2="{right_eave_svg_x}" y2="{right_eave_svg_y}" stroke="#8B4513" stroke-width="{roof_thickness_val}"/>\n'
                     else:
-                        # Front/back view - show ridge as horizontal line at the top
-                        # Ridge runs along X from ridge_start_x to ridge_end_x at height ridge_z
-                        ridge_svg_y = z_to_y(ridge_z)
+                        # Front/back view - show roof as rectangle extending down from ridge
+                        # Front view shows the south-facing slope, back view shows the north-facing slope
+
+                        # Determine which slope we're seeing based on view type
+                        if view_type == 'front':
+                            # Front view (looking from north) shows the right (south) slope
+                            slope_drop = right_drop
+                        else:
+                            # Back view (looking from south) shows the left (north) slope
+                            slope_drop = left_drop
+
+                        # Ridge at the top
+                        ridge_top_y = z_to_y(ridge_z + roof_thickness_val)
+                        ridge_bottom_y = z_to_y(ridge_z)
+
+                        # Roof extends down from ridge by slope_drop
+                        roof_bottom_y = z_to_y(ridge_z - slope_drop)
 
                         ridge_start_svg_x = world_to_svg_x(ridge_start_x, 0)
                         ridge_end_svg_x = world_to_svg_x(ridge_end_x, 0)
+                        roof_width = abs(ridge_end_svg_x - ridge_start_svg_x)
+                        roof_height = roof_bottom_y - ridge_bottom_y
 
-                        # Draw ridge as horizontal line (coordinates are in world units, SVG transform handles scaling)
-                        svg += f'<line x1="{ridge_start_svg_x}" y1="{ridge_svg_y}" x2="{ridge_end_svg_x}" y2="{ridge_svg_y}" stroke="#8B4513" stroke-width="{roof_thickness}"/>\n'
+                        # Collect roof SVG (draw last)
+                        roof_svg += f'<rect x="{min(ridge_start_svg_x, ridge_end_svg_x)}" y="{ridge_bottom_y}" width="{roof_width}" height="{roof_height}" fill="none" stroke="#8B4513" stroke-width="{roof_thickness_val}"/>\n'
+                        roof_svg += f'<line x1="{ridge_start_svg_x}" y1="{ridge_top_y}" x2="{ridge_end_svg_x}" y2="{ridge_top_y}" stroke="#8B4513" stroke-width="{roof_thickness_val}"/>\n'
 
         current_z = wall_top
 
@@ -2310,6 +2329,9 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                         'wall_width': obj_width,    # Wall width
                         'wall_name': obj.get('name', '')  # Wall name for grouping
                     })
+
+    # Draw roof last so it's not hidden by walls
+    svg += roof_svg
 
     # ====================================================================
     # ADD DIMENSIONS TO ELEVATION

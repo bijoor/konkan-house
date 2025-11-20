@@ -29,8 +29,8 @@ GLOBAL_CONFIG.update({
     # The normal model (use_explosion=False) ignores these values.
     'explosion_factors': {
         0: 250,  # Separation above ground floor (17.5 feet)
-        1: 250,  # Separation above first floor (17.5 feet)
-        2: 0,    # Separation above loft floor (no separation)
+        1: 0,  # Separation above first floor (17.5 feet)
+        2: 250,    # Separation above loft floor (no separation)
     }
 })
 
