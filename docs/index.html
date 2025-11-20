@@ -320,6 +320,29 @@
             padding: 1rem 2rem;
             border-radius: 25px;
         }
+        .lightbox-prev, .lightbox-next {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            color: white;
+            font-size: 45px;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            transition: 0.3s;
+            user-select: none;
+        }
+        .lightbox-prev:hover, .lightbox-next:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        .lightbox-prev {
+            left: 20px;
+        }
+        .lightbox-next {
+            right: 20px;
+        }
         .section-header {
             text-align: center;
             color: #333;
@@ -641,27 +664,27 @@
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 2rem; max-width: 1400px; margin: 0 auto;">
                     <div class="perspective-card">
                         <h3>Front Left Corner (Southwest)</h3>
-                        <img src="perspective_front_left_corner.png" alt="Front Left Corner View" onclick="openLightbox(this.src, this.alt)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                        <img src="perspective_front_left_corner.png" alt="Front Left Corner View" onclick="openLightbox(0)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
                         <h3>Front Right Corner (Southeast)</h3>
-                        <img src="perspective_front_right_corner.png" alt="Front Right Corner View" onclick="openLightbox(this.src, this.alt)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                        <img src="perspective_front_right_corner.png" alt="Front Right Corner View" onclick="openLightbox(1)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
                         <h3>Back Left Corner (Northwest)</h3>
-                        <img src="perspective_back_left_corner.png" alt="Back Left Corner View" onclick="openLightbox(this.src, this.alt)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                        <img src="perspective_back_left_corner.png" alt="Back Left Corner View" onclick="openLightbox(2)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
                         <h3>Back Right Corner (Northeast)</h3>
-                        <img src="perspective_back_right_corner.png" alt="Back Right Corner View" onclick="openLightbox(this.src, this.alt)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                        <img src="perspective_back_right_corner.png" alt="Back Right Corner View" onclick="openLightbox(3)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
                         <h3>Aerial View</h3>
-                        <img src="perspective_aerial.png" alt="Aerial View" onclick="openLightbox(this.src, this.alt)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                        <img src="perspective_aerial.png" alt="Aerial View" onclick="openLightbox(4)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
                         <h3>Eye Level Front View</h3>
-                        <img src="perspective_eye_level_front.png" alt="Eye Level Front View" onclick="openLightbox(this.src, this.alt)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                        <img src="perspective_eye_level_front.png" alt="Eye Level Front View" onclick="openLightbox(5)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                 </div>
             </div>
@@ -672,7 +695,9 @@
     <!-- Lightbox Modal -->
     <div id="lightbox" class="lightbox" onclick="closeLightbox()">
         <span class="lightbox-close">&times;</span>
-        <img class="lightbox-content" id="lightbox-img">
+        <a class="lightbox-prev" onclick="event.stopPropagation(); changePerspective(-1)">&#10094;</a>
+        <a class="lightbox-next" onclick="event.stopPropagation(); changePerspective(1)">&#10095;</a>
+        <img class="lightbox-content" id="lightbox-img" onclick="event.stopPropagation()">
         <div class="lightbox-caption" id="lightbox-caption"></div>
     </div>
 
@@ -1275,17 +1300,46 @@
         }
 
         // Lightbox functions for perspective images
-        function openLightbox(src, caption) {
-            const lightbox = document.getElementById('lightbox');
-            const lightboxImg = document.getElementById('lightbox-img');
-            const lightboxCaption = document.getElementById('lightbox-caption');
+        const perspectiveImages = [
+            { src: 'perspective_front_left_corner.png', caption: 'Front Left Corner View (Southwest)' },
+            { src: 'perspective_front_right_corner.png', caption: 'Front Right Corner View (Southeast)' },
+            { src: 'perspective_back_left_corner.png', caption: 'Back Left Corner View (Northwest)' },
+            { src: 'perspective_back_right_corner.png', caption: 'Back Right Corner View (Northeast)' },
+            { src: 'perspective_aerial.png', caption: 'Aerial View' },
+            { src: 'perspective_eye_level_front.png', caption: 'Eye Level Front View' }
+        ];
+        let currentPerspectiveIndex = 0;
 
-            lightboxImg.src = src;
-            lightboxCaption.textContent = caption;
+        function openLightbox(index) {
+            currentPerspectiveIndex = index;
+            showPerspective(currentPerspectiveIndex);
+
+            const lightbox = document.getElementById('lightbox');
             lightbox.classList.add('active');
 
             // Prevent body scrolling when lightbox is open
             document.body.style.overflow = 'hidden';
+        }
+
+        function showPerspective(index) {
+            const lightboxImg = document.getElementById('lightbox-img');
+            const lightboxCaption = document.getElementById('lightbox-caption');
+
+            lightboxImg.src = perspectiveImages[index].src;
+            lightboxCaption.textContent = perspectiveImages[index].caption;
+        }
+
+        function changePerspective(direction) {
+            currentPerspectiveIndex += direction;
+
+            // Wrap around
+            if (currentPerspectiveIndex < 0) {
+                currentPerspectiveIndex = perspectiveImages.length - 1;
+            } else if (currentPerspectiveIndex >= perspectiveImages.length) {
+                currentPerspectiveIndex = 0;
+            }
+
+            showPerspective(currentPerspectiveIndex);
         }
 
         function closeLightbox() {
@@ -1296,10 +1350,17 @@
             document.body.style.overflow = 'auto';
         }
 
-        // Close lightbox on Escape key
+        // Keyboard navigation for lightbox
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeLightbox();
+            const lightbox = document.getElementById('lightbox');
+            if (lightbox.classList.contains('active')) {
+                if (e.key === 'Escape') {
+                    closeLightbox();
+                } else if (e.key === 'ArrowLeft') {
+                    changePerspective(-1);
+                } else if (e.key === 'ArrowRight') {
+                    changePerspective(1);
+                }
             }
         });
     </script>
