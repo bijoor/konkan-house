@@ -160,7 +160,7 @@ if hasattr(scene, 'eevee'):
 # Enable Freestyle for line art
 scene.render.use_freestyle = True
 scene.render.line_thickness_mode = 'ABSOLUTE'
-scene.render.line_thickness = 2.5  # Increased for 4K resolution
+scene.render.line_thickness = 1.0  # Thin lines for better detail at 4K resolution
 
 # Set render resolution to 4K for high-quality prints
 scene.render.resolution_x = 3840
@@ -201,7 +201,7 @@ lineset.select_external_contour = True
 
 # Set line color to black and thickness for 4K
 lineset.linestyle.color = (0, 0, 0)
-lineset.linestyle.thickness = 3.0  # Increased for 4K resolution
+lineset.linestyle.thickness = 1.2  # Thin lines for better detail at 4K resolution
 
 print(f"Configured Freestyle renderer")
 print(f"Resolution: {{scene.render.resolution_x}}x{{scene.render.resolution_y}}")
