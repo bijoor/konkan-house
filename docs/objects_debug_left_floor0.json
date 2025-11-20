@@ -148,6 +148,20 @@
       "openings": []
     },
     {
+      "type": "pillar",
+      "name": "Pillar_Rear_Corner_Pillar_2",
+      "depth": -262.0,
+      "priority": 3,
+      "x": 442.0,
+      "width": 8,
+      "height": 193,
+      "z": 38,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
       "type": "wall",
       "name": "Bathroom_1_west",
       "depth": -176,
@@ -172,6 +186,20 @@
           "sill_height": null
         }
       ]
+    },
+    {
+      "type": "pillar",
+      "name": "Pillar_Rear_Entrance_Pillar_2",
+      "depth": -173.5,
+      "priority": 3,
+      "x": 442.0,
+      "width": 8,
+      "height": 193,
+      "z": 38,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
     },
     {
       "type": "pillar",
@@ -217,11 +245,39 @@
     },
     {
       "type": "pillar",
+      "name": "Pillar_Rear_Entrance_Pillar_1",
+      "depth": -90.5,
+      "priority": 3,
+      "x": 442.0,
+      "width": 8,
+      "height": 193,
+      "z": 38,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "pillar",
       "name": "Pillar_Staircase_Pillar",
       "depth": -40.0,
       "priority": 3,
       "x": 292.0,
       "width": 8,
+      "height": 100,
+      "z": 38,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "staircase",
+      "name": "Stair_",
+      "depth": -8,
+      "priority": 1,
+      "x": 230,
+      "width": 200,
       "height": 100,
       "z": 38,
       "height_end": null,
@@ -370,6 +426,20 @@
       "x": 292.0,
       "width": 8,
       "height": 258,
+      "z": 38,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "pillar",
+      "name": "Pillar_Rear_Corner_Pillar_1",
+      "depth": -0.0,
+      "priority": 3,
+      "x": 442.0,
+      "width": 8,
+      "height": 193,
       "z": 38,
       "height_end": null,
       "coord_key": null,

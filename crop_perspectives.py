@@ -66,7 +66,8 @@ def main():
         'perspective_back_left_corner.png',
         'perspective_back_right_corner.png',
         'perspective_aerial.png',
-        'perspective_eye_level_front.png'
+        'perspective_eye_level_south.png',
+        'perspective_eye_level_north.png'
     ]
 
     print("="*70)

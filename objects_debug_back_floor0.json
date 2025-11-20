@@ -327,6 +327,20 @@
       "openings": []
     },
     {
+      "type": "staircase",
+      "name": "Stair_",
+      "depth": 430,
+      "priority": 1,
+      "x": 8,
+      "width": 30,
+      "height": 100,
+      "z": 38,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
       "type": "floor_slab",
       "name": "Slab_",
       "depth": 450,
@@ -387,6 +401,62 @@
           "sill_height": 25
         }
       ]
+    },
+    {
+      "type": "pillar",
+      "name": "Pillar_Rear_Corner_Pillar_1",
+      "depth": 450.0,
+      "priority": 3,
+      "x": 0.0,
+      "width": 8,
+      "height": 193,
+      "z": 38,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "pillar",
+      "name": "Pillar_Rear_Entrance_Pillar_1",
+      "depth": 450.0,
+      "priority": 3,
+      "x": 90.5,
+      "width": 8,
+      "height": 193,
+      "z": 38,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "pillar",
+      "name": "Pillar_Rear_Entrance_Pillar_2",
+      "depth": 450.0,
+      "priority": 3,
+      "x": 173.5,
+      "width": 8,
+      "height": 193,
+      "z": 38,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
+    },
+    {
+      "type": "pillar",
+      "name": "Pillar_Rear_Corner_Pillar_2",
+      "depth": 450.0,
+      "priority": 3,
+      "x": 262.0,
+      "width": 8,
+      "height": 193,
+      "z": 38,
+      "height_end": null,
+      "coord_key": null,
+      "num_openings": 0,
+      "openings": []
     }
   ]
 }

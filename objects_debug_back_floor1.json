@@ -190,9 +190,9 @@
         {
           "type": "window",
           "wall": "Living_Kitchen_2_South",
-          "x": 98.5,
+          "x": 103.5,
           "y": 442,
-          "width": 75,
+          "width": 65,
           "height": 60,
           "room": null,
           "direction": "south",

@@ -132,9 +132,16 @@ camera_views = [
         "lens": 24
     }},
     {{
-        "name": "eye_level_front",
-        "description": "Eye Level Front View",
+        "name": "eye_level_south",
+        "description": "Eye Level South View",
         "location": (center_x_m, to_meters(-900), to_meters(60)),
+        "target": (center_x_m, center_y_m, to_meters(150)),
+        "lens": 28
+    }},
+    {{
+        "name": "eye_level_north",
+        "description": "Eye Level North View (Front)",
+        "location": (center_x_m, to_meters(1350), to_meters(60)),
         "target": (center_x_m, center_y_m, to_meters(150)),
         "lens": 28
     }}
