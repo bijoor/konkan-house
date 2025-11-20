@@ -239,6 +239,87 @@
             border: 1px solid #ddd;
             border-radius: 5px;
         }
+        .perspective-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        .perspective-card:hover {
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            transform: translateY(-4px);
+        }
+        .perspective-card h3 {
+            margin: 0 0 1rem 0;
+            color: #333;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-align: center;
+        }
+        .perspective-card img {
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        .perspective-card img:hover {
+            transform: scale(1.02);
+        }
+        /* Lightbox styles */
+        .lightbox {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            justify-content: center;
+            align-items: center;
+        }
+        .lightbox.active {
+            display: flex;
+        }
+        .lightbox-content {
+            max-width: 95%;
+            max-height: 95%;
+            object-fit: contain;
+            box-shadow: 0 0 50px rgba(255, 255, 255, 0.2);
+        }
+        .lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 40px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            background: rgba(255, 255, 255, 0.1);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        .lightbox-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: rotate(90deg);
+        }
+        .lightbox-caption {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 1.2rem;
+            font-weight: 600;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 1rem 2rem;
+            border-radius: 25px;
+        }
         .section-header {
             text-align: center;
             color: #333;
@@ -321,6 +402,7 @@
             <button class="tab" onclick="switchView('all-plans')">📊 All Floor Plans</button>
             <button class="tab" onclick="switchView('elevations')">📏 Elevations</button>
             <button class="tab" onclick="switchView('all-elevations')">🏛️ All Elevations</button>
+            <button class="tab" onclick="switchView('perspectives')">🎨 Perspective Views</button>
         </div>
     </header>
 
@@ -551,6 +633,47 @@
             </div>
         </div>
         <!-- End All Elevations View -->
+
+        <!-- Perspective Views -->
+        <div id="view-perspectives" class="view-container">
+            <div class="svg-views-container">
+                <h2 style="color: #333; margin-bottom: 1.5rem; text-align: center;">Perspective Views (4K Resolution)</h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 2rem; max-width: 1400px; margin: 0 auto;">
+                    <div class="perspective-card">
+                        <h3>Front Left Corner (Southwest)</h3>
+                        <img src="perspective_front_left_corner.png" alt="Front Left Corner View" onclick="openLightbox(this.src, this.alt)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                    </div>
+                    <div class="perspective-card">
+                        <h3>Front Right Corner (Southeast)</h3>
+                        <img src="perspective_front_right_corner.png" alt="Front Right Corner View" onclick="openLightbox(this.src, this.alt)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                    </div>
+                    <div class="perspective-card">
+                        <h3>Back Left Corner (Northwest)</h3>
+                        <img src="perspective_back_left_corner.png" alt="Back Left Corner View" onclick="openLightbox(this.src, this.alt)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                    </div>
+                    <div class="perspective-card">
+                        <h3>Back Right Corner (Northeast)</h3>
+                        <img src="perspective_back_right_corner.png" alt="Back Right Corner View" onclick="openLightbox(this.src, this.alt)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                    </div>
+                    <div class="perspective-card">
+                        <h3>Aerial View</h3>
+                        <img src="perspective_aerial.png" alt="Aerial View" onclick="openLightbox(this.src, this.alt)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                    </div>
+                    <div class="perspective-card">
+                        <h3>Eye Level Front View</h3>
+                        <img src="perspective_eye_level_front.png" alt="Eye Level Front View" onclick="openLightbox(this.src, this.alt)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- End Perspective Views -->
+    </div>
+
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox" onclick="closeLightbox()">
+        <span class="lightbox-close">&times;</span>
+        <img class="lightbox-content" id="lightbox-img">
+        <div class="lightbox-caption" id="lightbox-caption"></div>
     </div>
 
     <script>
@@ -785,6 +908,8 @@
             } else if (view === 'all-elevations') {
                 document.getElementById('view-all-elevations').classList.add('active');
                 loadCombinedElevations();
+            } else if (view === 'perspectives') {
+                document.getElementById('view-perspectives').classList.add('active');
             }
         }
 
@@ -1148,6 +1273,35 @@
             // Reset to fit and center the view
             fitToView(containerId);
         }
+
+        // Lightbox functions for perspective images
+        function openLightbox(src, caption) {
+            const lightbox = document.getElementById('lightbox');
+            const lightboxImg = document.getElementById('lightbox-img');
+            const lightboxCaption = document.getElementById('lightbox-caption');
+
+            lightboxImg.src = src;
+            lightboxCaption.textContent = caption;
+            lightbox.classList.add('active');
+
+            // Prevent body scrolling when lightbox is open
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLightbox() {
+            const lightbox = document.getElementById('lightbox');
+            lightbox.classList.remove('active');
+
+            // Restore body scrolling
+            document.body.style.overflow = 'auto';
+        }
+
+        // Close lightbox on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeLightbox();
+            }
+        });
     </script>
 </body>
 </html>
