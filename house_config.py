@@ -140,6 +140,34 @@ HOUSE_CONFIG = {
                     'name': 'East_Pillar_3',
                     'height': 258,
                 },
+                {
+                    'type': 'pillar',
+                    'x': 4,
+                    'y': 446,
+                    'name': 'Rear_Corner_Pillar_1',
+                    'height': 193,
+                },
+                {
+                    'type': 'pillar',
+                    'x': 94.5,
+                    'y': 446,
+                    'name': 'Rear_Entrance_Pillar_1',
+                    'height': 193,
+                },
+                {
+                    'type': 'pillar',
+                    'x': 177.5,
+                    'y': 446,
+                    'name': 'Rear_Entrance_Pillar_2',
+                    'height': 193,
+                },
+                {
+                    'type': 'pillar',
+                    'x': 266,
+                    'y': 446,
+                    'name': 'Rear_Corner_Pillar_2',
+                    'height': 193,
+                },
 
                 # Rooms - only create exterior walls, not shared partition walls
                 {
@@ -720,9 +748,9 @@ HOUSE_CONFIG = {
                 {
                     'type': 'window',
                     'name': 'Above_Living_Rear_Window_2',
-                    'x': 98.5,
+                    'x': 103.5,
                     'y': 442,
-                    'width': 75,        # 4 feet wide
+                    'width': 65,        # 4 feet wide
                     'height': 60,       # 4 feet tall
                     'sill_height': 5,  # 2 feet from floor
                     'direction': 'south',

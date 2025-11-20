@@ -52,9 +52,73 @@
 <rect x="0.0" y="26.0" width="8" height="258.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="262.0" y="26.0" width="8" height="258.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="40" y="176.0" width="230" height="8.0" fill="#808080" stroke="#000" stroke-width="0.5"/>
+<g class="staircase-elevation">
+<line x1="8.0" y1="284.0" x2="8.0" y2="279.0" stroke="#000" stroke-width="0.5"/>
+<line x1="8.0" y1="279.0" x2="9.5" y2="279.0" stroke="#000" stroke-width="0.5"/>
+<rect x="8.0" y="279.0" width="1.5" height="5.0" fill="#C19A6B" opacity="0.7"/>
+<line x1="9.5" y1="279.0" x2="9.5" y2="274.0" stroke="#000" stroke-width="0.5"/>
+<line x1="9.5" y1="274.0" x2="11.0" y2="274.0" stroke="#000" stroke-width="0.5"/>
+<rect x="9.5" y="274.0" width="1.5" height="5.0" fill="#C19A6B" opacity="0.7"/>
+<line x1="11.0" y1="274.0" x2="11.0" y2="269.0" stroke="#000" stroke-width="0.5"/>
+<line x1="11.0" y1="269.0" x2="12.5" y2="269.0" stroke="#000" stroke-width="0.5"/>
+<rect x="11.0" y="269.0" width="1.5" height="5.0" fill="#C19A6B" opacity="0.7"/>
+<line x1="12.5" y1="269.0" x2="12.5" y2="264.0" stroke="#000" stroke-width="0.5"/>
+<line x1="12.5" y1="264.0" x2="14.0" y2="264.0" stroke="#000" stroke-width="0.5"/>
+<rect x="12.5" y="264.0" width="1.5" height="5.0" fill="#C19A6B" opacity="0.7"/>
+<line x1="14.0" y1="264.0" x2="14.0" y2="259.0" stroke="#000" stroke-width="0.5"/>
+<line x1="14.0" y1="259.0" x2="15.5" y2="259.0" stroke="#000" stroke-width="0.5"/>
+<rect x="14.0" y="259.0" width="1.5" height="5.0" fill="#C19A6B" opacity="0.7"/>
+<line x1="15.5" y1="259.0" x2="15.5" y2="254.0" stroke="#000" stroke-width="0.5"/>
+<line x1="15.5" y1="254.0" x2="17.0" y2="254.0" stroke="#000" stroke-width="0.5"/>
+<rect x="15.5" y="254.0" width="1.5" height="5.0" fill="#C19A6B" opacity="0.7"/>
+<line x1="17.0" y1="254.0" x2="17.0" y2="249.0" stroke="#000" stroke-width="0.5"/>
+<line x1="17.0" y1="249.0" x2="18.5" y2="249.0" stroke="#000" stroke-width="0.5"/>
+<rect x="17.0" y="249.0" width="1.5" height="5.0" fill="#C19A6B" opacity="0.7"/>
+<line x1="18.5" y1="249.0" x2="18.5" y2="244.0" stroke="#000" stroke-width="0.5"/>
+<line x1="18.5" y1="244.0" x2="20.0" y2="244.0" stroke="#000" stroke-width="0.5"/>
+<rect x="18.5" y="244.0" width="1.5" height="5.0" fill="#C19A6B" opacity="0.7"/>
+<line x1="20.0" y1="244.0" x2="20.0" y2="239.0" stroke="#000" stroke-width="0.5"/>
+<line x1="20.0" y1="239.0" x2="21.5" y2="239.0" stroke="#000" stroke-width="0.5"/>
+<rect x="20.0" y="239.0" width="1.5" height="5.0" fill="#C19A6B" opacity="0.7"/>
+<line x1="21.5" y1="239.0" x2="21.5" y2="234.0" stroke="#000" stroke-width="0.5"/>
+<line x1="21.5" y1="234.0" x2="23.0" y2="234.0" stroke="#000" stroke-width="0.5"/>
+<rect x="21.5" y="234.0" width="1.5" height="5.0" fill="#C19A6B" opacity="0.7"/>
+<line x1="23.0" y1="234.0" x2="23.0" y2="229.0" stroke="#000" stroke-width="0.5"/>
+<line x1="23.0" y1="229.0" x2="24.5" y2="229.0" stroke="#000" stroke-width="0.5"/>
+<rect x="23.0" y="229.0" width="1.5" height="5.0" fill="#C19A6B" opacity="0.7"/>
+<line x1="24.5" y1="229.0" x2="24.5" y2="224.0" stroke="#000" stroke-width="0.5"/>
+<line x1="24.5" y1="224.0" x2="26.0" y2="224.0" stroke="#000" stroke-width="0.5"/>
+<rect x="24.5" y="224.0" width="1.5" height="5.0" fill="#C19A6B" opacity="0.7"/>
+<line x1="26.0" y1="224.0" x2="26.0" y2="219.0" stroke="#000" stroke-width="0.5"/>
+<line x1="26.0" y1="219.0" x2="27.5" y2="219.0" stroke="#000" stroke-width="0.5"/>
+<rect x="26.0" y="219.0" width="1.5" height="5.0" fill="#C19A6B" opacity="0.7"/>
+<line x1="27.5" y1="219.0" x2="27.5" y2="214.0" stroke="#000" stroke-width="0.5"/>
+<line x1="27.5" y1="214.0" x2="29.0" y2="214.0" stroke="#000" stroke-width="0.5"/>
+<rect x="27.5" y="214.0" width="1.5" height="5.0" fill="#C19A6B" opacity="0.7"/>
+<line x1="29.0" y1="214.0" x2="29.0" y2="209.0" stroke="#000" stroke-width="0.5"/>
+<line x1="29.0" y1="209.0" x2="30.5" y2="209.0" stroke="#000" stroke-width="0.5"/>
+<rect x="29.0" y="209.0" width="1.5" height="5.0" fill="#C19A6B" opacity="0.7"/>
+<line x1="30.5" y1="209.0" x2="30.5" y2="204.0" stroke="#000" stroke-width="0.5"/>
+<line x1="30.5" y1="204.0" x2="32.0" y2="204.0" stroke="#000" stroke-width="0.5"/>
+<rect x="30.5" y="204.0" width="1.5" height="5.0" fill="#C19A6B" opacity="0.7"/>
+<line x1="32.0" y1="204.0" x2="32.0" y2="199.0" stroke="#000" stroke-width="0.5"/>
+<line x1="32.0" y1="199.0" x2="33.5" y2="199.0" stroke="#000" stroke-width="0.5"/>
+<rect x="32.0" y="199.0" width="1.5" height="5.0" fill="#C19A6B" opacity="0.7"/>
+<line x1="33.5" y1="199.0" x2="33.5" y2="194.0" stroke="#000" stroke-width="0.5"/>
+<line x1="33.5" y1="194.0" x2="35.0" y2="194.0" stroke="#000" stroke-width="0.5"/>
+<rect x="33.5" y="194.0" width="1.5" height="5.0" fill="#C19A6B" opacity="0.7"/>
+<line x1="35.0" y1="194.0" x2="35.0" y2="189.0" stroke="#000" stroke-width="0.5"/>
+<line x1="35.0" y1="189.0" x2="36.5" y2="189.0" stroke="#000" stroke-width="0.5"/>
+<rect x="35.0" y="189.0" width="1.5" height="5.0" fill="#C19A6B" opacity="0.7"/>
+<line x1="36.5" y1="189.0" x2="36.5" y2="184.0" stroke="#000" stroke-width="0.5"/>
+<line x1="36.5" y1="184.0" x2="38.0" y2="184.0" stroke="#000" stroke-width="0.5"/>
+<rect x="36.5" y="184.0" width="1.5" height="5.0" fill="#C19A6B" opacity="0.7"/>
+<line x1="38.0" y1="184.0" x2="38.0" y2="284.0" stroke="#000" stroke-width="0.5"/>
+<line x1="8" y1="284.0" x2="38.0" y2="284.0" stroke="#000" stroke-width="0.5"/>
+</g>
 <rect x="0" y="91.0" width="270" height="85.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
 <rect x="24" y="111.0" width="60" height="60.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
-<rect x="98.5" y="111.0" width="75" height="60.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
+<rect x="103.5" y="111.0" width="65" height="60.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
 <rect x="187.5" y="111.0" width="60" height="60.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
 <rect x="8" y="176.0" width="254" height="8.0" fill="#654321" stroke="#000" stroke-width="0.5"/>
 <rect x="262" y="176.0" width="8" height="8.0" fill="#654321" stroke="#000" stroke-width="0.5"/>
@@ -64,13 +128,17 @@
 <rect x="98.5" y="219.0" width="75" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
 <rect x="24" y="219.0" width="60" height="40.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
 <rect x="187.5" y="219.0" width="60" height="40.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
+<rect x="0.0" y="91.0" width="8" height="193.0" fill="#000" stroke="#000" stroke-width="0.5"/>
+<rect x="90.5" y="91.0" width="8" height="193.0" fill="#000" stroke="#000" stroke-width="0.5"/>
+<rect x="173.5" y="91.0" width="8" height="193.0" fill="#000" stroke="#000" stroke-width="0.5"/>
+<rect x="262.0" y="91.0" width="8" height="193.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <g class="dimension">
   <line x1="300" y1="284.0" x2="300" y2="184.0" stroke="#000" stroke-width="0.5"/>
   <line x1="270" y1="284.0" x2="300" y2="284.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <line x1="270" y1="184.0" x2="300" y2="184.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <polygon points="300,284.0 297,287.0 303,287.0" fill="#000"/>
   <polygon points="300,184.0 297,181.0 303,181.0" fill="#000"/>
-  <text x="313" y="234.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 313 234.0)">10.0'</text>
+  <text x="313" y="234.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 313 234.0)">10'</text>
 </g>
 <g class="dimension">
   <line x1="300" y1="176.0" x2="300" y2="76.0" stroke="#000" stroke-width="0.5"/>
@@ -78,7 +146,7 @@
   <line x1="270" y1="76.0" x2="300" y2="76.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <polygon points="300,176.0 297,179.0 303,179.0" fill="#000"/>
   <polygon points="300,76.0 297,73.0 303,73.0" fill="#000"/>
-  <text x="313" y="126.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 313 126.0)">10.0'</text>
+  <text x="313" y="126.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 313 126.0)">10'</text>
 </g>
 <g class="dimension">
   <line x1="300" y1="68.0" x2="300" y2="26.0" stroke="#000" stroke-width="0.5"/>
@@ -86,7 +154,7 @@
   <line x1="270" y1="26.0" x2="300" y2="26.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <polygon points="300,68.0 297,71.0 303,71.0" fill="#000"/>
   <polygon points="300,26.0 297,23.0 303,23.0" fill="#000"/>
-  <text x="313" y="47.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 313 47.0)">4.2'</text>
+  <text x="313" y="47.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 313 47.0)">4' 2"</text>
 </g>
 <g class="dimension">
   <line x1="300" y1="18.0" x2="300" y2="-32.0" stroke="#000" stroke-width="0.5"/>
@@ -94,7 +162,7 @@
   <line x1="270" y1="-32.0" x2="300" y2="-32.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <polygon points="300,18.0 297,21.0 303,21.0" fill="#000"/>
   <polygon points="300,-32.0 297,-35.0 303,-35.0" fill="#000"/>
-  <text x="313" y="-7.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 313 -7.0)">5.0'</text>
+  <text x="313" y="-7.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 313 -7.0)">5'</text>
 </g>
 <g class="dimension">
   <line x1="0" y1="-30.0" x2="270" y2="-30.0" stroke="#000" stroke-width="0.5"/>
@@ -102,7 +170,7 @@
   <line x1="270" y1="0.0" x2="270" y2="-30.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <polygon points="0,-30.0 3,-33.0 3,-27.0" fill="#000"/>
   <polygon points="270,-30.0 267,-33.0 267,-27.0" fill="#000"/>
-  <text x="135.0" y="-35.0" text-anchor="middle" font-size="10" fill="#000">27.0'</text>
+  <text x="135.0" y="-35.0" text-anchor="middle" font-size="10" fill="#000">27'</text>
 </g>
 <g class="dimension">
   <line x1="0" y1="186.0" x2="24" y2="186.0" stroke="#000" stroke-width="0.5"/>
@@ -110,7 +178,7 @@
   <line x1="24" y1="171.0" x2="24" y2="186.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <polygon points="0,186.0 3,183.0 3,189.0" fill="#000"/>
   <polygon points="24,186.0 21,183.0 21,189.0" fill="#000"/>
-  <text x="12.0" y="199.0" text-anchor="middle" font-size="10" fill="#000">2.4'</text>
+  <text x="12.0" y="199.0" text-anchor="middle" font-size="10" fill="#000">2' 5"</text>
 </g>
 <g class="dimension">
   <line x1="24" y1="186.0" x2="84" y2="186.0" stroke="#000" stroke-width="0.5"/>
@@ -118,15 +186,15 @@
   <line x1="84" y1="171.0" x2="84" y2="186.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <polygon points="24,186.0 27,183.0 27,189.0" fill="#000"/>
   <polygon points="84,186.0 81,183.0 81,189.0" fill="#000"/>
-  <text x="54.0" y="199.0" text-anchor="middle" font-size="10" fill="#000">6.0'</text>
+  <text x="54.0" y="199.0" text-anchor="middle" font-size="10" fill="#000">6'</text>
 </g>
 <g class="dimension">
-  <line x1="98.5" y1="186.0" x2="173.5" y2="186.0" stroke="#000" stroke-width="0.5"/>
-  <line x1="98.5" y1="171.0" x2="98.5" y2="186.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
-  <line x1="173.5" y1="171.0" x2="173.5" y2="186.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
-  <polygon points="98.5,186.0 101.5,183.0 101.5,189.0" fill="#000"/>
-  <polygon points="173.5,186.0 170.5,183.0 170.5,189.0" fill="#000"/>
-  <text x="136.0" y="199.0" text-anchor="middle" font-size="10" fill="#000">7.5'</text>
+  <line x1="103.5" y1="186.0" x2="168.5" y2="186.0" stroke="#000" stroke-width="0.5"/>
+  <line x1="103.5" y1="171.0" x2="103.5" y2="186.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="168.5" y1="171.0" x2="168.5" y2="186.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="103.5,186.0 106.5,183.0 106.5,189.0" fill="#000"/>
+  <polygon points="168.5,186.0 165.5,183.0 165.5,189.0" fill="#000"/>
+  <text x="136.0" y="199.0" text-anchor="middle" font-size="10" fill="#000">6' 6"</text>
 </g>
 <g class="dimension">
   <line x1="187.5" y1="186.0" x2="247.5" y2="186.0" stroke="#000" stroke-width="0.5"/>
@@ -134,7 +202,7 @@
   <line x1="247.5" y1="171.0" x2="247.5" y2="186.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <polygon points="187.5,186.0 190.5,183.0 190.5,189.0" fill="#000"/>
   <polygon points="247.5,186.0 244.5,183.0 244.5,189.0" fill="#000"/>
-  <text x="217.5" y="199.0" text-anchor="middle" font-size="10" fill="#000">6.0'</text>
+  <text x="217.5" y="199.0" text-anchor="middle" font-size="10" fill="#000">6'</text>
 </g>
 <g class="dimension">
   <line x1="0" y1="299.0" x2="24" y2="299.0" stroke="#000" stroke-width="0.5"/>
@@ -142,7 +210,7 @@
   <line x1="24" y1="284.0" x2="24" y2="299.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <polygon points="0,299.0 3,296.0 3,302.0" fill="#000"/>
   <polygon points="24,299.0 21,296.0 21,302.0" fill="#000"/>
-  <text x="12.0" y="312.0" text-anchor="middle" font-size="10" fill="#000">2.4'</text>
+  <text x="12.0" y="312.0" text-anchor="middle" font-size="10" fill="#000">2' 5"</text>
 </g>
 <g class="dimension">
   <line x1="24" y1="299.0" x2="84" y2="299.0" stroke="#000" stroke-width="0.5"/>
@@ -150,7 +218,7 @@
   <line x1="84" y1="284.0" x2="84" y2="299.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <polygon points="24,299.0 27,296.0 27,302.0" fill="#000"/>
   <polygon points="84,299.0 81,296.0 81,302.0" fill="#000"/>
-  <text x="54.0" y="312.0" text-anchor="middle" font-size="10" fill="#000">6.0'</text>
+  <text x="54.0" y="312.0" text-anchor="middle" font-size="10" fill="#000">6'</text>
 </g>
 <g class="dimension">
   <line x1="98.5" y1="299.0" x2="173.5" y2="299.0" stroke="#000" stroke-width="0.5"/>
@@ -158,7 +226,7 @@
   <line x1="173.5" y1="284.0" x2="173.5" y2="299.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <polygon points="98.5,299.0 101.5,296.0 101.5,302.0" fill="#000"/>
   <polygon points="173.5,299.0 170.5,296.0 170.5,302.0" fill="#000"/>
-  <text x="136.0" y="312.0" text-anchor="middle" font-size="10" fill="#000">7.5'</text>
+  <text x="136.0" y="312.0" text-anchor="middle" font-size="10" fill="#000">7' 6"</text>
 </g>
 <g class="dimension">
   <line x1="187.5" y1="299.0" x2="247.5" y2="299.0" stroke="#000" stroke-width="0.5"/>
@@ -166,7 +234,15 @@
   <line x1="247.5" y1="284.0" x2="247.5" y2="299.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <polygon points="187.5,299.0 190.5,296.0 190.5,302.0" fill="#000"/>
   <polygon points="247.5,299.0 244.5,296.0 244.5,302.0" fill="#000"/>
-  <text x="217.5" y="312.0" text-anchor="middle" font-size="10" fill="#000">6.0'</text>
+  <text x="217.5" y="312.0" text-anchor="middle" font-size="10" fill="#000">6'</text>
+</g>
+<g class="dimension">
+  <line x1="105.0" y1="176.0" x2="105.0" y2="91.0" stroke="#000" stroke-width="0.5"/>
+  <line x1="135.0" y1="176.0" x2="105.0" y2="176.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="135.0" y1="91.0" x2="105.0" y2="91.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="105.0,176.0 102.0,179.0 108.0,179.0" fill="#000"/>
+  <polygon points="105.0,91.0 102.0,88.0 108.0,88.0" fill="#000"/>
+  <text x="92.0" y="133.5" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 92.0 133.5)">8' 6"</text>
 </g>
 </g>
 <text x="420.0" y="40.0" text-anchor="middle" font-size="18" font-weight="bold" fill="#333">Back Elevation</text>

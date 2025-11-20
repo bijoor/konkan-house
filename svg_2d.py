@@ -200,6 +200,66 @@ def svg_draw_beam(x: float, y: float, width: float, length: float) -> str:
     return f'<rect x="{x}" y="{y}" width="{width}" height="{length}" fill="#8B4513" stroke="#654321" stroke-width="1" opacity="0.8"/>\n'
 
 
+def svg_draw_staircase(x: float, y: float, width: float, length: float, direction: str = 'up', num_steps: int = None) -> str:
+    """
+    Generate SVG for a staircase (top view).
+
+    Args:
+        x, y: Top-left corner
+        width, length: Staircase dimensions
+        direction: 'up' or 'down' (direction indicator)
+        num_steps: Number of steps to draw (default: auto-calculate based on length)
+
+    Returns:
+        SVG string
+    """
+    svg = '<g class="staircase">\n'
+
+    # Draw outline
+    svg += f'<rect x="{x}" y="{y}" width="{width}" height="{length}" fill="#E8D5B7" stroke="#000" stroke-width="1"/>\n'
+
+    # Calculate number of steps if not provided
+    if num_steps is None:
+        # Assume ~10 inches per step
+        num_steps = max(3, int(length / 10))
+
+    # Draw step lines
+    step_spacing = length / num_steps
+    for i in range(1, num_steps):
+        step_y = y + i * step_spacing
+        svg += f'<line x1="{x}" y1="{step_y}" x2="{x + width}" y2="{step_y}" stroke="#666" stroke-width="0.5"/>\n'
+
+    # Draw direction arrow
+    arrow_start_x = x + width / 2
+    arrow_margin = length * 0.15
+
+    if direction == 'up':
+        # Arrow pointing up
+        arrow_start_y = y + length - arrow_margin
+        arrow_end_y = y + arrow_margin
+        arrow_tip_y = arrow_end_y
+        arrow_tip_left_x = arrow_start_x - 5
+        arrow_tip_right_x = arrow_start_x + 5
+        arrow_tip_base_y = arrow_end_y + 8
+    else:
+        # Arrow pointing down
+        arrow_start_y = y + arrow_margin
+        arrow_end_y = y + length - arrow_margin
+        arrow_tip_y = arrow_end_y
+        arrow_tip_left_x = arrow_start_x - 5
+        arrow_tip_right_x = arrow_start_x + 5
+        arrow_tip_base_y = arrow_end_y - 8
+
+    # Draw arrow line
+    svg += f'<line x1="{arrow_start_x}" y1="{arrow_start_y}" x2="{arrow_start_x}" y2="{arrow_end_y}" stroke="#000" stroke-width="2"/>\n'
+
+    # Draw arrowhead
+    svg += f'<polygon points="{arrow_start_x},{arrow_tip_y} {arrow_tip_left_x},{arrow_tip_base_y} {arrow_tip_right_x},{arrow_tip_base_y}" fill="#000"/>\n'
+
+    svg += '</g>\n'
+    return svg
+
+
 # ============================================================================
 # DIMENSIONING FUNCTIONS
 # ============================================================================
@@ -212,15 +272,32 @@ def format_dimension(length: float) -> str:
         length: Length in input units
 
     Returns:
-        Formatted string like "20.5'" or "20.5 feet"
+        Formatted string like "20' 6\"" or "20.5'" or "20.5 feet"
     """
     dim_config = GLOBAL_CONFIG['dimensions']
     converted = length / dim_config['unit_conversion']
     precision = dim_config['precision']
     unit = dim_config['unit_display']
+    use_feet_inches = dim_config.get('use_feet_inches', False)
 
-    formatted_value = f"{converted:.{precision}f}"
-    return f"{formatted_value}'{'' if unit == 'feet' else ' ' + unit}"
+    # If displaying in feet and feet-inches format is enabled
+    if unit == 'feet' and use_feet_inches:
+        feet = int(converted)
+        inches = (converted - feet) * 12
+
+        # Round inches to nearest integer or fraction
+        inches_rounded = round(inches)
+
+        if feet > 0 and inches_rounded > 0:
+            return f"{feet}' {inches_rounded}\""
+        elif feet > 0:
+            return f"{feet}'"
+        else:
+            return f"{inches_rounded}\""
+    else:
+        # Original decimal format
+        formatted_value = f"{converted:.{precision}f}"
+        return f"{formatted_value}'{'' if unit == 'feet' else ' ' + unit}"
 
 
 def normalize_edge_key(x1: float, y1: float, x2: float, y2: float) -> tuple:
@@ -827,6 +904,49 @@ def generate_floor_plan_svg(floor_config: dict, output_path: str = None,
             if obj.get('type') == 'beam':
                 svg += svg_draw_beam(obj['x'], obj['y'], obj['width'], obj['length'])
 
+    # Draw staircases (after beams, before walls)
+    if 'objects' in floor_config:
+        for obj in floor_config['objects']:
+            if obj.get('type') == 'staircase':
+                # Handle both old format (x, y, width, length) and new format (start_x, start_y, step_width, step_tread, direction)
+                if 'start_x' in obj:
+                    # New format with compass direction
+                    start_x = obj['start_x']
+                    start_y = obj['start_y']
+                    step_width = obj.get('step_width', 30)
+                    step_tread = obj.get('step_tread', 10)
+                    num_steps = obj.get('num_steps', 10)
+                    compass_dir = obj.get('direction', 'north')
+
+                    # Convert compass direction to x, y, width, length, and arrow direction
+                    # North = upward (decreasing Y), South = downward (increasing Y)
+                    if compass_dir == 'north':
+                        x, y = start_x, start_y - num_steps * step_tread
+                        width, length = step_width, num_steps * step_tread
+                        arrow_dir = 'up'
+                    elif compass_dir == 'south':
+                        x, y = start_x, start_y
+                        width, length = step_width, num_steps * step_tread
+                        arrow_dir = 'down'
+                    elif compass_dir == 'east':
+                        x, y = start_x, start_y
+                        width, length = num_steps * step_tread, step_width
+                        arrow_dir = 'up'
+                    elif compass_dir == 'west':
+                        x, y = start_x - num_steps * step_tread, start_y
+                        width, length = num_steps * step_tread, step_width
+                        arrow_dir = 'down'
+                else:
+                    # Old format
+                    x = obj['x']
+                    y = obj['y']
+                    width = obj['width']
+                    length = obj['length']
+                    arrow_dir = obj.get('direction', 'up')
+                    num_steps = obj.get('num_steps')
+
+                svg += svg_draw_staircase(x, y, width, length, arrow_dir, num_steps)
+
     # Store pillar data to draw them last
     pillars_to_draw = []
 
@@ -1408,6 +1528,9 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
     # Track openings for dimensioning
     elevation_openings = []
 
+    # Track walls with non-standard heights for dimensioning
+    walls_with_custom_heights = []
+
     # Draw each floor
     slab_thickness = GLOBAL_CONFIG.get('floor_slab_thickness', 4)
     wall_thickness = GLOBAL_CONFIG.get('wall_thickness', 8)
@@ -1418,6 +1541,7 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
     type_priority = GLOBAL_CONFIG.get('elevation_rendering_priority', {
         'beam': 0,
         'floor_slab': 1,
+        'staircase': 1,
         'room': 2,
         'wall': 2,
         'pillar': 3
@@ -1441,10 +1565,10 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                 priority = type_priority.get(obj_type, 2)  # Default to wall/room priority
 
                 # Calculate depth based on view type
-                # Only walls, rooms, slabs, beams, and pillars are depth-sorted (NOT doors/windows)
+                # Only walls, rooms, slabs, beams, staircases, and pillars are depth-sorted (NOT doors/windows)
                 if view_type == 'front':
                     # Front view: sort by Y (smaller Y = farther away = draw first)
-                    if obj_type in ['floor_slab', 'beam']:
+                    if obj_type in ['floor_slab', 'beam', 'staircase']:
                         depth = obj.get('y', 0)
                     elif obj_type == 'room':
                         depth = obj.get('y', 0)
@@ -1454,7 +1578,7 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                         depth = obj.get('y', 0)
                 elif view_type == 'back':
                     # Back view: sort by Y (larger Y = farther away = draw first)
-                    if obj_type in ['floor_slab', 'beam']:
+                    if obj_type in ['floor_slab', 'beam', 'staircase']:
                         depth = -obj.get('y', 0)  # Negative to reverse sort
                     elif obj_type == 'room':
                         depth = -obj.get('y', 0)
@@ -1464,7 +1588,7 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                         depth = -obj.get('y', 0)
                 elif view_type == 'left':
                     # Left view: sort by X (smaller X = farther away = draw first)
-                    if obj_type in ['floor_slab', 'beam']:
+                    if obj_type in ['floor_slab', 'beam', 'staircase']:
                         depth = obj.get('x', 0)
                     elif obj_type == 'room':
                         depth = obj.get('x', 0)
@@ -1474,7 +1598,7 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                         depth = obj.get('x', 0)
                 elif view_type == 'right':
                     # Right view: sort by X (larger X = farther away = draw first)
-                    if obj_type in ['floor_slab', 'beam']:
+                    if obj_type in ['floor_slab', 'beam', 'staircase']:
                         depth = -obj.get('x', 0)
                     elif obj_type == 'room':
                         depth = -obj.get('x', 0)
@@ -1636,6 +1760,86 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                     'fill': '#654321'
                 })
 
+            elif obj_type == 'staircase':
+                # Add staircase to unified rendering
+                # Handle both old format (x, y, width, length) and new format (start_x, start_y, step_width, step_tread, direction)
+                if 'start_x' in obj:
+                    # New format with compass direction
+                    start_x = obj['start_x']
+                    start_y = obj['start_y']
+                    step_width = obj.get('step_width', 30)
+                    step_tread = obj.get('step_tread', 10)
+                    num_steps = obj.get('num_steps', 10)
+                    compass_dir = obj.get('direction', 'north')
+
+                    # Convert compass direction to x, y, width, length
+                    # North = upward (decreasing Y), South = downward (increasing Y)
+                    if compass_dir == 'north':
+                        stair_x, stair_y = start_x, start_y - num_steps * step_tread
+                        stair_width, stair_length = step_width, num_steps * step_tread
+                    elif compass_dir == 'south':
+                        stair_x, stair_y = start_x, start_y
+                        stair_width, stair_length = step_width, num_steps * step_tread
+                    elif compass_dir == 'east':
+                        stair_x, stair_y = start_x, start_y
+                        stair_width, stair_length = num_steps * step_tread, step_width
+                    elif compass_dir == 'west':
+                        stair_x, stair_y = start_x - num_steps * step_tread, start_y
+                        stair_width, stair_length = num_steps * step_tread, step_width
+                else:
+                    # Old format
+                    stair_x = obj['x']
+                    stair_y = obj['y']
+                    stair_width = obj['width']
+                    stair_length = obj['length']
+                    num_steps = obj.get('num_steps')
+
+                    # Auto-calculate steps if not provided
+                    if num_steps is None:
+                        num_steps = max(3, int(stair_length / 10))
+
+                # Calculate total rise (vertical height)
+                # Use step_rise from config if available, otherwise assume 7 inches (standard)
+                step_rise = obj.get('step_rise', 7)
+                total_rise = num_steps * step_rise
+
+                # Calculate position and depth based on view
+                if view_type == 'left':
+                    # Left view: Y position, -X depth
+                    obj_x = stair_y
+                    obj_width = stair_length
+                    obj_depth = -stair_x
+                elif view_type == 'right':
+                    # Right view: Y position, +X depth
+                    obj_x = stair_y
+                    obj_width = stair_length
+                    obj_depth = stair_x + stair_width
+                elif view_type == 'front':
+                    # Front view: X position, -Y depth
+                    obj_x = stair_x
+                    obj_width = stair_width
+                    obj_depth = -stair_y
+                elif view_type == 'back':
+                    # Back view: X position, +Y depth
+                    obj_x = stair_x
+                    obj_width = stair_width
+                    obj_depth = stair_y + stair_length
+                else:
+                    continue
+
+                objects_to_draw.append({
+                    'type': 'staircase',
+                    'name': f"Stair_{obj.get('name', '')}",
+                    'depth': obj_depth,
+                    'priority': type_priority.get('staircase', 1),
+                    'x': obj_x,
+                    'width': obj_width,
+                    'height': total_rise,
+                    'z': wall_z,
+                    'num_steps': num_steps,
+                    'fill': '#C19A6B'
+                })
+
             elif obj_type == 'room':
                 room_name = obj.get('name', '')
                 walls_list = obj.get('walls', ['north', 'south', 'east', 'west'])
@@ -1667,7 +1871,8 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                                 'height': wall_height,
                                 'z': wall_z,
                                 'openings': wall_openings.get(wall_key, []),
-                                'coord_key': 'y'
+                                'coord_key': 'y',
+                                'floor_height_expected': floor_height
                             })
                         elif direction == 'east':
                             depth = (room_x + room_width) if view_type == 'right' else -(room_x + room_width - wall_thickness)
@@ -1681,7 +1886,8 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                                 'height': wall_height,
                                 'z': wall_z,
                                 'openings': wall_openings.get(wall_key, []),
-                                'coord_key': 'y'
+                                'coord_key': 'y',
+                                'floor_height_expected': floor_height
                             })
                     elif view_type in ['front', 'back']:
                         # Front/back views: show both north AND south walls
@@ -1697,7 +1903,8 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                                 'height': wall_height,
                                 'z': wall_z,
                                 'openings': wall_openings.get(wall_key, []),
-                                'coord_key': 'x'
+                                'coord_key': 'x',
+                                'floor_height_expected': floor_height
                             })
                         elif direction == 'south':
                             depth = (room_y + room_length) if view_type == 'back' else -(room_y + room_length)
@@ -1711,7 +1918,8 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                                 'height': wall_height,
                                 'z': wall_z,
                                 'openings': wall_openings.get(wall_key, []),
-                                'coord_key': 'x'
+                                'coord_key': 'x',
+                                'floor_height_expected': floor_height
                             })
 
             elif obj_type == 'wall':
@@ -1745,7 +1953,8 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                         'height_end': wall_height_end,
                         'z': wall_z,
                         'openings': wall_openings.get(wall_name, []),
-                        'coord_key': 'x'  # Use 'x' coordinate for front/back view
+                        'coord_key': 'x',  # Use 'x' coordinate for front/back view
+                        'floor_height_expected': floor_height
                     })
                 elif view_type in ['left', 'right'] and is_vertical:
                     wall_length = abs(end_y - start_y)
@@ -1764,7 +1973,8 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                         'height_end': wall_height_end,
                         'z': wall_z,
                         'openings': wall_openings.get(wall_name, []),
-                        'coord_key': 'y'  # Use 'y' coordinate for left/right view
+                        'coord_key': 'y',  # Use 'y' coordinate for left/right view
+                        'floor_height_expected': floor_height
                     })
 
             elif obj_type == 'pillar':
@@ -1931,6 +2141,36 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
             fill_color = obj.get('fill', '#654321')
             svg += f'<rect x="{obj_x}" y="{obj_top_y}" width="{obj_width}" height="{obj_svg_height}" fill="{fill_color}" stroke="#000" stroke-width="0.5"/>\n'
 
+        elif obj_type == 'staircase':
+            # Draw staircase with steps in elevation view
+            num_steps = obj.get('num_steps', 10)
+            fill_color = obj.get('fill', '#C19A6B')
+
+            # Draw individual steps (risers and treads)
+            tread_run = obj_width / num_steps  # Horizontal depth of each tread
+            riser_height = obj_svg_height / num_steps  # Vertical height of each riser
+
+            svg += '<g class="staircase-elevation">\n'
+            for i in range(num_steps):
+                step_x = obj_x + i * tread_run
+                step_bottom_y = obj_bottom_y - i * riser_height
+                step_top_y = step_bottom_y - riser_height
+
+                # Draw riser (vertical)
+                svg += f'<line x1="{step_x}" y1="{step_bottom_y}" x2="{step_x}" y2="{step_top_y}" stroke="#000" stroke-width="0.5"/>\n'
+
+                # Draw tread (horizontal)
+                svg += f'<line x1="{step_x}" y1="{step_top_y}" x2="{step_x + tread_run}" y2="{step_top_y}" stroke="#000" stroke-width="0.5"/>\n'
+
+                # Fill the step
+                svg += f'<rect x="{step_x}" y="{step_top_y}" width="{tread_run}" height="{riser_height}" fill="{fill_color}" opacity="0.7"/>\n'
+
+            # Close the staircase outline
+            last_step_x = obj_x + num_steps * tread_run
+            svg += f'<line x1="{last_step_x}" y1="{obj_top_y}" x2="{last_step_x}" y2="{obj_bottom_y}" stroke="#000" stroke-width="0.5"/>\n'
+            svg += f'<line x1="{obj_x}" y1="{obj_bottom_y}" x2="{last_step_x}" y2="{obj_bottom_y}" stroke="#000" stroke-width="0.5"/>\n'
+            svg += '</g>\n'
+
         elif obj_type == 'pillar':
             # Draw pillar as solid black rectangle
             svg += f'<rect x="{obj_x}" y="{obj_top_y}" width="{obj_width}" height="{obj_svg_height}" fill="#000" stroke="#000" stroke-width="0.5"/>\n'
@@ -1972,6 +2212,32 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
             # Check if this wall is at the front (for dimensioning)
             # Front walls have depth close to the maximum (closest to viewer)
             is_front_wall = abs(obj['depth'] - max_wall_depth) <= depth_tolerance
+
+            # Track walls with non-standard heights for dimensioning
+            # Check if this wall's height differs from the expected floor height
+            if is_front_wall and 'floor_height_expected' in obj:
+                expected_height = obj['floor_height_expected']
+                actual_height = obj_height
+                height_end = obj.get('height_end', actual_height)
+
+                # Check if height differs from expected (tolerance for floating point)
+                height_tolerance = 1.0
+                has_custom_height = abs(actual_height - expected_height) > height_tolerance
+                has_custom_height_end = abs(height_end - expected_height) > height_tolerance
+
+                # Only show dimensions if at least one height differs from expected
+                # This excludes sloping walls that slope within the normal floor height range
+                if has_custom_height or has_custom_height_end:
+                    walls_with_custom_heights.append({
+                        'name': obj.get('name', ''),
+                        'x': obj_x_world,
+                        'width': obj_width,
+                        'z': obj_z,
+                        'height_start': actual_height,
+                        'height_end': height_end,
+                        'is_sloping': is_sloping,
+                        'expected_height': expected_height
+                    })
 
             # Draw openings for this wall
             for opening in obj.get('openings', []):
@@ -2125,6 +2391,82 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                     )
 
                     current_pos = opening_end
+
+        # 4. WALL HEIGHT DIMENSIONS: Show heights for walls with non-standard heights
+        # These are walls whose height differs from the expected floor height (especially sloping walls)
+        if walls_with_custom_heights:
+            # Position these dimensions on the left side
+            left_offset = -base_offset
+
+            # Track which height ranges we've already dimensioned to avoid duplicates
+            # (e.g., two walls with heights 0→47 and 47→0 have the same range)
+            dimensioned_height_ranges = set()
+
+            for wall in walls_with_custom_heights:
+                wall_x_world = wall['x']
+                wall_width = wall['width']
+                wall_z = wall['z']
+                height_start = wall['height_start']
+                height_end = wall['height_end']
+                is_sloping = wall['is_sloping']
+
+                # Create a normalized height range key (min to max) to detect duplicates
+                height_range = (min(height_start, height_end), max(height_start, height_end))
+
+                # Skip if we've already dimensioned this height range
+                if height_range in dimensioned_height_ranges:
+                    continue
+
+                dimensioned_height_ranges.add(height_range)
+
+                # Convert world coordinates to SVG
+                wall_x_svg = world_to_svg_x(wall_x_world, wall_width)
+                wall_bottom_y = z_to_y(wall_z)
+
+                if is_sloping:
+                    # For sloping walls, show dimensions at both ends
+                    # Handle mirroring for front/right views
+                    if view_type in ['front', 'right']:
+                        # Heights are swapped for mirrored views
+                        h_left = height_end
+                        h_right = height_start
+                    else:
+                        h_left = height_start
+                        h_right = height_end
+
+                    # Left edge dimension
+                    wall_top_left_y = z_to_y(wall_z + h_left)
+                    svg += svg_draw_dimension_line(
+                        wall_x_svg, wall_bottom_y,
+                        wall_x_svg, wall_top_left_y,
+                        left_offset,
+                        is_horizontal=False,
+                        adjust_start=False,
+                        adjust_end=False
+                    )
+
+                    # Right edge dimension
+                    wall_top_right_y = z_to_y(wall_z + h_right)
+                    svg += svg_draw_dimension_line(
+                        wall_x_svg + wall_width, wall_bottom_y,
+                        wall_x_svg + wall_width, wall_top_right_y,
+                        left_offset,
+                        is_horizontal=False,
+                        adjust_start=False,
+                        adjust_end=False
+                    )
+                else:
+                    # Non-sloping wall with custom height - dimension in the middle
+                    wall_top_y = z_to_y(wall_z + height_start)
+                    wall_mid_x = wall_x_svg + wall_width / 2
+                    svg += svg_draw_dimension_line(
+                        wall_mid_x, wall_bottom_y,
+                        wall_mid_x, wall_top_y,
+                        left_offset,
+                        is_horizontal=False,
+                        adjust_start=False,
+                        adjust_end=False
+                    )
 
     svg += '''</g>
 '''

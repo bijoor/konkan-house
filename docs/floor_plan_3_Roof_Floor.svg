@@ -22,7 +22,7 @@
   <line x1="270" y1="80" x2="270" y2="0.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <polygon points="0,0.0 3,-3.0 3,3.0" fill="#000"/>
   <polygon points="270,0.0 267,-3.0 267,3.0" fill="#000"/>
-  <text x="135.0" y="-5.0" text-anchor="middle" font-size="10" fill="#000">27.0'</text>
+  <text x="135.0" y="-5.0" text-anchor="middle" font-size="10" fill="#000">27'</text>
 </g>
 <g class="dimension">
   <line x1="0" y1="380.0" x2="270" y2="380.0" stroke="#000" stroke-width="0.5"/>
@@ -30,7 +30,7 @@
   <line x1="270" y1="300" x2="270" y2="380.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <polygon points="0,380.0 3,377.0 3,383.0" fill="#000"/>
   <polygon points="270,380.0 267,377.0 267,383.0" fill="#000"/>
-  <text x="135.0" y="393.0" text-anchor="middle" font-size="10" fill="#000">27.0'</text>
+  <text x="135.0" y="393.0" text-anchor="middle" font-size="10" fill="#000">27'</text>
 </g>
 <g class="dimension">
   <line x1="-80.0" y1="80" x2="-80.0" y2="300" stroke="#000" stroke-width="0.5"/>
@@ -38,7 +38,7 @@
   <line x1="0" y1="300" x2="-80.0" y2="300" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <polygon points="-80.0,80 -83.0,83 -77.0,83" fill="#000"/>
   <polygon points="-80.0,300 -83.0,297 -77.0,297" fill="#000"/>
-  <text x="-93.0" y="190.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 -93.0 190.0)">22.0'</text>
+  <text x="-93.0" y="190.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 -93.0 190.0)">22'</text>
 </g>
 <g class="dimension">
   <line x1="350.0" y1="80" x2="350.0" y2="300" stroke="#000" stroke-width="0.5"/>
@@ -46,7 +46,7 @@
   <line x1="270" y1="300" x2="350.0" y2="300" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <polygon points="350.0,80 347.0,83 353.0,83" fill="#000"/>
   <polygon points="350.0,300 347.0,297 353.0,297" fill="#000"/>
-  <text x="363.0" y="190.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 363.0 190.0)">22.0'</text>
+  <text x="363.0" y="190.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 363.0 190.0)">22'</text>
 </g>
 <g class="dimension">
   <line x1="19" y1="88" x2="19" y2="188" stroke="#000" stroke-width="0.5"/>
@@ -54,7 +54,7 @@
   <line x1="4" y1="188" x2="19" y2="188" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <polygon points="19,88 16,91 22,91" fill="#000"/>
   <polygon points="19,188 16,185 22,185" fill="#000"/>
-  <text x="32" y="138.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 32 138.0)">10.0'</text>
+  <text x="32" y="138.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 32 138.0)">10'</text>
 </g>
 <g class="dimension">
   <line x1="19" y1="212" x2="19" y2="292" stroke="#000" stroke-width="0.5"/>
@@ -62,7 +62,7 @@
   <line x1="4" y1="292" x2="19" y2="292" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <polygon points="19,212 16,215 22,215" fill="#000"/>
   <polygon points="19,292 16,289 22,289" fill="#000"/>
-  <text x="32" y="252.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 32 252.0)">8.0'</text>
+  <text x="32" y="252.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 32 252.0)">8'</text>
 </g>
 <g class="dimension">
   <line x1="281" y1="88" x2="281" y2="188" stroke="#000" stroke-width="0.5"/>
@@ -70,7 +70,7 @@
   <line x1="266" y1="188" x2="281" y2="188" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <polygon points="281,88 278,91 284,91" fill="#000"/>
   <polygon points="281,188 278,185 284,185" fill="#000"/>
-  <text x="294" y="138.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 294 138.0)">10.0'</text>
+  <text x="294" y="138.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 294 138.0)">10'</text>
 </g>
 <g class="dimension">
   <line x1="281" y1="212" x2="281" y2="292" stroke="#000" stroke-width="0.5"/>
@@ -78,7 +78,7 @@
   <line x1="266" y1="292" x2="281" y2="292" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
   <polygon points="281,212 278,215 284,215" fill="#000"/>
   <polygon points="281,292 278,289 284,289" fill="#000"/>
-  <text x="294" y="252.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 294 252.0)">8.0'</text>
+  <text x="294" y="252.0" text-anchor="middle" font-size="10" fill="#000" transform="rotate(-90 294 252.0)">8'</text>
 </g>
 </g>
 <text x="590.0" y="30" text-anchor="middle" font-size="16" font-weight="bold">Roof Floor</text>

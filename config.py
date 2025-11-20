@@ -30,6 +30,9 @@ GLOBAL_CONFIG = {
     'wall_thickness': 0.67,            # ~8 inches in feet
     'floor_slab_thickness': 0.33,      # ~4 inches in feet
     'plinth_height': 1.5,              # feet
+    'explosion_factor': 0.0,           # Vertical separation between floors for exploded view (0 = normal)
+    'explosion_factors': {},           # Per-floor explosion factors {floor_num: separation_above_this_floor}
+                                       # If set, overrides uniform explosion_factor
 
     # Materials & Colors
     'colors': {
@@ -58,7 +61,8 @@ GLOBAL_CONFIG = {
         'min_dimension_length': 20,         # Don't dimension edges shorter than this
         'unit_display': 'feet',             # Display unit name
         'unit_conversion': 10.0,            # Conversion factor (10 units = 1 foot)
-        'precision': 1,                     # Decimal places for dimensions
+        'precision': 1,                     # Decimal places for dimensions (used when use_feet_inches is False)
+        'use_feet_inches': True,            # Display as feet-inches (12' 6") instead of decimal feet (12.5')
         'text_size': 10,                    # Font size for dimension text
         'room_text_size': 12,               # Font size for room labels
         'opening_text_size': 8,             # Font size for door/window dimensions

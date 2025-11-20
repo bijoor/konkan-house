@@ -63,19 +63,26 @@ def set_model_origin_from_plinth(plinth_config: dict):
 
     print(f"Model origin set to plinth center: ({center_x:.1f}, {center_y:.1f})")
 
-def get_floor_z_offset(floor_number: int) -> float:
+def get_floor_z_offset(floor_number: int, explosion_factor: float = 0.0) -> float:
     """
     Calculate Z offset for a given floor number (bottom of floor slab).
 
     Args:
         floor_number: Floor number (0 = ground floor, 1 = first floor, etc.)
+        explosion_factor: Additional separation between floors for exploded view (default 0.0 for normal view)
+                          Can be a single value (applied to all floors) or will use per-floor values from
+                          GLOBAL_CONFIG['explosion_factors'] if available
 
     Returns:
         Z offset in meters from ground level to the bottom of the floor slab
     """
     z_offset = GLOBAL_CONFIG['plinth_height']  # Start with plinth height
 
-    # For each previous floor, add: slab thickness + wall height
+    # Check if we have per-floor explosion factors
+    use_per_floor_explosion = 'explosion_factors' in GLOBAL_CONFIG and GLOBAL_CONFIG['explosion_factors']
+    total_explosion = 0
+
+    # For each previous floor, add: slab thickness + wall height + explosion spacing
     for floor in range(floor_number):
         # Add floor slab thickness
         z_offset += GLOBAL_CONFIG['floor_slab_thickness']
@@ -89,8 +96,20 @@ def get_floor_z_offset(floor_number: int) -> float:
             wall_height = GLOBAL_CONFIG['floor_heights'].get(0, 10.0)
             z_offset += wall_height
 
+        # Add explosion spacing for exploded view
+        if use_per_floor_explosion:
+            # Use per-floor explosion factor (the spacing AFTER this floor)
+            floor_explosion = GLOBAL_CONFIG['explosion_factors'].get(floor, 0.0)
+            z_offset += floor_explosion
+            total_explosion += floor_explosion
+        else:
+            # Use uniform explosion factor
+            z_offset += explosion_factor
+            total_explosion += explosion_factor
+
     result = to_meters(z_offset)
-    print(f"  DEBUG: Floor {floor_number} Z offset = {z_offset} units = {result} meters", flush=True)
+    explosion_suffix = f" (exploded +{total_explosion})" if total_explosion > 0 else ""
+    print(f"  DEBUG: Floor {floor_number} Z offset = {z_offset} units = {result} meters{explosion_suffix}", flush=True)
     return result
 
 def create_material(name: str, color: Tuple[float, float, float, float]) -> bpy.types.Material:
@@ -363,7 +382,8 @@ def create_wall(start_x: float, start_y: float, end_x: float, end_y: float,
 
     # Z position: walls sit on top of floor slab
     # Keep everything in INPUT UNITS until inkscape_to_blender converts to meters
-    z_offset_units = get_floor_z_offset(floor_number) / to_meters(1.0)  # Convert meters back to units
+    explosion_factor = GLOBAL_CONFIG.get('explosion_factor', 0.0)
+    z_offset_units = get_floor_z_offset(floor_number, explosion_factor) / to_meters(1.0)  # Convert meters back to units
     floor_slab_thickness_units = GLOBAL_CONFIG['floor_slab_thickness']
     wall_bottom_z_units = z_offset_units + floor_slab_thickness_units
 
@@ -434,7 +454,8 @@ def create_pillar(x: float, y: float,
 
     # Z position: pillar sits on top of floor slab
     # Keep everything in INPUT UNITS until inkscape_to_blender converts to meters
-    z_offset_units = get_floor_z_offset(floor_number) / to_meters(1.0)  # Convert meters back to units
+    explosion_factor = GLOBAL_CONFIG.get('explosion_factor', 0.0)
+    z_offset_units = get_floor_z_offset(floor_number, explosion_factor) / to_meters(1.0)  # Convert meters back to units
     floor_slab_thickness_units = GLOBAL_CONFIG['floor_slab_thickness']
     pillar_bottom_z_units = z_offset_units + floor_slab_thickness_units
     center_z_units = pillar_bottom_z_units + height / 2
@@ -622,7 +643,8 @@ def create_floor_slab(x: float, y: float, width: float, length: float,
 
     # Z position: on top of plinth for ground floor, or on top of previous floor
     # Keep in units until inkscape_to_blender converts to meters
-    z_offset_units = get_floor_z_offset(floor_number) / to_meters(1.0)  # Convert meters back to units
+    explosion_factor = GLOBAL_CONFIG.get('explosion_factor', 0.0)
+    z_offset_units = get_floor_z_offset(floor_number, explosion_factor) / to_meters(1.0)  # Convert meters back to units
     center_z_units = z_offset_units + thickness / 2
 
     location = inkscape_to_blender(center_x, center_y, center_z_units)
@@ -678,7 +700,8 @@ def create_beam(x: float, y: float, width: float, length: float,
 
     # Z position: on top of plinth for ground floor, or on top of previous floor
     # Keep in units until inkscape_to_blender converts to meters
-    z_offset_units = get_floor_z_offset(floor_number) / to_meters(1.0)  # Convert meters back to units
+    explosion_factor = GLOBAL_CONFIG.get('explosion_factor', 0.0)
+    z_offset_units = get_floor_z_offset(floor_number, explosion_factor) / to_meters(1.0)  # Convert meters back to units
     center_z_units = z_offset_units + thickness / 2
 
     location = inkscape_to_blender(center_x, center_y, center_z_units)
@@ -750,7 +773,8 @@ def create_staircase(start_x: float, start_y: float,
 
     # Get starting Z position - add floor slab thickness so stairs start above floor
     # Keep everything in INPUT UNITS until inkscape_to_blender converts to meters
-    z_offset_units = get_floor_z_offset(floor_number) / to_meters(1.0)  # Convert meters back to units
+    explosion_factor = GLOBAL_CONFIG.get('explosion_factor', 0.0)
+    z_offset_units = get_floor_z_offset(floor_number, explosion_factor) / to_meters(1.0)  # Convert meters back to units
     floor_thickness_units = GLOBAL_CONFIG['floor_slab_thickness']
     z_start_units = z_offset_units + floor_thickness_units
 
@@ -831,7 +855,8 @@ def create_door(x: float, y: float, width: float, height: float,
     """
     # Get floor Z position
     # Keep everything in INPUT UNITS until inkscape_to_blender converts to meters
-    z_offset_units = get_floor_z_offset(floor_number) / to_meters(1.0)  # Convert meters back to units
+    explosion_factor = GLOBAL_CONFIG.get('explosion_factor', 0.0)
+    z_offset_units = get_floor_z_offset(floor_number, explosion_factor) / to_meters(1.0)  # Convert meters back to units
     floor_thickness_units = GLOBAL_CONFIG['floor_slab_thickness']
     wall_thickness = GLOBAL_CONFIG['wall_thickness']
 
@@ -920,7 +945,8 @@ def create_window(x: float, y: float, width: float, height: float,
 
     # Get floor Z position
     # Keep everything in INPUT UNITS until inkscape_to_blender converts to meters
-    z_offset_units = get_floor_z_offset(floor_number) / to_meters(1.0)  # Convert meters back to units
+    explosion_factor = GLOBAL_CONFIG.get('explosion_factor', 0.0)
+    z_offset_units = get_floor_z_offset(floor_number, explosion_factor) / to_meters(1.0)  # Convert meters back to units
     floor_thickness_units = GLOBAL_CONFIG['floor_slab_thickness']
     wall_thickness = GLOBAL_CONFIG['wall_thickness']
 

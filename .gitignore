@@ -22,3 +22,7 @@ Thumbs.db
 docs/*.glb
 docs/*.gltf
 docs/*.bin
+
+# Debug files
+*objects_debug*.json
+*.log

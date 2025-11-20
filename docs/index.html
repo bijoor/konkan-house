@@ -257,6 +257,10 @@
             overflow: hidden;
             background: white;
             cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         }
         .svg-full-width.grabbing {
             cursor: grabbing;
@@ -312,6 +316,7 @@
         <div class="subtitle">3D Interactive Model Viewer</div>
         <div class="tabs" style="margin-top: 1rem;">
             <button class="tab active" onclick="switchView('3d')">🏗️ 3D Model</button>
+            <button class="tab" onclick="switchView('3d-exploded')">💥 Exploded View</button>
             <button class="tab" onclick="switchView('plans')">📐 Floor Plans</button>
             <button class="tab" onclick="switchView('all-plans')">📊 All Floor Plans</button>
             <button class="tab" onclick="switchView('elevations')">📏 Elevations</button>
@@ -415,6 +420,83 @@
         </model-viewer>
         </div>
         <!-- End 3D Model View -->
+
+        <!-- 3D Exploded Model View -->
+        <div id="view-3d-exploded" class="view-container">
+            <div class="loading" id="loading-exploded">Loading exploded model...</div>
+
+            <div class="settings-toggle" onclick="toggleSettingsExploded()">⚙️</div>
+
+        <div class="settings-panel" id="settings-panel-exploded">
+            <h3 style="margin-top: 0; color: #333; font-size: 1rem; margin-bottom: 1rem;">Lighting & Display</h3>
+
+            <div class="setting-item">
+                <label>
+                    Exposure
+                    <span class="value" id="exposure-value-exploded">1.0</span>
+                </label>
+                <input type="range" id="exposure-exploded" min="0.5" max="2.5" step="0.1" value="1.0" oninput="updateExposureExploded(this.value)">
+            </div>
+
+            <div class="setting-item">
+                <label>
+                    Shadow Intensity
+                    <span class="value" id="shadow-value-exploded">1.5</span>
+                </label>
+                <input type="range" id="shadow-intensity-exploded" min="0" max="2" step="0.1" value="1.5" oninput="updateShadowExploded(this.value)">
+            </div>
+
+            <div class="setting-item">
+                <label>
+                    Shadow Softness
+                    <span class="value" id="softness-value-exploded">0.8</span>
+                </label>
+                <input type="range" id="shadow-softness-exploded" min="0" max="1" step="0.1" value="0.8" oninput="updateSoftnessExploded(this.value)">
+            </div>
+
+            <div class="setting-item">
+                <label>Field of View</label>
+                <input type="range" id="fov-exploded" min="20" max="60" step="5" value="45" oninput="updateFOVExploded(this.value)">
+                <span class="value" id="fov-value-exploded">45°</span>
+            </div>
+        </div>
+
+        <model-viewer
+            id="model-exploded"
+            src="konkan_house_exploded.glb"
+            alt="Konkan House 3D Model - Exploded View"
+            camera-controls
+            auto-rotate
+            shadow-intensity="1.5"
+            exposure="1.0"
+            shadow-softness="0.8"
+            skybox-image="https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/syferfontein_18d_clear_puresky_1k.hdr"
+            environment-image="https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/syferfontein_18d_clear_puresky_1k.hdr"
+            camera-orbit="45deg 75deg auto"
+            min-camera-orbit="auto auto auto"
+            max-camera-orbit="auto auto auto"
+            field-of-view="45deg"
+            tone-mapping="commerce"
+            ar
+            ar-modes="webxr scene-viewer quick-look"
+            max-field-of-view="60deg"
+            min-field-of-view="20deg">
+
+            <div class="controls" slot="controls">
+                <button onclick="document.getElementById('model-exploded').cameraOrbit = '0deg 90deg auto'">Top View</button>
+                <button onclick="document.getElementById('model-exploded').cameraOrbit = '0deg 75deg auto'">Front View</button>
+                <button onclick="document.getElementById('model-exploded').cameraOrbit = '90deg 75deg auto'">Side View</button>
+                <button onclick="document.getElementById('model-exploded').cameraOrbit = '45deg 75deg auto'">Reset</button>
+                <button onclick="toggleWireframeExploded()">
+                    <span id="wireframe-text-exploded">📐 Wireframe</span>
+                </button>
+                <button onclick="toggleAutoRotateExploded()">
+                    <span id="rotate-text-exploded">⏸ Pause</span>
+                </button>
+            </div>
+        </model-viewer>
+        </div>
+        <!-- End 3D Exploded Model View -->
 
         <!-- Floor Plans View -->
         <div id="view-plans" class="view-container">
@@ -533,6 +615,93 @@
             }
         }
 
+        // Exploded model viewer controls
+        const modelViewerExploded = document.getElementById('model-exploded');
+        const loadingExploded = document.getElementById('loading-exploded');
+
+        // Hide loading message when exploded model loads
+        modelViewerExploded.addEventListener('load', () => {
+            loadingExploded.style.display = 'none';
+            console.log('Exploded model loaded successfully');
+        });
+
+        // Handle loading errors for exploded model
+        modelViewerExploded.addEventListener('error', (event) => {
+            loadingExploded.innerHTML = `
+                ❌ Error loading exploded model<br><br>
+                <small style="font-size: 0.9rem;">
+                If viewing locally, you need to run a local server.<br>
+                Try: <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">python3 -m http.server 8000</code><br>
+                Then open: <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">http://localhost:8000</code>
+                </small>
+            `;
+            loadingExploded.style.color = '#d32f2f';
+            loadingExploded.style.fontSize = '1rem';
+        });
+
+        // Toggle auto-rotate for exploded model
+        function toggleAutoRotateExploded() {
+            const rotateText = document.getElementById('rotate-text-exploded');
+            if (modelViewerExploded.autoRotate) {
+                modelViewerExploded.autoRotate = false;
+                rotateText.textContent = '▶ Play';
+            } else {
+                modelViewerExploded.autoRotate = true;
+                rotateText.textContent = '⏸ Pause';
+            }
+        }
+
+        // Toggle wireframe for exploded model
+        let wireframeEnabledExploded = false;
+        function toggleWireframeExploded() {
+            const wireframeText = document.getElementById('wireframe-text-exploded');
+            wireframeEnabledExploded = !wireframeEnabledExploded;
+
+            if (wireframeEnabledExploded) {
+                modelViewerExploded.model.materials.forEach(material => {
+                    material.pbrMetallicRoughness.setBaseColorFactor([0.3, 0.3, 0.3, 1]);
+                    material.pbrMetallicRoughness.setMetallicFactor(0.1);
+                    material.pbrMetallicRoughness.setRoughnessFactor(0.9);
+                });
+                modelViewerExploded.exposure = 2.0;
+                wireframeText.textContent = '🎨 Material';
+            } else {
+                modelViewerExploded.model.materials.forEach(material => {
+                    material.pbrMetallicRoughness.setMetallicFactor(0);
+                    material.pbrMetallicRoughness.setRoughnessFactor(1);
+                });
+                modelViewerExploded.exposure = 1.0;
+                wireframeText.textContent = '📐 Wireframe';
+            }
+        }
+
+        // Toggle settings panel for exploded model
+        function toggleSettingsExploded() {
+            const panel = document.getElementById('settings-panel-exploded');
+            panel.classList.toggle('active');
+        }
+
+        // Update lighting controls for exploded model
+        function updateExposureExploded(value) {
+            modelViewerExploded.exposure = parseFloat(value);
+            document.getElementById('exposure-value-exploded').textContent = value;
+        }
+
+        function updateShadowExploded(value) {
+            modelViewerExploded.shadowIntensity = parseFloat(value);
+            document.getElementById('shadow-value-exploded').textContent = value;
+        }
+
+        function updateSoftnessExploded(value) {
+            modelViewerExploded.shadowSoftness = parseFloat(value);
+            document.getElementById('softness-value-exploded').textContent = value;
+        }
+
+        function updateFOVExploded(value) {
+            modelViewerExploded.fieldOfView = value + 'deg';
+            document.getElementById('fov-value-exploded').textContent = value + '°';
+        }
+
         // Toggle settings panel
         function toggleSettings() {
             const panel = document.getElementById('settings-panel');
@@ -602,6 +771,8 @@
 
             if (view === '3d') {
                 document.getElementById('view-3d').classList.add('active');
+            } else if (view === '3d-exploded') {
+                document.getElementById('view-3d-exploded').classList.add('active');
             } else if (view === 'plans') {
                 document.getElementById('view-plans').classList.add('active');
                 loadFloorPlans();
@@ -807,6 +978,43 @@
             }
         }
 
+        // Fit SVG to view and center it
+        function fitToView(containerId) {
+            const container = document.getElementById(containerId);
+            const svg = container.querySelector('svg');
+            if (!svg) return;
+
+            const state = viewStates[containerId];
+
+            // Get SVG dimensions
+            const svgWidth = svg.viewBox.baseVal.width || svg.width.baseVal.value;
+            const svgHeight = svg.viewBox.baseVal.height || svg.height.baseVal.value;
+
+            // Get container dimensions
+            const containerRect = container.getBoundingClientRect();
+            const containerWidth = containerRect.width;
+            const containerHeight = containerRect.height;
+
+            // Calculate scale to fit (with some padding)
+            const padding = 40; // pixels of padding
+            const scaleX = (containerWidth - padding * 2) / svgWidth;
+            const scaleY = (containerHeight - padding * 2) / svgHeight;
+            const scale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond 100%
+
+            // Calculate translation to center
+            const scaledWidth = svgWidth * scale;
+            const scaledHeight = svgHeight * scale;
+            const translateX = (containerWidth - scaledWidth) / 2;
+            const translateY = (containerHeight - scaledHeight) / 2;
+
+            // Update state
+            state.scale = scale;
+            state.translateX = translateX;
+            state.translateY = translateY;
+
+            updateTransform(containerId);
+        }
+
         // Setup pan and zoom for a container
         function setupPanZoom(containerId) {
             const container = document.getElementById(containerId);
@@ -815,10 +1023,14 @@
 
             const state = viewStates[containerId];
 
+            // Fit and center on initial load
+            fitToView(containerId);
+
             // Mouse wheel zoom
             container.addEventListener('wheel', (e) => {
                 e.preventDefault();
-                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                // Very low zoom sensitivity: 1% per scroll for fine control
+                const delta = e.deltaY > 0 ? 0.99 : 1.01;
                 const rect = container.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
@@ -837,6 +1049,7 @@
             // Pan with mouse drag
             container.addEventListener('mousedown', (e) => {
                 if (e.target.closest('.zoom-controls')) return;
+                e.preventDefault(); // Prevent text selection during drag
                 state.isDragging = true;
                 state.startX = e.clientX - state.translateX;
                 state.startY = e.clientY - state.translateY;
@@ -932,11 +1145,8 @@
         }
 
         function resetZoom(containerId) {
-            const state = viewStates[containerId];
-            state.scale = 1;
-            state.translateX = 0;
-            state.translateY = 0;
-            updateTransform(containerId);
+            // Reset to fit and center the view
+            fitToView(containerId);
         }
     </script>
 </body>
