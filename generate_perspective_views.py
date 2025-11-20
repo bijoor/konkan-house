@@ -217,6 +217,22 @@ print(f"Resolution: {{scene.render.resolution_x}}x{{scene.render.resolution_y}}"
 for view in camera_views:
     print(f"\\n→ Setting up camera: {{view['name']}} - {{view['description']}}")
 
+    # Check if this is an interior view
+    is_interior = 'interior' in view['name']
+
+    # For interior views, disable transparent background to show walls
+    if is_interior:
+        scene.render.film_transparent = False
+        # Set background to white for interior views
+        scene.world.use_nodes = True
+        bg_node = scene.world.node_tree.nodes.get('Background')
+        if bg_node:
+            bg_node.inputs['Color'].default_value = (1.0, 1.0, 1.0, 1.0)  # White background
+        print(f"  Interior view: Using solid white background")
+    else:
+        scene.render.film_transparent = True
+        print(f"  Exterior view: Using transparent background")
+
     # Create camera
     camera_data = bpy.data.cameras.new(name=view["name"])
     camera_data.lens = view.get("lens", 35)  # Use lens from view definition
