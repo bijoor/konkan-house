@@ -98,29 +98,29 @@ center_z_m = to_meters(building_center_z)
 camera_views = [
     {{
         "name": "front_left_corner",
-        "description": "Front Left Corner View (Southwest)",
-        "location": (to_meters(-900), to_meters(-800), to_meters(300)),
-        "target": (center_x_m, center_y_m, center_z_m),
-        "lens": 24
-    }},
-    {{
-        "name": "front_right_corner",
-        "description": "Front Right Corner View (Southeast)",
-        "location": (to_meters(1170), to_meters(-800), to_meters(300)),
-        "target": (center_x_m, center_y_m, center_z_m),
-        "lens": 24
-    }},
-    {{
-        "name": "back_left_corner",
-        "description": "Back Left Corner View (Northwest)",
+        "description": "Front Left Corner View (Northwest)",
         "location": (to_meters(-900), to_meters(1250), to_meters(300)),
         "target": (center_x_m, center_y_m, center_z_m),
         "lens": 24
     }},
     {{
-        "name": "back_right_corner",
-        "description": "Back Right Corner View (Northeast)",
+        "name": "front_right_corner",
+        "description": "Front Right Corner View (Northeast)",
         "location": (to_meters(1170), to_meters(1250), to_meters(300)),
+        "target": (center_x_m, center_y_m, center_z_m),
+        "lens": 24
+    }},
+    {{
+        "name": "back_left_corner",
+        "description": "Back Left Corner View (Southwest)",
+        "location": (to_meters(-900), to_meters(-800), to_meters(300)),
+        "target": (center_x_m, center_y_m, center_z_m),
+        "lens": 24
+    }},
+    {{
+        "name": "back_right_corner",
+        "description": "Back Right Corner View (Southeast)",
+        "location": (to_meters(1170), to_meters(-800), to_meters(300)),
         "target": (center_x_m, center_y_m, center_z_m),
         "lens": 24
     }},
@@ -132,15 +132,15 @@ camera_views = [
         "lens": 24
     }},
     {{
-        "name": "eye_level_south",
-        "description": "Eye Level South View",
+        "name": "eye_level_back",
+        "description": "Eye Level Back View (South)",
         "location": (center_x_m, to_meters(-900), to_meters(60)),
         "target": (center_x_m, center_y_m, to_meters(150)),
         "lens": 28
     }},
     {{
-        "name": "eye_level_north",
-        "description": "Eye Level North View (Front)",
+        "name": "eye_level_front",
+        "description": "Eye Level Front View (North)",
         "location": (center_x_m, to_meters(1350), to_meters(60)),
         "target": (center_x_m, center_y_m, to_meters(150)),
         "lens": 28

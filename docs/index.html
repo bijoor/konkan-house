@@ -663,19 +663,19 @@
                 <h2 style="color: #333; margin-bottom: 1.5rem; text-align: center;">Perspective Views (4K Resolution)</h2>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 2rem; max-width: 1400px; margin: 0 auto;">
                     <div class="perspective-card">
-                        <h3>Front Left Corner (Southwest)</h3>
+                        <h3>Front Left Corner (Northwest)</h3>
                         <img src="perspective_front_left_corner.png" alt="Front Left Corner View" onclick="openLightbox(0)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
-                        <h3>Front Right Corner (Southeast)</h3>
+                        <h3>Front Right Corner (Northeast)</h3>
                         <img src="perspective_front_right_corner.png" alt="Front Right Corner View" onclick="openLightbox(1)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
-                        <h3>Back Left Corner (Northwest)</h3>
+                        <h3>Back Left Corner (Southwest)</h3>
                         <img src="perspective_back_left_corner.png" alt="Back Left Corner View" onclick="openLightbox(2)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
-                        <h3>Back Right Corner (Northeast)</h3>
+                        <h3>Back Right Corner (Southeast)</h3>
                         <img src="perspective_back_right_corner.png" alt="Back Right Corner View" onclick="openLightbox(3)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
@@ -683,12 +683,12 @@
                         <img src="perspective_aerial.png" alt="Aerial View" onclick="openLightbox(4)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
-                        <h3>Eye Level South View</h3>
-                        <img src="perspective_eye_level_south.png" alt="Eye Level South View" onclick="openLightbox(5)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
+                        <h3>Eye Level Back View (South)</h3>
+                        <img src="perspective_eye_level_back.png" alt="Eye Level Back View" onclick="openLightbox(5)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
-                        <h3>Eye Level North View (Front)</h3>
-                        <img src="perspective_eye_level_north.png" alt="Eye Level North View (Front)" onclick="openLightbox(6)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
+                        <h3>Eye Level Front View (North)</h3>
+                        <img src="perspective_eye_level_front.png" alt="Eye Level Front View" onclick="openLightbox(6)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                 </div>
             </div>
@@ -1305,13 +1305,13 @@
 
         // Lightbox functions for perspective images
         const perspectiveImages = [
-            { src: 'perspective_front_left_corner.png', caption: 'Front Left Corner View (Southwest)' },
-            { src: 'perspective_front_right_corner.png', caption: 'Front Right Corner View (Southeast)' },
-            { src: 'perspective_back_left_corner.png', caption: 'Back Left Corner View (Northwest)' },
-            { src: 'perspective_back_right_corner.png', caption: 'Back Right Corner View (Northeast)' },
+            { src: 'perspective_front_left_corner.png', caption: 'Front Left Corner View (Northwest)' },
+            { src: 'perspective_front_right_corner.png', caption: 'Front Right Corner View (Northeast)' },
+            { src: 'perspective_back_left_corner.png', caption: 'Back Left Corner View (Southwest)' },
+            { src: 'perspective_back_right_corner.png', caption: 'Back Right Corner View (Southeast)' },
             { src: 'perspective_aerial.png', caption: 'Aerial View' },
-            { src: 'perspective_eye_level_south.png', caption: 'Eye Level South View' },
-            { src: 'perspective_eye_level_north.png', caption: 'Eye Level North View (Front)' }
+            { src: 'perspective_eye_level_back.png', caption: 'Eye Level Back View (South)' },
+            { src: 'perspective_eye_level_front.png', caption: 'Eye Level Front View (North)' }
         ];
         let currentPerspectiveIndex = 0;
 
