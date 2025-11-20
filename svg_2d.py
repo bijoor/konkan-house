@@ -2078,31 +2078,62 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
         if 'objects' in floor_config:
             for obj in floor_config['objects']:
                 if obj.get('type') == 'gable_roof':
-                    ridge_z = obj.get('ridge_z', 0)
-                    ridge_length = obj.get('ridge_length', width)
+                    import math
 
-                    # Convert world Z to SVG Y
-                    wall_top_y = z_to_y(wall_top)
-                    ridge_y = z_to_y(ridge_z)
+                    ridge_z_relative = obj.get('ridge_z', 0)
+                    ridge_start_x = obj.get('ridge_start_x', 0)
+                    ridge_start_y = obj.get('ridge_start_y', 0)
+                    ridge_length = obj.get('ridge_length', 0)
+                    left_slope_angle = obj.get('left_slope_angle', 22)
+                    left_slope_length = obj.get('left_slope_length', 0)
+                    right_slope_angle = obj.get('right_slope_angle', 26)
+                    right_slope_length = obj.get('right_slope_length', 0)
+                    roof_thickness = GLOBAL_CONFIG.get('roof_thickness', 8)
 
-                    if view_type in ['front', 'back']:
-                        # Show gable end (triangle)
-                        left_slope_length = obj.get('left_slope_length', 0)
-                        right_slope_length = obj.get('right_slope_length', 0)
+                    # Ridge Z is relative to the floor's base (current_z), just like in the 3D model
+                    # This is the bottom of this floor's slab
+                    ridge_z = current_z + ridge_z_relative
 
-                        # Calculate roof profile in world coordinates
-                        ridge_start_x_world = obj.get('ridge_start_x', width / 2)
+                    # Ridge runs along X axis, from (ridge_start_x, ridge_start_y) to (ridge_start_x + ridge_length, ridge_start_y)
 
-                        # Convert to SVG coordinates (with mirroring for front view)
-                        left_x = world_to_svg_x(0, 0)
-                        ridge_x = world_to_svg_x(ridge_start_x_world, 0)
-                        right_x = world_to_svg_x(width, 0)
+                    # Calculate eave positions
+                    left_horizontal = left_slope_length * math.cos(math.radians(left_slope_angle))
+                    left_drop = left_slope_length * math.sin(math.radians(left_slope_angle))
+                    right_horizontal = right_slope_length * math.cos(math.radians(right_slope_angle))
+                    right_drop = right_slope_length * math.sin(math.radians(right_slope_angle))
 
-                        # Draw roof outline
-                        svg += f'<polygon points="{left_x},{wall_top_y} {ridge_x},{ridge_y} {right_x},{wall_top_y}" fill="#8B4513" stroke="#000" stroke-width="1"/>\n'
+                    left_eave_y = ridge_start_y - left_horizontal
+                    left_eave_z = ridge_z - left_drop
+                    right_eave_y = ridge_start_y + right_horizontal
+                    right_eave_z = ridge_z - right_drop
+
+                    ridge_end_x = ridge_start_x + ridge_length
+
+                    if view_type in ['left', 'right']:
+                        # Show gable end (triangle) - looking along X, showing Y-Z
+                        # This shows the roof profile with thickness
+                        ridge_svg_y = z_to_y(ridge_z + roof_thickness)
+                        left_eave_svg_y = z_to_y(left_eave_z)
+                        right_eave_svg_y = z_to_y(right_eave_z)
+
+                        ridge_svg_x = world_to_svg_x(ridge_start_y, 0)
+                        left_eave_svg_x = world_to_svg_x(left_eave_y, 0)
+                        right_eave_svg_x = world_to_svg_x(right_eave_y, 0)
+
+                        # Draw left slope as thick line
+                        svg += f'<line x1="{left_eave_svg_x}" y1="{left_eave_svg_y}" x2="{ridge_svg_x}" y2="{ridge_svg_y}" stroke="#8B4513" stroke-width="{roof_thickness}"/>\n'
+                        # Draw right slope as thick line
+                        svg += f'<line x1="{ridge_svg_x}" y1="{ridge_svg_y}" x2="{right_eave_svg_x}" y2="{right_eave_svg_y}" stroke="#8B4513" stroke-width="{roof_thickness}"/>\n'
                     else:
-                        # Side view - show roof slope
-                        svg += f'<line x1="0" y1="{wall_top_y}" x2="{width}" y2="{ridge_y}" stroke="#8B4513" stroke-width="2"/>\n'
+                        # Front/back view - show ridge as horizontal line at the top
+                        # Ridge runs along X from ridge_start_x to ridge_end_x at height ridge_z
+                        ridge_svg_y = z_to_y(ridge_z)
+
+                        ridge_start_svg_x = world_to_svg_x(ridge_start_x, 0)
+                        ridge_end_svg_x = world_to_svg_x(ridge_end_x, 0)
+
+                        # Draw ridge as horizontal line (coordinates are in world units, SVG transform handles scaling)
+                        svg += f'<line x1="{ridge_start_svg_x}" y1="{ridge_svg_y}" x2="{ridge_end_svg_x}" y2="{ridge_svg_y}" stroke="#8B4513" stroke-width="{roof_thickness}"/>\n'
 
         current_z = wall_top
 

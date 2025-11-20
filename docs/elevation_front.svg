@@ -10,6 +10,7 @@
 
 <line x1="0" y1="322.0" x2="270" y2="322.0" stroke="#666" stroke-width="2" stroke-dasharray="5,5"/>
 <rect x="0" y="292.0" width="270" height="30.0" fill="#A0826D" stroke="#000" stroke-width="1"/>
+<line x1="290" y1="-30.0" x2="-20" y2="-30.0" stroke="#8B4513" stroke-width="3"/>
 <rect x="0" y="184.0" width="270" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
 <rect x="96.5" y="219.0" width="75" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
 <rect x="186" y="219.0" width="60" height="40.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>

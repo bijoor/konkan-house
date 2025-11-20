@@ -26,15 +26,15 @@ exec(open('{script_dir}/konkan_house_config.py').read())
 
 # Generate the normal model
 print("\\n" + "="*70)
-print("GENERATING NORMAL MODEL")
+print("GENERATING NORMAL MODEL (use_explosion=False)")
 print("="*70 + "\\n")
 
 # Clear any existing objects
 bpy.ops.object.select_all(action='SELECT')
 bpy.ops.object.delete()
 
-# Build the house with default explosion factor (0.0)
-build_house()
+# Build the house without explosion
+build_house(use_explosion=False)
 
 # Export to GLB
 import blender_3d
@@ -50,22 +50,21 @@ sys.path.insert(0, '{script_dir}')
 # Import and execute the house configuration first
 exec(open('{script_dir}/konkan_house_config.py').read())
 
-# NOW set explosion factors globally (after config is loaded)
-from konkan_house_lib import GLOBAL_CONFIG
-GLOBAL_CONFIG['explosion_factors'] = {explosion_factors_dict}
-print(f"\\nUsing per-floor explosion factors: {{GLOBAL_CONFIG['explosion_factors']}} units\\n")
+# Explosion factors are configured in house_config.py
+from house_config import GLOBAL_CONFIG
+print(f"\\nExploded model using explosion factors: {{GLOBAL_CONFIG['explosion_factors']}} units\\n")
 
 # Generate the exploded model
 print("\\n" + "="*70)
-print("GENERATING EXPLODED MODEL")
+print("GENERATING EXPLODED MODEL (use_explosion=True)")
 print("="*70 + "\\n")
 
 # Clear any existing objects
 bpy.ops.object.select_all(action='SELECT')
 bpy.ops.object.delete()
 
-# Build the house with explosion factors
-build_house()
+# Build the house with explosion enabled
+build_house(use_explosion=True)
 
 # Export to GLB
 import blender_3d
@@ -112,16 +111,8 @@ def run_blender_script(script_content, description):
 def main():
     """Generate both normal and exploded models"""
 
-    # Per-floor explosion factors (in input units)
-    # {floor_number: separation_above_this_floor}
-    # Floor 0->1: 175 units (17.5 feet)
-    # Floor 1->2: 150 units (15 feet)
-    # Floor 2->3: 0 units (no separation)
-    EXPLOSION_FACTORS = {
-        0: 175,  # Separation above ground floor
-        1: 150,  # Separation above first floor
-        2: 0,    # Separation above second floor (loft)
-    }
+    # Explosion factors are now configured in house_config.py
+    # Edit house_config.py to change the explosion spacing for the exploded view
 
     # Ensure docs directory exists
     os.makedirs(DOCS_DIR, exist_ok=True)
@@ -139,8 +130,7 @@ def main():
     # Generate exploded model
     exploded_script = BLENDER_SCRIPT_EXPLODED.format(
         script_dir=SCRIPT_DIR,
-        docs_dir=DOCS_DIR,
-        explosion_factors_dict=EXPLOSION_FACTORS
+        docs_dir=DOCS_DIR
     )
 
     if not run_blender_script(exploded_script, "Generating Exploded Model"):

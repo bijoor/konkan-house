@@ -10,6 +10,8 @@
 
 <line x1="0" y1="322.0" x2="450" y2="322.0" stroke="#666" stroke-width="2" stroke-dasharray="5,5"/>
 <rect x="0" y="292.0" width="450" height="30.0" fill="#A0826D" stroke="#000" stroke-width="1"/>
+<line x1="-13.252286550361106" y1="56.159516485659765" x2="200" y2="-33.0" stroke="#8B4513" stroke-width="3"/>
+<line x1="200" y1="-33.0" x2="478.62615435274176" y2="105.89505550461402" stroke="#8B4513" stroke-width="3"/>
 <polygon points="300,176.0 300,18.0 450,91.0 450,176.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
 <rect x="310" y="111.0" width="50" height="60.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
 <rect x="375" y="111.0" width="50" height="60.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>

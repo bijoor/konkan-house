@@ -181,7 +181,8 @@ def build_floor(floor_config: dict):
                     left_slope_length=obj['left_slope_length'],
                     right_slope_angle=obj['right_slope_angle'],
                     right_slope_length=obj['right_slope_length'],
-                    material_name=obj.get('material', 'roof')
+                    material_name=obj.get('material', 'roof'),
+                    floor_number=floor_num  # Pass floor number for Z offset calculation
                 )
 
             else:
@@ -227,11 +228,18 @@ def build_floor(floor_config: dict):
                     material_name=wall.get('material', 'walls')
                 )
 
-def build_house():
-    """Build the complete house from configuration"""
+def build_house(use_explosion=False):
+    """Build the complete house from configuration
+
+    Args:
+        use_explosion: If True, apply explosion factors for exploded view
+    """
     print("\n" + "="*70)
     print("BUILDING KONKAN HOUSE")
     print("="*70 + "\n")
+
+    # Store explosion flag in GLOBAL_CONFIG so get_floor_z_offset can access it
+    GLOBAL_CONFIG['use_explosion'] = use_explosion
 
     # Set model origin to center of plinth (for symmetric 3D visualization)
     set_model_origin_from_plinth(HOUSE_CONFIG['plinth'])

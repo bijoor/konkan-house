@@ -29,10 +29,14 @@ GLOBAL_CONFIG = {
     # Default dimensions (in input units)
     'wall_thickness': 0.67,            # ~8 inches in feet
     'floor_slab_thickness': 0.33,      # ~4 inches in feet
+    'roof_thickness': 0.33,            # ~4 inches in feet (roof slab thickness)
     'plinth_height': 1.5,              # feet
     'explosion_factor': 0.0,           # Vertical separation between floors for exploded view (0 = normal)
-    'explosion_factors': {},           # Per-floor explosion factors {floor_num: separation_above_this_floor}
-                                       # If set, overrides uniform explosion_factor
+    'explosion_factors': {             # Per-floor explosion factors {floor_num: separation_above_this_floor}
+        0: 0,                          # Default: no separation above ground floor
+        1: 0,                          # Default: no separation above first floor
+        2: 0,                          # Default: no separation above second floor
+    },                                 # If set, overrides uniform explosion_factor
 
     # Materials & Colors
     'colors': {

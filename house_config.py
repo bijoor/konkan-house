@@ -21,7 +21,17 @@ GLOBAL_CONFIG.update({
     
     'wall_thickness': 8,     # 8 inches = 0.67 feet
     'floor_slab_thickness': 8,  # 4 inches = 0.33 feet
+    'roof_thickness': 3,       # 8 inches = 0.67 feet (roof slab thickness)
     'plinth_height': 30,       # 1.5 feet
+
+    # Explosion factors for exploded view (vertical separation above each floor in units)
+    # These are only applied when build_house(use_explosion=True) is called.
+    # The normal model (use_explosion=False) ignores these values.
+    'explosion_factors': {
+        0: 250,  # Separation above ground floor (17.5 feet)
+        1: 250,  # Separation above first floor (17.5 feet)
+        2: 0,    # Separation above loft floor (no separation)
+    }
 })
 
 # ============================================================================
@@ -430,19 +440,6 @@ HOUSE_CONFIG = {
                     'room': 'Living_Kitchen',  # Which room's wall
                 },
 
-                # Gable roof (example - uncomment to use)
-                # {
-                #     'type': 'gable_roof',
-                #     'ridge_start_x': -2,
-                #     'ridge_start_y': 13.5,
-                #     'ridge_z': 22,
-                #     'ridge_length': 49,
-                #     'left_slope_angle': 27,
-                #     'left_slope_length': 17,
-                #     'right_slope_angle': 27,
-                #     'right_slope_length': 17,
-                #     'material': 'roof',
-                # },
             ],
         },
         # ============ FIRST FLOOR ============
@@ -871,7 +868,20 @@ HOUSE_CONFIG = {
                     'height': 47,
                     'height_end': 0,  # Sloping wall
                     'material': 'walls',
-                }
+                },
+                # Gable roof (example - uncomment to use)
+                {
+                    'type': 'gable_roof',
+                    'ridge_start_x': -20,
+                    'ridge_start_y': 200,
+                    'ridge_z': 56,
+                    'ridge_length': 310,
+                    'left_slope_angle': 22,
+                    'left_slope_length': 230,
+                    'right_slope_angle': 26,
+                    'right_slope_length': 310,
+                    'material': 'roof',
+                },
            ],
         },
     ],

@@ -78,8 +78,11 @@ def get_floor_z_offset(floor_number: int, explosion_factor: float = 0.0) -> floa
     """
     z_offset = GLOBAL_CONFIG['plinth_height']  # Start with plinth height
 
+    # Check if explosion is enabled via the use_explosion flag
+    use_explosion = GLOBAL_CONFIG.get('use_explosion', False)
+
     # Check if we have per-floor explosion factors
-    use_per_floor_explosion = 'explosion_factors' in GLOBAL_CONFIG and GLOBAL_CONFIG['explosion_factors']
+    use_per_floor_explosion = use_explosion and 'explosion_factors' in GLOBAL_CONFIG and GLOBAL_CONFIG['explosion_factors']
     total_explosion = 0
 
     # For each previous floor, add: slab thickness + wall height + explosion spacing
@@ -102,7 +105,7 @@ def get_floor_z_offset(floor_number: int, explosion_factor: float = 0.0) -> floa
             floor_explosion = GLOBAL_CONFIG['explosion_factors'].get(floor, 0.0)
             z_offset += floor_explosion
             total_explosion += floor_explosion
-        else:
+        elif use_explosion:
             # Use uniform explosion factor
             z_offset += explosion_factor
             total_explosion += explosion_factor
@@ -1064,26 +1067,44 @@ def create_gable_roof(ridge_start_x: float, ridge_start_y: float, ridge_z: float
                       ridge_length: float,
                       left_slope_angle: float, left_slope_length: float,
                       right_slope_angle: float, right_slope_length: float,
-                      material_name: str = 'roof') -> bpy.types.Object:
+                      material_name: str = 'roof',
+                      thickness: float = None,
+                      floor_number: int = None) -> bpy.types.Object:
     """
-    Create a gable roof with potentially asymmetric slopes.
+    Create a gable roof with potentially asymmetric slopes and thickness.
 
     The ridge runs parallel to the X axis (perpendicular to Y).
     Slopes extend in the +Y and -Y directions.
 
     Args:
         ridge_start_x, ridge_start_y: Start point of ridge (input units, Inkscape coords)
-        ridge_z: Height of ridge above ground (input units)
+        ridge_z: Height of ridge relative to floor (input units)
         ridge_length: Length of ridge in X direction (input units)
         left_slope_angle: Angle of left slope in degrees (0-90)
         left_slope_length: Length of left slope (input units)
         right_slope_angle: Angle of right slope in degrees (0-90)
         right_slope_length: Length of right slope (input units)
         material_name: Material to apply
+        thickness: Roof slab thickness (input units), defaults to roof_thickness from config
+        floor_number: Floor number (for Z offset calculation including explosion factor)
 
     Returns:
         Created roof mesh object
     """
+    # Get roof thickness from config if not provided
+    if thickness is None:
+        thickness = GLOBAL_CONFIG.get('roof_thickness', 8)
+
+    # Calculate floor Z offset if floor_number is provided
+    floor_z_offset = 0.0
+    if floor_number is not None:
+        explosion_factor = GLOBAL_CONFIG.get('explosion_factor', 0.0)
+        floor_z_offset_meters = get_floor_z_offset(floor_number, explosion_factor)
+        floor_z_offset = floor_z_offset_meters / to_meters(1.0)  # Convert back to input units
+
+    # Adjust ridge_z to be relative to floor
+    absolute_ridge_z = ridge_z + floor_z_offset
+
     # Convert angles to radians
     left_angle_rad = math.radians(left_slope_angle)
     right_angle_rad = math.radians(right_slope_angle)
@@ -1096,45 +1117,67 @@ def create_gable_roof(ridge_start_x: float, ridge_start_y: float, ridge_z: float
     left_drop = left_slope_length * math.sin(left_angle_rad)
     right_drop = right_slope_length * math.sin(right_angle_rad)
 
-    # Define vertices for the gable roof
-    # We'll create 6 vertices forming a triangular cross-section extruded along ridge
-
-    # Ridge points (top)
+    # Ridge points
     ridge_end_x = ridge_start_x + ridge_length
 
     # Left edge points (bottom of left slope)
     left_edge_y = ridge_start_y - left_horizontal
-    left_edge_z = ridge_z - left_drop
+    left_edge_z = absolute_ridge_z - left_drop
 
     # Right edge points (bottom of right slope)
     right_edge_y = ridge_start_y + right_horizontal
-    right_edge_z = ridge_z - right_drop
+    right_edge_z = absolute_ridge_z - right_drop
 
-    # Convert all points to Blender coordinates
+    # Create vertices for both bottom and top surfaces
+    # Bottom surface vertices (indices 0-5) - original positions
     vertices = [
-        # Front triangle (at X = ridge_start_x)
-        inkscape_to_blender(ridge_start_x, left_edge_y, left_edge_z),      # 0: left bottom
-        inkscape_to_blender(ridge_start_x, ridge_start_y, ridge_z),         # 1: ridge top
-        inkscape_to_blender(ridge_start_x, right_edge_y, right_edge_z),    # 2: right bottom
+        # Front triangle (at X = ridge_start_x) - BOTTOM
+        inkscape_to_blender(ridge_start_x, left_edge_y, left_edge_z),      # 0: left eave bottom
+        inkscape_to_blender(ridge_start_x, ridge_start_y, absolute_ridge_z),         # 1: ridge bottom
+        inkscape_to_blender(ridge_start_x, right_edge_y, right_edge_z),    # 2: right eave bottom
 
-        # Back triangle (at X = ridge_end_x)
-        inkscape_to_blender(ridge_end_x, left_edge_y, left_edge_z),        # 3: left bottom
-        inkscape_to_blender(ridge_end_x, ridge_start_y, ridge_z),           # 4: ridge top
-        inkscape_to_blender(ridge_end_x, right_edge_y, right_edge_z),      # 5: right bottom
+        # Back triangle (at X = ridge_end_x) - BOTTOM
+        inkscape_to_blender(ridge_end_x, left_edge_y, left_edge_z),        # 3: left eave bottom
+        inkscape_to_blender(ridge_end_x, ridge_start_y, absolute_ridge_z),           # 4: ridge bottom
+        inkscape_to_blender(ridge_end_x, right_edge_y, right_edge_z),      # 5: right eave bottom
     ]
 
-    # Define faces
+    # Top surface vertices (indices 6-11) - offset upward by thickness
+    vertices.extend([
+        # Front triangle (at X = ridge_start_x) - TOP
+        inkscape_to_blender(ridge_start_x, left_edge_y, left_edge_z + thickness),      # 6: left eave top
+        inkscape_to_blender(ridge_start_x, ridge_start_y, absolute_ridge_z + thickness),         # 7: ridge top
+        inkscape_to_blender(ridge_start_x, right_edge_y, right_edge_z + thickness),    # 8: right eave top
+
+        # Back triangle (at X = ridge_end_x) - TOP
+        inkscape_to_blender(ridge_end_x, left_edge_y, left_edge_z + thickness),        # 9: left eave top
+        inkscape_to_blender(ridge_end_x, ridge_start_y, absolute_ridge_z + thickness),           # 10: ridge top
+        inkscape_to_blender(ridge_end_x, right_edge_y, right_edge_z + thickness),      # 11: right eave top
+    ])
+
+    # Define faces for the thick roof
+    # Note: 0-5 are bottom vertices, 6-11 are top vertices
     faces = [
-        # Left slope
-        [0, 1, 4, 3],
-        # Right slope
-        [1, 2, 5, 4],
-        # Front gable end
-        [0, 1, 2],
-        # Back gable end
-        [3, 4, 5],
-        # Bottom (optional, for closed mesh)
-        [0, 3, 5, 2],
+        # Top surfaces (now using indices 6-11)
+        [6, 7, 10, 9],     # Left slope top
+        [7, 8, 11, 10],    # Right slope top
+
+        # Bottom surfaces (now using indices 0-5, reversed winding for correct normals)
+        [0, 3, 4, 1],      # Left slope bottom
+        [1, 4, 5, 2],      # Right slope bottom
+
+        # Edge strips connecting top and bottom (close the thickness gaps)
+        [0, 6, 9, 3],      # Left eave edge
+        [2, 5, 11, 8],     # Right eave edge
+        [1, 4, 10, 7],     # Ridge edge
+
+        # Front gable thickness edges (close the exposed thickness at front)
+        [0, 1, 7, 6],      # Front left edge (left eave to ridge)
+        [1, 2, 8, 7],      # Front right edge (ridge to right eave)
+
+        # Back gable thickness edges (close the exposed thickness at back)
+        [3, 9, 10, 4],     # Back left edge (left eave to ridge)
+        [4, 10, 11, 5],    # Back right edge (ridge to right eave)
     ]
 
     # Create mesh
@@ -1153,9 +1196,11 @@ def create_gable_roof(ridge_start_x: float, ridge_start_y: float, ridge_z: float
     # Add to collection
     add_to_collection(roof_obj, 'Roof')
 
-    print(f"✓ Created gable roof: ridge_length={ridge_length}, "
+    floor_info = f" on floor {floor_number} (z_offset={floor_z_offset:.1f})" if floor_number is not None else ""
+    print(f"✓ Created gable roof{floor_info}: ridge_length={ridge_length}, "
           f"left={left_slope_angle}°/{left_slope_length}, "
-          f"right={right_slope_angle}°/{right_slope_length}")
+          f"right={right_slope_angle}°/{right_slope_length}, "
+          f"thickness={thickness}, ridge_z={absolute_ridge_z:.1f}")
 
     return roof_obj
 
