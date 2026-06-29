@@ -238,6 +238,11 @@
             height: auto;
             border: 1px solid #ddd;
             border-radius: 5px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        .svg-item svg:hover {
+            transform: scale(1.02);
         }
         .perspective-card {
             background: white;
@@ -410,6 +415,36 @@
             color: #666;
             padding: 0.25rem;
             font-weight: 600;
+        }
+
+        /* Print styles for PDF export */
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+
+            header, .tabs, .zoom-controls {
+                display: none !important;
+            }
+
+            #svg-container {
+                position: static !important;
+                display: block !important;
+                width: 100% !important;
+                height: 100vh !important;
+                page-break-after: always;
+            }
+
+            #svg-container svg {
+                width: 100% !important;
+                height: 100% !important;
+                transform: none !important;
+            }
+
+            .view-container {
+                display: none !important;
+            }
         }
     </style>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
@@ -621,39 +656,22 @@
                 <div class="svg-grid" id="elevations-grid">
                     <!-- Elevations will be loaded here dynamically -->
                 </div>
+
+                <h2 class="section-header" style="margin-top: 2.5rem;">Roof Sections</h2>
+                <div style="text-align: center; padding: 1rem;">
+                    <img src="roof_plan.svg" alt="Roof cross sections with dimensions" style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 4px; background: white;">
+                </div>
             </div>
         </div>
         <!-- End Elevations View -->
 
         <!-- All Floor Plans Combined View -->
         <div id="view-all-plans" class="view-container">
-            <div class="svg-views-container">
-                <div class="svg-full-width" id="all-plans-container">
-                    <div class="zoom-controls">
-                        <button class="zoom-btn" onclick="zoomIn('all-plans-container')" title="Zoom In">+</button>
-                        <div class="zoom-info" id="all-plans-zoom">100%</div>
-                        <button class="zoom-btn" onclick="zoomOut('all-plans-container')" title="Zoom Out">−</button>
-                        <button class="zoom-btn" onclick="resetZoom('all-plans-container')" title="Reset">⟲</button>
-                    </div>
-                    <p style="color: #666; text-align: center; padding: 2rem;">Loading combined floor plans...</p>
-                </div>
-            </div>
         </div>
         <!-- End All Floor Plans View -->
 
         <!-- All Elevations Combined View -->
         <div id="view-all-elevations" class="view-container">
-            <div class="svg-views-container">
-                <div class="svg-full-width" id="all-elevations-container">
-                    <div class="zoom-controls">
-                        <button class="zoom-btn" onclick="zoomIn('all-elevations-container')" title="Zoom In">+</button>
-                        <div class="zoom-info" id="all-elevations-zoom">100%</div>
-                        <button class="zoom-btn" onclick="zoomOut('all-elevations-container')" title="Zoom Out">−</button>
-                        <button class="zoom-btn" onclick="resetZoom('all-elevations-container')" title="Reset">⟲</button>
-                    </div>
-                    <p style="color: #666; text-align: center; padding: 2rem;">Loading combined elevations...</p>
-                </div>
-            </div>
         </div>
         <!-- End All Elevations View -->
 
@@ -664,36 +682,47 @@
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 2rem; max-width: 1400px; margin: 0 auto;">
                     <div class="perspective-card">
                         <h3>Front Left Corner (Northwest)</h3>
-                        <img src="perspective_front_left_corner.png" alt="Front Left Corner View" onclick="openLightbox(0)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
+                        <img src="realistic_perspectives/front_left_corner.png" alt="Front Left Corner View" onclick="openLightbox(0)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
                         <h3>Front Right Corner (Northeast)</h3>
-                        <img src="perspective_front_right_corner.png" alt="Front Right Corner View" onclick="openLightbox(1)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
+                        <img src="realistic_perspectives/front_right_corner.png" alt="Front Right Corner View" onclick="openLightbox(1)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
                         <h3>Back Left Corner (Southwest)</h3>
-                        <img src="perspective_back_left_corner.png" alt="Back Left Corner View" onclick="openLightbox(2)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
+                        <img src="realistic_perspectives/back_left_corner.png" alt="Back Left Corner View" onclick="openLightbox(2)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
                         <h3>Back Right Corner (Southeast)</h3>
-                        <img src="perspective_back_right_corner.png" alt="Back Right Corner View" onclick="openLightbox(3)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
+                        <img src="realistic_perspectives/back_right_corner.png" alt="Back Right Corner View" onclick="openLightbox(3)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
                         <h3>Aerial View</h3>
-                        <img src="perspective_aerial.png" alt="Aerial View" onclick="openLightbox(4)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
+                        <img src="realistic_perspectives/aerial.png" alt="Aerial View" onclick="openLightbox(4)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
                         <h3>Eye Level Back View (South)</h3>
-                        <img src="perspective_eye_level_back.png" alt="Eye Level Back View" onclick="openLightbox(5)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
+                        <img src="realistic_perspectives/eye_level_back.png" alt="Eye Level Back View" onclick="openLightbox(5)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
                         <h3>Eye Level Front View (North)</h3>
-                        <img src="perspective_eye_level_front.png" alt="Eye Level Front View" onclick="openLightbox(6)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
+                        <img src="realistic_perspectives/eye_level_front.png" alt="Eye Level Front View" onclick="openLightbox(6)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                 </div>
             </div>
         </div>
         <!-- End Perspective Views -->
+        <!-- Shared SVG Container with zoom controls -->
+        <div class="svg-full-width" id="svg-container" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="zoomIn()" title="Zoom In">+</button>
+                <div class="zoom-info" id="svg-zoom">100%</div>
+                <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">−</button>
+                <button class="zoom-btn" onclick="resetZoom()" title="Reset">⟲</button>
+                <button class="zoom-btn" onclick="exportToPDF()" title="Export to PDF">📄</button>
+            </div>
+            <p style="color: #666; text-align: center; padding: 2rem;">Loading...</p>
+        </div>
     </div>
 
     <!-- Lightbox Modal -->
@@ -921,15 +950,21 @@
                 container.classList.remove('active');
             });
 
+            const svgContainer = document.getElementById('svg-container');
+
             if (view === '3d') {
                 document.getElementById('view-3d').classList.add('active');
+                svgContainer.style.display = 'none';
             } else if (view === '3d-exploded') {
                 document.getElementById('view-3d-exploded').classList.add('active');
+                svgContainer.style.display = 'none';
             } else if (view === 'plans') {
                 document.getElementById('view-plans').classList.add('active');
+                svgContainer.style.display = 'none';
                 loadFloorPlans();
             } else if (view === 'elevations') {
                 document.getElementById('view-elevations').classList.add('active');
+                svgContainer.style.display = 'none';
                 loadElevations();
             } else if (view === 'all-plans') {
                 document.getElementById('view-all-plans').classList.add('active');
@@ -939,6 +974,7 @@
                 loadCombinedElevations();
             } else if (view === 'perspectives') {
                 document.getElementById('view-perspectives').classList.add('active');
+                svgContainer.style.display = 'none';
             }
         }
 
@@ -962,7 +998,9 @@
                 const filename = `floor_plan_${floor.num}_${floor.name}.svg`;
 
                 try {
-                    const response = await fetch(filename);
+                    // Add cache-busting parameter to always fetch fresh SVGs
+                    const cacheBuster = `?t=${Date.now()}`;
+                    const response = await fetch(filename + cacheBuster);
                     if (response.ok) {
                         const svgContent = await response.text();
 
@@ -978,6 +1016,15 @@
                             loadedAny = true;
                         }
                         grid.appendChild(item);
+
+                        // Add click handler to SVG
+                        const svg = item.querySelector('svg');
+                        if (svg) {
+                            svg.addEventListener('click', () => {
+                                console.log('Opening lightbox for', filename);
+                                openSvgLightbox(filename, floor.displayName);
+                            });
+                        }
                     }
                 } catch (error) {
                     console.log(`Floor plan ${filename} not found:`, error);
@@ -1016,7 +1063,9 @@
                 const filename = `elevation_${elevation.name}.svg`;
 
                 try {
-                    const response = await fetch(filename);
+                    // Add cache-busting parameter to always fetch fresh SVGs
+                    const cacheBuster = `?t=${Date.now()}`;
+                    const response = await fetch(filename + cacheBuster);
                     if (response.ok) {
                         const svgContent = await response.text();
 
@@ -1032,6 +1081,14 @@
                             loadedAny = true;
                         }
                         grid.appendChild(item);
+
+                        // Add click handler to SVG
+                        const svg = item.querySelector('svg');
+                        if (svg) {
+                            svg.addEventListener('click', () => {
+                                openSvgLightbox(filename, elevation.displayName);
+                            });
+                        }
                     }
                 } catch (error) {
                     console.log(`Elevation ${filename} not found:`, error);
@@ -1051,47 +1108,20 @@
         }
 
         // Zoom and Pan state for combined views
-        const viewStates = {
-            'all-plans-container': { scale: 1, translateX: 0, translateY: 0, isDragging: false, startX: 0, startY: 0 },
-            'all-elevations-container': { scale: 1, translateX: 0, translateY: 0, isDragging: false, startX: 0, startY: 0 }
-        };
+        // Single state for the shared SVG container
+        const svgState = { scale: 1, translateX: 0, translateY: 0, isDragging: false, startX: 0, startY: 0 };
 
         // Load combined floor plans
         let combinedFloorPlansLoaded = false;
         async function loadCombinedFloorPlans() {
             if (combinedFloorPlansLoaded) return;
 
-            const container = document.getElementById('all-plans-container');
+            // Show svg-container
+            const svgContainer = document.getElementById('svg-container');
+            svgContainer.style.display = 'block';
 
-            try {
-                const response = await fetch('floor_plans_combined.svg');
-                if (response.ok) {
-                    const svgContent = await response.text();
-                    // Keep zoom controls and add SVG
-                    const controls = container.querySelector('.zoom-controls');
-                    container.innerHTML = svgContent;
-                    if (controls) {
-                        container.insertBefore(controls, container.firstChild);
-                    }
-                    setupPanZoom('all-plans-container');
-                    combinedFloorPlansLoaded = true;
-                } else {
-                    container.innerHTML = `
-                        <div style="padding: 3rem; color: #666;">
-                            <h3>Combined floor plans not available</h3>
-                            <p>The combined floor plans view will appear here after generation.</p>
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.log('Combined floor plans not found:', error);
-                container.innerHTML = `
-                    <div style="padding: 3rem; color: #666;">
-                        <h3>Error loading combined floor plans</h3>
-                        <p>${error.message}</p>
-                    </div>
-                `;
-            }
+            await setupPanZoom('floor_plans_combined.svg');
+            combinedFloorPlansLoaded = true;
         }
 
         // Load combined elevations
@@ -1099,55 +1129,60 @@
         async function loadCombinedElevations() {
             if (combinedElevationsLoaded) return;
 
-            const container = document.getElementById('all-elevations-container');
+            // Show svg-container
+            const svgContainer = document.getElementById('svg-container');
+            svgContainer.style.display = 'block';
 
-            try {
-                const response = await fetch('elevations_combined.svg');
-                if (response.ok) {
-                    const svgContent = await response.text();
-                    // Keep zoom controls and add SVG
-                    const controls = container.querySelector('.zoom-controls');
-                    container.innerHTML = svgContent;
-                    if (controls) {
-                        container.insertBefore(controls, container.firstChild);
-                    }
-                    setupPanZoom('all-elevations-container');
-                    combinedElevationsLoaded = true;
-                } else {
-                    container.innerHTML = `
-                        <div style="padding: 3rem; color: #666;">
-                            <h3>Combined elevations not available</h3>
-                            <p>The combined elevations view will appear here after generation.</p>
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.log('Combined elevations not found:', error);
-                container.innerHTML = `
-                    <div style="padding: 3rem; color: #666;">
-                        <h3>Error loading combined elevations</h3>
-                        <p>${error.message}</p>
-                    </div>
-                `;
-            }
+            await setupPanZoom('elevations_combined.svg');
+            combinedElevationsLoaded = true;
         }
 
         // Fit SVG to view and center it
-        function fitToView(containerId) {
-            const container = document.getElementById(containerId);
+        function fitToView() {
+            const container = document.getElementById('svg-container');
             const svg = container.querySelector('svg');
-            if (!svg) return;
+            if (!svg) {
+                console.log('fitToView: No SVG found');
+                return;
+            }
 
-            const state = viewStates[containerId];
+            // Get SVG dimensions - try multiple methods
+            let svgWidth = 0;
+            let svgHeight = 0;
 
-            // Get SVG dimensions
-            const svgWidth = svg.viewBox.baseVal.width || svg.width.baseVal.value;
-            const svgHeight = svg.viewBox.baseVal.height || svg.height.baseVal.value;
+            // Method 1: Try viewBox
+            if (svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width > 0) {
+                svgWidth = svg.viewBox.baseVal.width;
+                svgHeight = svg.viewBox.baseVal.height;
+                console.log('fitToView: Using viewBox', svgWidth, svgHeight);
+            }
+            // Method 2: Try width/height attributes
+            else if (svg.width && svg.width.baseVal && svg.width.baseVal.value > 0) {
+                svgWidth = svg.width.baseVal.value;
+                svgHeight = svg.height.baseVal.value;
+                console.log('fitToView: Using width/height attributes', svgWidth, svgHeight);
+            }
+            // Method 3: Try getBoundingClientRect
+            else {
+                const bbox = svg.getBoundingClientRect();
+                svgWidth = bbox.width;
+                svgHeight = bbox.height;
+                console.log('fitToView: Using getBoundingClientRect', svgWidth, svgHeight);
+            }
+
+            // Fallback if dimensions are still invalid
+            if (svgWidth <= 0 || svgHeight <= 0) {
+                console.warn('fitToView: Invalid SVG dimensions, using defaults');
+                svgWidth = 800;
+                svgHeight = 600;
+            }
 
             // Get container dimensions
             const containerRect = container.getBoundingClientRect();
             const containerWidth = containerRect.width;
             const containerHeight = containerRect.height;
+
+            console.log('fitToView: Container dimensions', containerWidth, containerHeight);
 
             // Calculate scale to fit (with some padding)
             const padding = 40; // pixels of padding
@@ -1155,30 +1190,71 @@
             const scaleY = (containerHeight - padding * 2) / svgHeight;
             const scale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond 100%
 
+            console.log('fitToView: Calculated scale', scale);
+
             // Calculate translation to center
             const scaledWidth = svgWidth * scale;
             const scaledHeight = svgHeight * scale;
             const translateX = (containerWidth - scaledWidth) / 2;
             const translateY = (containerHeight - scaledHeight) / 2;
 
-            // Update state
-            state.scale = scale;
-            state.translateX = translateX;
-            state.translateY = translateY;
+            console.log('fitToView: Translation', translateX, translateY);
 
-            updateTransform(containerId);
+            // Update state
+            svgState.scale = scale;
+            svgState.translateX = translateX;
+            svgState.translateY = translateY;
+
+            updateTransform();
         }
 
-        // Setup pan and zoom for a container
-        function setupPanZoom(containerId) {
-            const container = document.getElementById(containerId);
+        // Setup pan and zoom - loads SVG via fetch if filename provided
+        async function setupPanZoom(filename = null) {
+            console.log('setupPanZoom: Setting up with file', filename);
+            const container = document.getElementById('svg-container');
+
+            // If filename provided, fetch and load the SVG first
+            if (filename) {
+                try {
+                    // Add cache-busting parameter to always fetch fresh SVGs
+                    const cacheBuster = `?t=${Date.now()}`;
+                    const response = await fetch(filename + cacheBuster);
+                    if (response.ok) {
+                        const svgContent = await response.text();
+                        // Keep zoom controls and add SVG
+                        const controls = container.querySelector('.zoom-controls');
+                        container.innerHTML = svgContent;
+                        if (controls) {
+                            container.insertBefore(controls, container.firstChild);
+                        }
+                    } else {
+                        console.error(`Failed to fetch ${filename}`);
+                        return;
+                    }
+                } catch (error) {
+                    console.error(`Error loading SVG ${filename}:`, error);
+                    return;
+                }
+            }
+
             const svg = container.querySelector('svg');
-            if (!svg) return;
+            if (!svg) {
+                console.log('setupPanZoom: No SVG found');
+                return;
+            }
 
-            const state = viewStates[containerId];
+            console.log('setupPanZoom: Found SVG, setting up controls');
 
-            // Fit and center on initial load
-            fitToView(containerId);
+            // Reset state to defaults first
+            svgState.scale = 1;
+            svgState.translateX = 0;
+            svgState.translateY = 0;
+            svgState.isDragging = false;
+
+            console.log('setupPanZoom: Initial state', svgState);
+
+            // Fit the SVG to view by default
+            fitToView();
 
             // Mouse wheel zoom
             container.addEventListener('wheel', (e) => {
@@ -1189,41 +1265,41 @@
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
 
-                const newScale = state.scale * delta;
+                const newScale = svgState.scale * delta;
                 if (newScale < 0.1 || newScale > 10) return;
 
                 // Zoom towards mouse position
-                state.translateX = x - (x - state.translateX) * delta;
-                state.translateY = y - (y - state.translateY) * delta;
-                state.scale = newScale;
+                svgState.translateX = x - (x - svgState.translateX) * delta;
+                svgState.translateY = y - (y - svgState.translateY) * delta;
+                svgState.scale = newScale;
 
-                updateTransform(containerId);
+                updateTransform();
             });
 
             // Pan with mouse drag
             container.addEventListener('mousedown', (e) => {
                 if (e.target.closest('.zoom-controls')) return;
                 e.preventDefault(); // Prevent text selection during drag
-                state.isDragging = true;
-                state.startX = e.clientX - state.translateX;
-                state.startY = e.clientY - state.translateY;
+                svgState.isDragging = true;
+                svgState.startX = e.clientX - svgState.translateX;
+                svgState.startY = e.clientY - svgState.translateY;
                 container.classList.add('grabbing');
             });
 
             container.addEventListener('mousemove', (e) => {
-                if (!state.isDragging) return;
-                state.translateX = e.clientX - state.startX;
-                state.translateY = e.clientY - state.startY;
-                updateTransform(containerId);
+                if (!svgState.isDragging) return;
+                svgState.translateX = e.clientX - svgState.startX;
+                svgState.translateY = e.clientY - svgState.startY;
+                updateTransform();
             });
 
             container.addEventListener('mouseup', () => {
-                state.isDragging = false;
+                svgState.isDragging = false;
                 container.classList.remove('grabbing');
             });
 
             container.addEventListener('mouseleave', () => {
-                state.isDragging = false;
+                svgState.isDragging = false;
                 container.classList.remove('grabbing');
             });
 
@@ -1269,38 +1345,66 @@
             });
         }
 
-        function updateTransform(containerId) {
-            const container = document.getElementById(containerId);
+        function updateTransform() {
+            const container = document.getElementById('svg-container');
             const svg = container.querySelector('svg');
-            if (!svg) return;
+            if (!svg) {
+                console.log('updateTransform: No SVG found');
+                return;
+            }
 
-            const state = viewStates[containerId];
-            svg.style.transform = `translate(${state.translateX}px, ${state.translateY}px) scale(${state.scale})`;
+            const transformValue = `translate(${svgState.translateX}px, ${svgState.translateY}px) scale(${svgState.scale})`;
+            svg.style.transform = transformValue;
+
+            console.log('updateTransform: Applied transform:', transformValue);
+            console.log('updateTransform: SVG visibility:', window.getComputedStyle(svg).visibility);
+            console.log('updateTransform: SVG display:', window.getComputedStyle(svg).display);
 
             // Update zoom percentage display
-            const zoomInfo = document.getElementById(containerId.replace('-container', '-zoom'));
+            const zoomInfo = document.getElementById('svg-zoom');
             if (zoomInfo) {
-                zoomInfo.textContent = Math.round(state.scale * 100) + '%';
+                zoomInfo.textContent = Math.round(svgState.scale * 100) + '%';
             }
         }
 
-        function zoomIn(containerId) {
-            const state = viewStates[containerId];
-            if (state.scale >= 10) return;
-            state.scale *= 1.2;
-            updateTransform(containerId);
+        function zoomIn() {
+            if (svgState.scale >= 10) return;
+            svgState.scale *= 1.2;
+            updateTransform();
         }
 
-        function zoomOut(containerId) {
-            const state = viewStates[containerId];
-            if (state.scale <= 0.1) return;
-            state.scale *= 0.8;
-            updateTransform(containerId);
+        function zoomOut() {
+            if (svgState.scale <= 0.1) return;
+            svgState.scale *= 0.8;
+            updateTransform();
         }
 
-        function resetZoom(containerId) {
+        function resetZoom() {
             // Reset to fit and center the view
-            fitToView(containerId);
+            fitToView();
+        }
+
+        function exportToPDF() {
+            // Temporarily reset zoom and center the SVG for printing
+            const currentScale = svgState.scale;
+            const currentX = svgState.translateX;
+            const currentY = svgState.translateY;
+
+            // Fit to view for printing
+            fitToView();
+
+            // Trigger print dialog (user can save as PDF)
+            setTimeout(() => {
+                window.print();
+
+                // Restore previous zoom state after print dialog
+                setTimeout(() => {
+                    svgState.scale = currentScale;
+                    svgState.translateX = currentX;
+                    svgState.translateY = currentY;
+                    updateTransform();
+                }, 100);
+            }, 100);
         }
 
         // Lightbox functions for perspective images
@@ -1355,9 +1459,23 @@
             document.body.style.overflow = 'auto';
         }
 
-        // Keyboard navigation for lightbox
+        // Open individual SVG - show container and load the SVG
+        async function openSvgLightbox(filename, caption) {
+            // Show svg-container
+            const svgContainer = document.getElementById('svg-container');
+            svgContainer.style.display = 'block';
+
+            // Switch to all-plans view
+            switchView('view-all-plans');
+
+            // Load the individual SVG using setupPanZoom
+            await setupPanZoom(filename);
+        }
+
+        // Keyboard navigation for lightboxes
         document.addEventListener('keydown', function(e) {
             const lightbox = document.getElementById('lightbox');
+
             if (lightbox.classList.contains('active')) {
                 if (e.key === 'Escape') {
                     closeLightbox();

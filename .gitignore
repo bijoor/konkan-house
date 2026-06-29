@@ -26,3 +26,10 @@ docs/*.bin
 # Debug files
 *objects_debug*.json
 *.log
+
+# Local-only resources (textures, BlenderKit plugin install, big render zips)
+textures/
+*.zip
+sample-3d-view.png
+docs/realistic_perspectives/*_test.png
+docs/realistic_perspectives/test_*.png

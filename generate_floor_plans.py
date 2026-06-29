@@ -4,7 +4,7 @@ Standalone script to generate floor plans
 Does not require Blender/bpy
 """
 import sys
-sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender')
+sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew')
 
 # Import only non-Blender modules
 from config import GLOBAL_CONFIG

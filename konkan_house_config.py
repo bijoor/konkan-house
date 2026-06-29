@@ -11,7 +11,7 @@ import importlib
 
 # Add the directory containing this script to the path
 # This allows importing konkan_house_lib.py from the same folder
-sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender')
+sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender-ew')
 
 # Force reload all modules to ensure we're using the latest code
 # Order matters: reload dependencies first
@@ -130,6 +130,8 @@ def build_floor(floor_config: dict):
                     floor_number=floor_num,
                     height=obj.get('height'),
                     size=obj.get('size'),
+                    width=obj.get('width'),
+                    length=obj.get('length'),
                     name=obj.get('name'),
                     material_name=obj.get('material', 'floor')
                 )
@@ -182,7 +184,26 @@ def build_floor(floor_config: dict):
                     right_slope_angle=obj['right_slope_angle'],
                     right_slope_length=obj['right_slope_length'],
                     material_name=obj.get('material', 'roof'),
-                    floor_number=floor_num  # Pass floor number for Z offset calculation
+                    floor_number=floor_num,
+                    ridge_axis=obj.get('ridge_axis', 'x'),
+                    explosion_offset=obj.get('explosion_offset', 0.0),
+                )
+
+            elif obj_type == 'hip_roof':
+                create_hip_roof(
+                    eave_x_west=obj['eave_x_west'],
+                    eave_x_east=obj['eave_x_east'],
+                    eave_y_north=obj['eave_y_north'],
+                    eave_y_south=obj['eave_y_south'],
+                    eave_z=obj['eave_z'],
+                    slope_angle=obj.get('slope_angle'),
+                    slope_angle_ns=obj.get('slope_angle_ns'),
+                    slope_angle_ew=obj.get('slope_angle_ew'),
+                    ridge_length=obj.get('ridge_length'),
+                    ridge_axis=obj.get('ridge_axis', 'y'),
+                    material_name=obj.get('material', 'roof'),
+                    floor_number=floor_num,
+                    explosion_offset=obj.get('explosion_offset', 0.0),
                 )
 
             else:
@@ -272,6 +293,19 @@ def build_house(use_explosion=False):
             for obj in floor_config['objects']:
                 if obj.get('type') == 'gable_roof':
                     max_z = max(max_z, obj.get('ridge_z', max_z))
+                    roof_found = True
+                elif obj.get('type') == 'hip_roof':
+                    import math
+                    span_x = obj['eave_x_east'] - obj['eave_x_west']
+                    span_y = obj['eave_y_south'] - obj['eave_y_north']
+                    uniform = obj.get('slope_angle')
+                    ang_ew = obj.get('slope_angle_ew', uniform)
+                    ang_ns = obj.get('slope_angle_ns', uniform)
+                    if obj.get('ridge_axis', 'y') == 'y':
+                        h = (span_x / 2.0) * math.tan(math.radians(ang_ew))
+                    else:
+                        h = (span_y / 2.0) * math.tan(math.radians(ang_ns))
+                    max_z = max(max_z, obj['eave_z'] + h)
                     roof_found = True
 
     bounds = {

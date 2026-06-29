@@ -48,6 +48,7 @@ from blender_3d import (
     create_window,
     apply_openings_to_walls,
     create_gable_roof,
+    create_hip_roof,
 
     # Scene management
     clear_scene,
@@ -84,10 +85,14 @@ from svg_2d import (
     generate_elevation_view,
     generate_all_elevations,
     generate_all_floor_plans,
+    generate_pillar_elevation_view,
+    generate_pillar_section_view,
+    generate_all_pillar_elevations,
 
     # Combined view generation
     generate_combined_floor_plans,
     generate_combined_elevations,
+    generate_roof_sections_svg,
 
     # Web viewer setup
     setup_web_viewer,
@@ -119,6 +124,7 @@ __all__ = [
     'create_window',
     'apply_openings_to_walls',
     'create_gable_roof',
+    'create_hip_roof',
     'clear_scene',
     'setup_camera_and_lighting',
     'configure_render',
@@ -146,7 +152,11 @@ __all__ = [
     'generate_elevation_view',
     'generate_all_elevations',
     'generate_all_floor_plans',
+    'generate_pillar_elevation_view',
+    'generate_pillar_section_view',
+    'generate_all_pillar_elevations',
     'generate_combined_floor_plans',
     'generate_combined_elevations',
+    'generate_roof_sections_svg',
     'setup_web_viewer',
 ]

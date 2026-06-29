@@ -161,25 +161,37 @@ def svg_draw_floor_slab(x: float, y: float, width: float, length: float) -> str:
     return f'<rect x="{x}" y="{y}" width="{width}" height="{length}" fill="#D3D3D3" stroke="#999" stroke-width="1" opacity="0.6"/>\n'
 
 
-def svg_draw_pillar(x: float, y: float, size: float = None) -> str:
+def svg_draw_pillar(x: float, y: float, size: float = None, width: float = None, length: float = None) -> str:
     """
     Generate SVG for a pillar (top view).
 
     Args:
         x, y: Center position of pillar
-        size: Pillar size (width/height), uses default if None
+        size: Pillar size for square pillars (deprecated, use width/length)
+        width: Pillar width in X direction
+        length: Pillar length in Y direction
 
     Returns:
         SVG string
+
+    Notes:
+        For backward compatibility:
+        - If width/length not specified, uses size parameter
+        - If size not specified, uses wall_thickness
     """
-    if size is None:
-        size = GLOBAL_CONFIG.get('wall_thickness', 8)  # Default: same as wall thickness
+    default_size = GLOBAL_CONFIG.get('wall_thickness', 8)
 
-    # Draw pillar as a filled square centered at (x, y)
-    pillar_x = x - size / 2
-    pillar_y = y - size / 2
+    # Determine dimensions with backward compatibility
+    if width is None:
+        width = size if size is not None else default_size
+    if length is None:
+        length = size if size is not None else default_size
 
-    return f'<rect x="{pillar_x}" y="{pillar_y}" width="{size}" height="{size}" fill="#000" stroke="#000" stroke-width="0.5"/>\n'
+    # Draw pillar as a filled rectangle centered at (x, y)
+    pillar_x = x - width / 2
+    pillar_y = y - length / 2
+
+    return f'<rect x="{pillar_x}" y="{pillar_y}" width="{width}" height="{length}" fill="#000" stroke="#000" stroke-width="0.5"/>\n'
 
 
 def svg_draw_beam(x: float, y: float, width: float, length: float) -> str:
@@ -979,7 +991,9 @@ def generate_floor_plan_svg(floor_config: dict, output_path: str = None,
                 pillars_to_draw.append({
                     'x': obj['x'],
                     'y': obj['y'],
-                    'size': obj.get('size')
+                    'size': obj.get('size'),
+                    'width': obj.get('width'),
+                    'length': obj.get('length')
                 })
 
     # Draw doors and windows
@@ -1381,7 +1395,7 @@ def generate_floor_plan_svg(floor_config: dict, output_path: str = None,
 
     # Draw all pillars last so they appear on top
     for pillar in pillars_to_draw:
-        svg += svg_draw_pillar(pillar['x'], pillar['y'], pillar['size'])
+        svg += svg_draw_pillar(pillar['x'], pillar['y'], pillar['size'], pillar['width'], pillar['length'])
 
     # Add title
     svg += f'''</g>
@@ -1447,6 +1461,18 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                 if obj.get('type') == 'gable_roof':
                     ridge_z = obj.get('ridge_z', 0)
                     total_height = max(total_height, ridge_z)
+                elif obj.get('type') == 'hip_roof':
+                    import math
+                    span_x = obj['eave_x_east'] - obj['eave_x_west']
+                    span_y = obj['eave_y_south'] - obj['eave_y_north']
+                    uniform = obj.get('slope_angle')
+                    ang_ew = obj.get('slope_angle_ew', uniform)
+                    ang_ns = obj.get('slope_angle_ns', uniform)
+                    if obj.get('ridge_axis', 'y') == 'y':
+                        h = (span_x / 2.0) * math.tan(math.radians(ang_ew))
+                    else:
+                        h = (span_y / 2.0) * math.tan(math.radians(ang_ns))
+                    total_height = max(total_height, obj['eave_z'] + h)
 
     # SVG dimensions - increased margins for dimensions
     dim_config = GLOBAL_CONFIG.get('dimensions', {})
@@ -1981,29 +2007,39 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                     })
 
             elif obj_type == 'pillar':
-                pillar_size = obj.get('size', wall_thickness)
+                # Get pillar dimensions with backward compatibility
+                default_size = wall_thickness
+                pillar_width = obj.get('width', obj.get('size', default_size))   # X dimension
+                pillar_length = obj.get('length', obj.get('size', default_size))  # Y dimension
                 pillar_height = obj.get('height', floor_height)
                 pillar_world_x = obj['x']
                 pillar_world_y = obj['y']
 
                 # Calculate depth and position based on view
                 # Pillar coords are CENTER, so we need to use nearest edge for depth
+                # For elevations, we see different cross-sections:
+                # - Front/Back: see pillar width (X dimension)
+                # - Left/Right: see pillar length (Y dimension)
                 if view_type == 'left':
-                    # Left view: looking from west (negative X), nearest edge is at x - size/2
-                    pillar_x = pillar_world_y - pillar_size / 2
-                    depth = -(pillar_world_x - pillar_size / 2)
+                    # Left view: looking from west (negative X), see pillar length (Y dimension)
+                    pillar_visible_width = pillar_length
+                    pillar_x = pillar_world_y - pillar_length / 2
+                    depth = -(pillar_world_x - pillar_width / 2)
                 elif view_type == 'right':
-                    # Right view: looking from east (positive X), nearest edge is at x + size/2
-                    pillar_x = pillar_world_y - pillar_size / 2
-                    depth = pillar_world_x + pillar_size / 2
+                    # Right view: looking from east (positive X), see pillar length (Y dimension)
+                    pillar_visible_width = pillar_length
+                    pillar_x = pillar_world_y - pillar_length / 2
+                    depth = pillar_world_x + pillar_width / 2
                 elif view_type == 'front':
-                    # Front view: looking from north (negative Y), nearest edge is at y - size/2
-                    pillar_x = pillar_world_x - pillar_size / 2
-                    depth = -(pillar_world_y - pillar_size / 2)
+                    # Front view: looking from north (negative Y), see pillar width (X dimension)
+                    pillar_visible_width = pillar_width
+                    pillar_x = pillar_world_x - pillar_width / 2
+                    depth = -(pillar_world_y - pillar_length / 2)
                 elif view_type == 'back':
-                    # Back view: looking from south (positive Y), nearest edge is at y + size/2
-                    pillar_x = pillar_world_x - pillar_size / 2
-                    depth = pillar_world_y + pillar_size / 2
+                    # Back view: looking from south (positive Y), see pillar width (X dimension)
+                    pillar_visible_width = pillar_width
+                    pillar_x = pillar_world_x - pillar_width / 2
+                    depth = pillar_world_y + pillar_length / 2
                 else:
                     continue
 
@@ -2014,7 +2050,7 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                     'depth': depth,
                     'priority': type_priority.get('pillar', 3),
                     'x': pillar_x,
-                    'width': pillar_size,
+                    'width': pillar_visible_width,
                     'height': pillar_height,
                     'z': wall_z,
                     'openings': [],
@@ -2083,6 +2119,7 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                 if obj.get('type') == 'gable_roof':
                     import math
 
+                    ridge_axis = obj.get('ridge_axis', 'x')
                     ridge_z_relative = obj.get('ridge_z', 0)
                     ridge_start_x = obj.get('ridge_start_x', 0)
                     ridge_start_y = obj.get('ridge_start_y', 0)
@@ -2093,66 +2130,163 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                     right_slope_length = obj.get('right_slope_length', 0)
                     roof_thickness_val = GLOBAL_CONFIG.get('roof_thickness', 8)
 
-                    # Ridge Z is relative to the floor's base (current_z), just like in the 3D model
-                    # This is the bottom of this floor's slab
                     ridge_z = current_z + ridge_z_relative
 
-                    # Ridge runs along X axis, from (ridge_start_x, ridge_start_y) to (ridge_start_x + ridge_length, ridge_start_y)
-
-                    # Calculate eave positions
                     left_horizontal = left_slope_length * math.cos(math.radians(left_slope_angle))
                     left_drop = left_slope_length * math.sin(math.radians(left_slope_angle))
                     right_horizontal = right_slope_length * math.cos(math.radians(right_slope_angle))
                     right_drop = right_slope_length * math.sin(math.radians(right_slope_angle))
 
-                    left_eave_y = ridge_start_y - left_horizontal
                     left_eave_z = ridge_z - left_drop
-                    right_eave_y = ridge_start_y + right_horizontal
                     right_eave_z = ridge_z - right_drop
 
-                    ridge_end_x = ridge_start_x + ridge_length
+                    # Pick which views see the triangle (gable end) vs the rectangle (long slope face).
+                    if ridge_axis == 'y':
+                        triangle_views = ('front', 'back')
+                        # Triangle horizontal axis = X; rectangle ridge axis = Y.
+                        tri_ridge_world = ridge_start_x
+                        tri_left_world = ridge_start_x - left_horizontal
+                        tri_right_world = ridge_start_x + right_horizontal
+                        ridge_axis_world_start = ridge_start_y
+                        ridge_axis_world_end = ridge_start_y + ridge_length
+                    else:
+                        triangle_views = ('left', 'right')
+                        tri_ridge_world = ridge_start_y
+                        tri_left_world = ridge_start_y - left_horizontal
+                        tri_right_world = ridge_start_y + right_horizontal
+                        ridge_axis_world_start = ridge_start_x
+                        ridge_axis_world_end = ridge_start_x + ridge_length
 
-                    if view_type in ['left', 'right']:
-                        # Show gable end (triangle) - looking along X, showing Y-Z
-                        # This shows the roof profile with thickness
+                    if view_type in triangle_views:
+                        # Gable end: triangle from left eave up to ridge down to right eave.
                         ridge_svg_y = z_to_y(ridge_z + roof_thickness_val)
                         left_eave_svg_y = z_to_y(left_eave_z)
                         right_eave_svg_y = z_to_y(right_eave_z)
 
-                        ridge_svg_x = world_to_svg_x(ridge_start_y, 0)
-                        left_eave_svg_x = world_to_svg_x(left_eave_y, 0)
-                        right_eave_svg_x = world_to_svg_x(right_eave_y, 0)
+                        ridge_svg_x = world_to_svg_x(tri_ridge_world, 0)
+                        left_eave_svg_x = world_to_svg_x(tri_left_world, 0)
+                        right_eave_svg_x = world_to_svg_x(tri_right_world, 0)
 
-                        # Collect roof SVG (draw last)
                         roof_svg += f'<line x1="{left_eave_svg_x}" y1="{left_eave_svg_y}" x2="{ridge_svg_x}" y2="{ridge_svg_y}" stroke="#8B4513" stroke-width="{roof_thickness_val}"/>\n'
                         roof_svg += f'<line x1="{ridge_svg_x}" y1="{ridge_svg_y}" x2="{right_eave_svg_x}" y2="{right_eave_svg_y}" stroke="#8B4513" stroke-width="{roof_thickness_val}"/>\n'
                     else:
-                        # Front/back view - show roof as rectangle extending down from ridge
-                        # Front view shows the south-facing slope, back view shows the north-facing slope
-
-                        # Determine which slope we're seeing based on view type
-                        if view_type == 'front':
-                            # Front view (looking from north) shows the right (south) slope
-                            slope_drop = right_drop
+                        # Side view (looking parallel to ridge): see one full slope as a rectangle.
+                        # Pick which slope faces the viewer.
+                        if ridge_axis == 'y':
+                            # ridge along Y; left view (looking east from west) sees the west slope = left slope.
+                            slope_drop = left_drop if view_type == 'left' else right_drop
                         else:
-                            # Back view (looking from south) shows the left (north) slope
-                            slope_drop = left_drop
+                            # ridge along X; front view (looking south from north) sees the south slope = right slope.
+                            slope_drop = right_drop if view_type == 'front' else left_drop
 
-                        # Ridge at the top
                         ridge_top_y = z_to_y(ridge_z + roof_thickness_val)
                         ridge_bottom_y = z_to_y(ridge_z)
-
-                        # Roof extends down from ridge by slope_drop
                         roof_bottom_y = z_to_y(ridge_z - slope_drop)
 
-                        ridge_start_svg_x = world_to_svg_x(ridge_start_x, 0)
-                        ridge_end_svg_x = world_to_svg_x(ridge_end_x, 0)
+                        ridge_start_svg_x = world_to_svg_x(ridge_axis_world_start, 0)
+                        ridge_end_svg_x = world_to_svg_x(ridge_axis_world_end, 0)
                         roof_width = abs(ridge_end_svg_x - ridge_start_svg_x)
                         roof_height = roof_bottom_y - ridge_bottom_y
 
-                        # Collect roof SVG (draw last)
                         roof_svg += f'<rect x="{min(ridge_start_svg_x, ridge_end_svg_x)}" y="{ridge_bottom_y}" width="{roof_width}" height="{roof_height}" fill="none" stroke="#8B4513" stroke-width="{roof_thickness_val}"/>\n'
                         roof_svg += f'<line x1="{ridge_start_svg_x}" y1="{ridge_top_y}" x2="{ridge_end_svg_x}" y2="{ridge_top_y}" stroke="#8B4513" stroke-width="{roof_thickness_val}"/>\n'
+
+                if obj.get('type') == 'hip_roof':
+                    import math
+                    ridge_axis_h = obj.get('ridge_axis', 'y')
+                    eave_xw = obj['eave_x_west']
+                    eave_xe = obj['eave_x_east']
+                    eave_yn = obj['eave_y_north']
+                    eave_ys = obj['eave_y_south']
+                    eave_z_rel = obj['eave_z']
+                    slope_uniform = obj.get('slope_angle')
+                    slope_ns = obj.get('slope_angle_ns', slope_uniform)
+                    slope_ew = obj.get('slope_angle_ew', slope_uniform)
+                    roof_thickness_val = GLOBAL_CONFIG.get('roof_thickness', 8)
+
+                    eave_z_abs = current_z + eave_z_rel
+                    span_x_h = eave_xe - eave_xw
+                    span_y_h = eave_ys - eave_yn
+                    tan_ns_h = math.tan(math.radians(slope_ns))
+                    tan_ew_h = math.tan(math.radians(slope_ew))
+
+                    ridge_length_override = obj.get('ridge_length')
+                    if ridge_axis_h == 'y':
+                        # EW = main (sets h); NS = hip end (sets d_hip)
+                        h_h = (span_x_h / 2.0) * tan_ew_h
+                        if ridge_length_override is not None:
+                            d_hip_h = (span_y_h - ridge_length_override) / 2.0
+                        else:
+                            d_hip_h = h_h / tan_ns_h
+                        ridge_x_pos = (eave_xw + eave_xe) / 2.0
+                        ridge_y_s = eave_yn + d_hip_h
+                        ridge_y_e = eave_ys - d_hip_h
+                        if ridge_y_e < ridge_y_s:
+                            mid_y = (eave_yn + eave_ys) / 2.0
+                            ridge_y_s = ridge_y_e = mid_y
+                    else:
+                        # NS = main; EW = hip end
+                        h_h = (span_y_h / 2.0) * tan_ns_h
+                        if ridge_length_override is not None:
+                            d_hip_h = (span_x_h - ridge_length_override) / 2.0
+                        else:
+                            d_hip_h = h_h / tan_ew_h
+                        ridge_y_pos = (eave_yn + eave_ys) / 2.0
+                        ridge_x_s = eave_xw + d_hip_h
+                        ridge_x_e = eave_xe - d_hip_h
+                        if ridge_x_e < ridge_x_s:
+                            mid_x = (eave_xw + eave_xe) / 2.0
+                            ridge_x_s = ridge_x_e = mid_x
+
+                    ridge_z_abs = eave_z_abs + h_h
+                    ridge_top_z = ridge_z_abs + roof_thickness_val
+                    eave_top_z = eave_z_abs + roof_thickness_val
+
+                    # Decide whether THIS view shows the triangular hip-end or
+                    # the trapezoidal main slope.
+                    if ridge_axis_h == 'y':
+                        triangle_views = ('front', 'back')
+                        # Triangle: horizontal world axis = X. Trapezoid: world axis = Y.
+                        tri_eave_low = eave_xw
+                        tri_eave_high = eave_xe
+                        tri_apex = ridge_x_pos
+                        trap_eave_low = eave_yn
+                        trap_eave_high = eave_ys
+                        trap_ridge_low = ridge_y_s
+                        trap_ridge_high = ridge_y_e
+                    else:
+                        triangle_views = ('left', 'right')
+                        tri_eave_low = eave_yn
+                        tri_eave_high = eave_ys
+                        tri_apex = ridge_y_pos
+                        trap_eave_low = eave_xw
+                        trap_eave_high = eave_xe
+                        trap_ridge_low = ridge_x_s
+                        trap_ridge_high = ridge_x_e
+
+                    if view_type in triangle_views:
+                        # Triangle: bottom edge (eave) + two slopes meeting at apex
+                        eave_low_svg_x = world_to_svg_x(tri_eave_low, 0)
+                        eave_high_svg_x = world_to_svg_x(tri_eave_high, 0)
+                        apex_svg_x = world_to_svg_x(tri_apex, 0)
+                        eave_svg_y = z_to_y(eave_z_abs)
+                        apex_svg_y = z_to_y(ridge_top_z)
+                        # Two slope edges
+                        roof_svg += f'<line x1="{eave_low_svg_x}" y1="{eave_svg_y}" x2="{apex_svg_x}" y2="{apex_svg_y}" stroke="#8B4513" stroke-width="{roof_thickness_val}"/>\n'
+                        roof_svg += f'<line x1="{apex_svg_x}" y1="{apex_svg_y}" x2="{eave_high_svg_x}" y2="{eave_svg_y}" stroke="#8B4513" stroke-width="{roof_thickness_val}"/>\n'
+                    else:
+                        # Trapezoid: eave edge at bottom, ridge edge at top, two slanted sides
+                        eave_low_svg_x = world_to_svg_x(trap_eave_low, 0)
+                        eave_high_svg_x = world_to_svg_x(trap_eave_high, 0)
+                        ridge_low_svg_x = world_to_svg_x(trap_ridge_low, 0)
+                        ridge_high_svg_x = world_to_svg_x(trap_ridge_high, 0)
+                        eave_svg_y = z_to_y(eave_z_abs)
+                        ridge_svg_y = z_to_y(ridge_top_z)
+                        # Two slanted sides (eave corner to ridge corner)
+                        roof_svg += f'<line x1="{eave_low_svg_x}" y1="{eave_svg_y}" x2="{ridge_low_svg_x}" y2="{ridge_svg_y}" stroke="#8B4513" stroke-width="{roof_thickness_val}"/>\n'
+                        roof_svg += f'<line x1="{ridge_high_svg_x}" y1="{ridge_svg_y}" x2="{eave_high_svg_x}" y2="{eave_svg_y}" stroke="#8B4513" stroke-width="{roof_thickness_val}"/>\n'
+                        # Ridge line at top
+                        roof_svg += f'<line x1="{ridge_low_svg_x}" y1="{ridge_svg_y}" x2="{ridge_high_svg_x}" y2="{ridge_svg_y}" stroke="#8B4513" stroke-width="{roof_thickness_val}"/>\n'
 
         current_z = wall_top
 
@@ -2582,6 +2716,598 @@ def generate_all_elevations(house_config: dict, output_dir: str = None):
     print("\n" + "="*70)
     print("✓ ELEVATION VIEWS GENERATED")
     print("="*70)
+
+
+# Pillar elevation / cross-section helpers ----------------------------------
+
+def _collect_ground_floor_pillars(house_config: dict) -> list:
+    """Return ground-floor pillar dicts with width/length resolved."""
+    default_size = GLOBAL_CONFIG.get('wall_thickness', 8)
+    floors = house_config.get('floors', [])
+    pillars = []
+    for floor_config in floors:
+        if floor_config.get('floor_number') != 0:
+            continue
+        for obj in floor_config.get('objects', []):
+            if obj.get('type') != 'pillar':
+                continue
+            p = dict(obj)
+            p['width'] = obj.get('width', obj.get('size', default_size))
+            p['length'] = obj.get('length', obj.get('size', default_size))
+            pillars.append(p)
+    return pillars
+
+
+def _cluster_pillars_by_axis(pillars: list, axis: str, tolerance: float) -> list:
+    """
+    Cluster pillars along the given world axis ('x' or 'y').
+
+    Two pillars are in the same cluster if their centre coordinates differ by less
+    than ``tolerance``, with single-link chaining. Clusters are returned ordered
+    along the axis, each annotated with the mean coordinate and the pillar list.
+    """
+    if not pillars:
+        return []
+    sorted_pillars = sorted(pillars, key=lambda p: p[axis])
+    clusters = []
+    current = [sorted_pillars[0]]
+    for p in sorted_pillars[1:]:
+        if abs(p[axis] - current[-1][axis]) <= tolerance:
+            current.append(p)
+        else:
+            clusters.append(current)
+            current = [p]
+    clusters.append(current)
+
+    out = []
+    for group in clusters:
+        coords = [p[axis] for p in group]
+        out.append({
+            'axis': axis,
+            'centre': sum(coords) / len(coords),
+            'min': min(coords),
+            'max': max(coords),
+            'pillars': group,
+        })
+    return out
+
+
+def _project_pillar(pillar: dict, view_type: str,
+                    building_width: float, building_length: float) -> dict:
+    """
+    Project a single pillar dict (with absolute world x/y/width/length) onto the
+    view axis, returning fields used by the renderer.
+    """
+    wx, wy = pillar['x'], pillar['y']
+    dim_x, dim_y = pillar['width'], pillar['length']
+    if view_type == 'front':
+        visible_w = dim_x
+        proj_x = building_width - ((wx - dim_x / 2) + visible_w)
+        depth = -(wy - dim_y / 2)
+    elif view_type == 'back':
+        visible_w = dim_x
+        proj_x = wx - dim_x / 2
+        depth = wy + dim_y / 2
+    elif view_type == 'left':
+        visible_w = dim_y
+        proj_x = wy - dim_y / 2
+        depth = -(wx - dim_x / 2)
+    elif view_type == 'right':
+        visible_w = dim_y
+        proj_x = building_length - ((wy - dim_y / 2) + visible_w)
+        depth = wx + dim_x / 2
+    else:
+        raise ValueError(f"Unknown view_type: {view_type}")
+    return {
+        'proj_x': proj_x,
+        'visible_w': visible_w,
+        'depth': depth,
+    }
+
+
+def _project_slab_band(slab: dict, view_type: str,
+                       building_width: float, building_length: float) -> tuple:
+    sx, sy, sw, sl = slab['x'], slab['y'], slab['width'], slab['length']
+    if view_type == 'front':
+        return building_width - (sx + sw), sw
+    if view_type == 'back':
+        return sx, sw
+    if view_type == 'left':
+        return sy, sl
+    return building_length - (sy + sl), sl
+
+
+def _build_key_plan_svg(all_pillars: list, highlighted_pillars: list,
+                        building_width: float, building_length: float,
+                        view_type: str, inset_origin_x: float, inset_origin_y: float,
+                        inset_size: float = 120.0) -> str:
+    """
+    Build a small key-plan SVG snippet showing the building footprint, all pillars
+    as small markers, the highlighted row/column highlighted, and a cut-arrow
+    indicating the viewing direction. Coordinates are in the outer (SVG) space —
+    the helper handles its own scaling.
+    """
+    # Plot in Inkscape-style world coords (Y down). Fit building into a square inset.
+    pad = 8
+    avail = inset_size - 2 * pad
+    plan_scale = avail / max(building_width, building_length)
+    plan_w = building_width * plan_scale
+    plan_l = building_length * plan_scale
+    origin_x = inset_origin_x + pad + (avail - plan_w) / 2
+    origin_y = inset_origin_y + pad + (avail - plan_l) / 2
+
+    s = '<g class="key-plan">\n'
+    # Inset frame
+    s += (
+        f'<rect x="{inset_origin_x}" y="{inset_origin_y}" width="{inset_size}" '
+        f'height="{inset_size}" fill="#fff" stroke="#000" stroke-width="0.7"/>\n'
+        f'<text x="{inset_origin_x + 4}" y="{inset_origin_y + 10}" font-size="7" '
+        f'font-weight="bold" fill="#000">KEY PLAN</text>\n'
+    )
+    # Building outline
+    s += (
+        f'<rect x="{origin_x}" y="{origin_y}" width="{plan_w}" height="{plan_l}" '
+        'fill="none" stroke="#000" stroke-width="0.6"/>\n'
+    )
+    # All pillars as small filled squares
+    highlighted_ids = {id(p) for p in highlighted_pillars}
+    for p in all_pillars:
+        cx = origin_x + p['x'] * plan_scale
+        cy = origin_y + p['y'] * plan_scale
+        size = max(1.4, p['width'] * plan_scale)
+        is_hi = id(p) in highlighted_ids
+        fill = '#c00' if is_hi else '#888'
+        s += (
+            f'<rect x="{cx - size / 2}" y="{cy - size / 2}" width="{size}" '
+            f'height="{size}" fill="{fill}" stroke="none"/>\n'
+        )
+    # Cut-line through the highlighted row/column with arrows in the viewing
+    # direction (arrows point AWAY from the viewer, i.e. into the page).
+    if highlighted_pillars:
+        if view_type in ('front', 'back'):
+            # Cut runs along X at the cluster's mean Y
+            cy = origin_y + (sum(p['y'] for p in highlighted_pillars)
+                             / len(highlighted_pillars)) * plan_scale
+            x1 = origin_x - 4
+            x2 = origin_x + plan_w + 4
+            s += (
+                f'<line x1="{x1}" y1="{cy}" x2="{x2}" y2="{cy}" '
+                'stroke="#c00" stroke-width="0.8" stroke-dasharray="3,1.5"/>\n'
+            )
+            arrow_dy = 4 if view_type == 'front' else -4  # front: +Y, back: -Y
+            for ax in (x1 + 2, x2 - 2):
+                s += (
+                    f'<polygon points="{ax},{cy + arrow_dy} '
+                    f'{ax - 2},{cy + arrow_dy - (1.5 if arrow_dy > 0 else -1.5)} '
+                    f'{ax + 2},{cy + arrow_dy - (1.5 if arrow_dy > 0 else -1.5)}" '
+                    'fill="#c00"/>\n'
+                )
+        else:
+            # Cut runs along Y at the cluster's mean X
+            cx = origin_x + (sum(p['x'] for p in highlighted_pillars)
+                             / len(highlighted_pillars)) * plan_scale
+            y1 = origin_y - 4
+            y2 = origin_y + plan_l + 4
+            s += (
+                f'<line x1="{cx}" y1="{y1}" x2="{cx}" y2="{y2}" '
+                'stroke="#c00" stroke-width="0.8" stroke-dasharray="3,1.5"/>\n'
+            )
+            arrow_dx = 4 if view_type == 'left' else -4  # left: +X, right: -X
+            for ay in (y1 + 2, y2 - 2):
+                s += (
+                    f'<polygon points="{cx + arrow_dx},{ay} '
+                    f'{cx + arrow_dx - (1.5 if arrow_dx > 0 else -1.5)},{ay - 2} '
+                    f'{cx + arrow_dx - (1.5 if arrow_dx > 0 else -1.5)},{ay + 2}" '
+                    'fill="#c00"/>\n'
+                )
+    # Compass mark: 'N' at the top (front side)
+    s += (
+        f'<text x="{origin_x + plan_w / 2}" y="{origin_y - 1}" font-size="6" '
+        'text-anchor="middle" fill="#000">N</text>\n'
+    )
+    s += '</g>\n'
+    return s
+
+
+def _render_pillar_view(house_config: dict, view_type: str, pillars_to_show: list,
+                        title: str, output_path: str = None,
+                        scale: float = 2.0,
+                        all_pillars: list = None) -> str:
+    """
+    Internal renderer used by both elevation and section drawings. Receives the
+    already-filtered pillar list (in world coordinates) plus the view direction.
+    The full pillar list (``all_pillars``) is used to populate the key plan.
+    """
+    plinth_config = house_config.get('plinth', {})
+    floors = house_config.get('floors', [])
+
+    plinth_height = plinth_config.get('height', GLOBAL_CONFIG['plinth_height'])
+    slab_thickness = GLOBAL_CONFIG.get('floor_slab_thickness', 8)
+    floor_heights = GLOBAL_CONFIG.get('floor_heights', {})
+    floor_0_height = floor_heights.get(0, 100)
+
+    building_width = plinth_config.get('width', 0)
+    building_length = plinth_config.get('length', 0)
+
+    if view_type in ('front', 'back'):
+        view_extent = building_width
+    elif view_type in ('left', 'right'):
+        view_extent = building_length
+    else:
+        raise ValueError(f"Unknown view_type: {view_type}")
+
+    z_plinth_top = plinth_height
+    z_floor0_slab_top = plinth_height + slab_thickness
+    z_pillar_start = z_floor0_slab_top
+    z_floor1_slab_bottom = z_floor0_slab_top + floor_0_height
+    z_floor1_slab_top = z_floor1_slab_bottom + slab_thickness
+
+    # Project filtered pillars
+    rendered = []
+    for p in pillars_to_show:
+        proj = _project_pillar(p, view_type, building_width, building_length)
+        p_height = p.get('height', floor_0_height)
+        rendered.append({
+            'name': p.get('name', ''),
+            'proj_x': proj['proj_x'],
+            'visible_w': proj['visible_w'],
+            'z_bottom': z_pillar_start,
+            'z_top': z_pillar_start + p_height,
+            'depth': proj['depth'],
+        })
+    rendered.sort(key=lambda r: r['depth'])
+
+    # Slabs (floor 0 and floor 1 from world data) — drawn full-width since they
+    # span the building
+    floor0_slabs = []
+    floor1_slabs = []
+    for floor_config in floors:
+        fn = floor_config.get('floor_number')
+        for obj in floor_config.get('objects', []):
+            if obj.get('type') == 'floor_slab':
+                if fn == 0:
+                    floor0_slabs.append(obj)
+                elif fn == 1:
+                    floor1_slabs.append(obj)
+
+    max_pillar_z = max((r['z_top'] for r in rendered),
+                       default=z_floor1_slab_top + 50)
+    total_height = max_pillar_z + 20
+
+    horizontal_margin = 160
+    top_margin = 40
+    title_space = 50
+    bottom_label_space = 110
+    key_plan_size = 120
+    key_plan_margin = 16
+
+    svg_width = view_extent * scale + 2 * horizontal_margin
+    svg_height = total_height * scale + top_margin + title_space + bottom_label_space
+
+    # If the canvas is narrower than what's needed to fit the title + key plan,
+    # widen it so the inset doesn't overlap the title.
+    min_canvas_for_title = 520 + key_plan_size + key_plan_margin
+    if svg_width < min_canvas_for_title:
+        svg_width = min_canvas_for_title
+
+    def z_to_y(z):
+        return total_height - z
+
+    content_top = top_margin + title_space
+
+    svg = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{svg_width}" '
+        f'height="{svg_height}" viewBox="0 0 {svg_width} {svg_height}">\n'
+        f'<title>{title}</title>\n'
+        '<defs>\n'
+        '  <style>text { font-family: Arial, sans-serif; }</style>\n'
+        '  <pattern id="slab_hatch" patternUnits="userSpaceOnUse" '
+        'width="3" height="3" patternTransform="rotate(45)">\n'
+        '    <line x1="0" y1="0" x2="0" y2="3" stroke="#555" stroke-width="0.6"/>\n'
+        '  </pattern>\n'
+        '</defs>\n'
+        f'<text x="{svg_width / 2}" y="{top_margin + 25}" text-anchor="middle" '
+        f'font-size="20" font-weight="bold">{title}</text>\n'
+    )
+
+    # Key plan (top right)
+    svg += _build_key_plan_svg(
+        all_pillars or pillars_to_show,
+        pillars_to_show,
+        building_width, building_length,
+        view_type,
+        inset_origin_x=svg_width - key_plan_size - key_plan_margin,
+        inset_origin_y=key_plan_margin,
+        inset_size=key_plan_size,
+    )
+
+    svg += (
+        f'<g transform="translate({horizontal_margin}, {content_top}) '
+        f'scale({scale})">\n'
+    )
+
+    # Ground line
+    ground_y = z_to_y(0)
+    svg += (
+        f'<line x1="0" y1="{ground_y}" x2="{view_extent}" y2="{ground_y}" '
+        'stroke="#666" stroke-width="2" stroke-dasharray="5,5"/>\n'
+    )
+
+    # Plinth band
+    svg += (
+        f'<rect x="0" y="{z_to_y(z_plinth_top)}" width="{view_extent}" '
+        f'height="{plinth_height}" fill="#A0826D" stroke="#000" '
+        'stroke-width="0.5"/>\n'
+    )
+
+    # Ground-floor slab band
+    for slab in floor0_slabs:
+        sx, sw = _project_slab_band(slab, view_type, building_width, building_length)
+        svg += (
+            f'<rect x="{sx}" y="{z_to_y(z_floor0_slab_top)}" width="{sw}" '
+            f'height="{slab_thickness}" fill="#808080" stroke="#000" '
+            'stroke-width="0.5"/>\n'
+        )
+
+    # Pillars
+    for r in rendered:
+        svg += (
+            f'<rect x="{r["proj_x"]}" y="{z_to_y(r["z_top"])}" '
+            f'width="{r["visible_w"]}" '
+            f'height="{r["z_top"] - r["z_bottom"]}" '
+            'fill="none" stroke="#000" stroke-width="0.6"/>\n'
+        )
+
+    # Floor-1 slab on top of pillars
+    for slab in floor1_slabs:
+        sx, sw = _project_slab_band(slab, view_type, building_width, building_length)
+        svg += (
+            f'<rect x="{sx}" y="{z_to_y(z_floor1_slab_top)}" width="{sw}" '
+            f'height="{slab_thickness}" fill="url(#slab_hatch)" stroke="#000" '
+            'stroke-width="0.6"/>\n'
+        )
+
+    # Per-pillar dimensions
+    text_size = 4.0
+    for r in rendered:
+        if r['z_top'] > z_floor1_slab_top:
+            seg_b = r['z_top'] - z_floor1_slab_top
+            mid_z = (z_floor1_slab_top + r['z_top']) / 2
+            cx = r['proj_x'] + r['visible_w'] / 2
+            svg += (
+                f'<text x="{cx}" y="{z_to_y(mid_z)}" text-anchor="middle" '
+                f'font-size="{text_size}" fill="#000" '
+                f'transform="rotate(-90 {cx} {z_to_y(mid_z)})">'
+                f'{format_dimension(seg_b)}</text>\n'
+            )
+        elif r['z_top'] < z_floor1_slab_bottom:
+            seg_a = r['z_top'] - r['z_bottom']
+            mid_z = (r['z_bottom'] + r['z_top']) / 2
+            cx = r['proj_x'] + r['visible_w'] / 2
+            svg += (
+                f'<text x="{cx}" y="{z_to_y(mid_z)}" text-anchor="middle" '
+                f'font-size="{text_size}" fill="#000" '
+                f'transform="rotate(-90 {cx} {z_to_y(mid_z)})">'
+                f'{format_dimension(seg_a)}</text>\n'
+            )
+
+    # Pillar names
+    label_anchor_y = z_to_y(0) + 6
+    for r in rendered:
+        cx = r['proj_x'] + r['visible_w'] / 2
+        name = r['name'].replace('_', ' ') if r['name'] else ''
+        if not name:
+            continue
+        svg += (
+            f'<text x="{cx}" y="{label_anchor_y}" text-anchor="end" '
+            f'font-size="3.5" fill="#000" '
+            f'transform="rotate(-90 {cx} {label_anchor_y})">{name}</text>\n'
+        )
+
+    # Left-side Z-level dimension stack
+    dim_levels = [
+        (0, z_plinth_top),
+        (z_plinth_top, z_floor0_slab_top),
+        (z_floor0_slab_top, z_floor1_slab_bottom),
+        (z_floor1_slab_bottom, z_floor1_slab_top),
+    ]
+    dim_x = -8
+    for z_lo, z_hi in dim_levels:
+        y_lo = z_to_y(z_lo)
+        y_hi = z_to_y(z_hi)
+        svg += (
+            f'<line x1="0" y1="{y_lo}" x2="{dim_x}" y2="{y_lo}" '
+            'stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>\n'
+            f'<line x1="0" y1="{y_hi}" x2="{dim_x}" y2="{y_hi}" '
+            'stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>\n'
+            f'<line x1="{dim_x}" y1="{y_lo}" x2="{dim_x}" y2="{y_hi}" '
+            'stroke="#000" stroke-width="0.5"/>\n'
+        )
+        arrow = 1.5
+        svg += (
+            f'<polygon points="{dim_x},{y_lo} {dim_x - arrow},{y_lo - arrow} '
+            f'{dim_x + arrow},{y_lo - arrow}" fill="#000"/>\n'
+            f'<polygon points="{dim_x},{y_hi} {dim_x - arrow},{y_hi + arrow} '
+            f'{dim_x + arrow},{y_hi + arrow}" fill="#000"/>\n'
+        )
+        mid_y = (y_lo + y_hi) / 2
+        text_x = dim_x - 4
+        svg += (
+            f'<text x="{text_x}" y="{mid_y}" text-anchor="middle" '
+            f'font-size="4" fill="#000" '
+            f'transform="rotate(-90 {text_x} {mid_y})">'
+            f'{format_dimension(z_hi - z_lo)}</text>\n'
+        )
+
+    svg += '</g>\n</svg>\n'
+
+    if output_path:
+        with open(output_path, 'w') as f:
+            f.write(svg)
+        print(f"  ✓ Saved: {output_path}")
+
+    return svg
+
+
+# Tolerance (in input units) used when grouping pillars into rows/columns. Pillar
+# centres within this distance along the relevant axis are treated as the same
+# row (Y axis) or column (X axis).
+PILLAR_CLUSTER_TOLERANCE = 20.0
+
+
+def generate_pillar_elevation_view(house_config: dict, view_type: str,
+                                   output_path: str = None, scale: float = 2.0) -> str:
+    """
+    Generate a structural elevation showing only plinth, floor slabs, and the
+    outermost row/column of pillars for the chosen view, with dimensions on each
+    pillar's clear segments.
+
+    For internal rows/columns use ``generate_pillar_section_view`` instead.
+    """
+    pillars = _collect_ground_floor_pillars(house_config)
+    axis = 'y' if view_type in ('front', 'back') else 'x'
+    clusters = _cluster_pillars_by_axis(pillars, axis, PILLAR_CLUSTER_TOLERANCE)
+    if not clusters:
+        raise ValueError("No ground-floor pillars to draw")
+
+    if view_type in ('front', 'left'):
+        chosen = clusters[0]
+    else:  # 'back' or 'right'
+        chosen = clusters[-1]
+
+    label = {
+        'front': 'Front Elevation',
+        'back':  'Back Elevation',
+        'left':  'Left Elevation',
+        'right': 'Right Elevation',
+    }[view_type]
+    title = f"{label} - Pillars &amp; Slabs"
+
+    return _render_pillar_view(
+        house_config, view_type,
+        pillars_to_show=chosen['pillars'],
+        title=title,
+        output_path=output_path,
+        scale=scale,
+        all_pillars=pillars,
+    )
+
+
+def generate_pillar_section_view(house_config: dict, axis: str, cluster_index: int,
+                                 section_label: str,
+                                 output_path: str = None,
+                                 scale: float = 2.0) -> str:
+    """
+    Generate a structural cross-section through one internal pillar row/column.
+
+    Args:
+        house_config: house configuration
+        axis: 'y' for a section cut along constant Y (drawn looking from front);
+              'x' for a section cut along constant X (drawn looking from left).
+        cluster_index: 0-based index into the row/column clusters along that axis.
+        section_label: human-readable section identifier (e.g. 'B-B').
+        output_path: where to save the SVG.
+        scale: SVG scale factor.
+    """
+    if axis not in ('x', 'y'):
+        raise ValueError(f"axis must be 'x' or 'y', got {axis!r}")
+
+    pillars = _collect_ground_floor_pillars(house_config)
+    clusters = _cluster_pillars_by_axis(pillars, axis, PILLAR_CLUSTER_TOLERANCE)
+    if not 0 <= cluster_index < len(clusters):
+        raise IndexError(
+            f"cluster_index {cluster_index} out of range (have {len(clusters)} "
+            f"{axis}-clusters)")
+
+    chosen = clusters[cluster_index]
+    view_type = 'front' if axis == 'y' else 'left'
+    title = f"Section {section_label} - Pillars &amp; Slabs"
+
+    return _render_pillar_view(
+        house_config, view_type,
+        pillars_to_show=chosen['pillars'],
+        title=title,
+        output_path=output_path,
+        scale=scale,
+        all_pillars=pillars,
+    )
+
+
+def _section_label(axis: str, index: int) -> str:
+    """Make a label like 'B-B' for Y-axis sections or '2-2' for X-axis sections."""
+    if axis == 'y':
+        letter = chr(ord('A') + index)
+        return f"{letter}-{letter}"
+    return f"{index + 1}-{index + 1}"
+
+
+def _section_filename_part(axis: str, index: int) -> str:
+    """Filename suffix matching the section label, safe on disk."""
+    if axis == 'y':
+        letter = chr(ord('A') + index).lower()
+        return f"row_{letter}"
+    return f"col_{index + 1}"
+
+
+def generate_all_pillar_elevations(house_config: dict, output_dir: str = None):
+    """
+    Generate the four outermost-row pillar elevations plus one cross-section per
+    internal pillar row/column. SVGs are written to ``output_dir`` (defaults to
+    ``<repo>/docs``).
+
+    Outputs (for this house):
+      - pillar_elevation_front.svg, pillar_elevation_back.svg
+      - pillar_elevation_left.svg,  pillar_elevation_right.svg
+      - pillar_section_row_<b/c/d>.svg  (Y-axis sections, viewed from front)
+      - pillar_section_col_<2/3/4>.svg  (X-axis sections, viewed from left)
+    """
+    import os
+
+    if output_dir is None:
+        try:
+            import bpy
+            blend_filepath = bpy.data.filepath
+            blend_dir = os.path.dirname(blend_filepath) if blend_filepath else os.getcwd()
+        except ImportError:
+            blend_dir = os.getcwd()
+        output_dir = os.path.join(blend_dir, "docs")
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    print("\n" + "=" * 70)
+    print("GENERATING PILLAR ELEVATION & SECTION VIEWS (SVG)")
+    print("=" * 70)
+
+    pillars = _collect_ground_floor_pillars(house_config)
+    y_clusters = _cluster_pillars_by_axis(pillars, 'y', PILLAR_CLUSTER_TOLERANCE)
+    x_clusters = _cluster_pillars_by_axis(pillars, 'x', PILLAR_CLUSTER_TOLERANCE)
+
+    # Outer elevations
+    for view_type in ('front', 'back', 'left', 'right'):
+        print(f"\nGenerating {view_type} pillar elevation...")
+        filepath = os.path.join(output_dir, f"pillar_elevation_{view_type}.svg")
+        generate_pillar_elevation_view(house_config, view_type, filepath)
+
+    # Internal Y-row sections (skip first and last — those are the front/back elevations)
+    for idx in range(1, len(y_clusters) - 1):
+        label = _section_label('y', idx)
+        suffix = _section_filename_part('y', idx)
+        filepath = os.path.join(output_dir, f"pillar_section_{suffix}.svg")
+        print(f"\nGenerating Y-axis section {label}...")
+        generate_pillar_section_view(house_config, 'y', idx, label, filepath)
+
+    # Internal X-column sections (skip first and last — left/right elevations)
+    for idx in range(1, len(x_clusters) - 1):
+        label = _section_label('x', idx)
+        suffix = _section_filename_part('x', idx)
+        filepath = os.path.join(output_dir, f"pillar_section_{suffix}.svg")
+        print(f"\nGenerating X-axis section {label}...")
+        generate_pillar_section_view(house_config, 'x', idx, label, filepath)
+
+    print("\n" + "=" * 70)
+    print("✓ PILLAR ELEVATION & SECTION VIEWS GENERATED")
+    print("=" * 70)
 
 
 def generate_all_floor_plans(house_config: dict, output_dir: str = None):
@@ -3320,6 +4046,237 @@ def generate_combined_elevations(house_config: dict, output_dir: str = None) -> 
     output_path = os.path.join(output_dir, 'elevations_combined.svg')
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(svg)
-    
+
     print(f"✓ Combined elevations saved to: {output_path}")
+    return output_path
+
+
+def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> str:
+    """
+    Generate a single SVG with two dimensioned cross sections of the roof:
+    A-A (transverse, perpendicular to ridge) and B-B (longitudinal, along ridge).
+
+    Currently supports hip_roof. Writes docs/roof_plan.svg.
+    """
+    import math
+    import os
+
+    if output_dir is None:
+        try:
+            import bpy
+            blend_filepath = bpy.data.filepath
+            if blend_filepath:
+                output_dir = os.path.join(os.path.dirname(blend_filepath), 'docs')
+            else:
+                output_dir = 'docs'
+        except ImportError:
+            output_dir = 'docs'
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Find a hip roof in the config
+    roof = None
+    for floor in house_config.get('floors', []):
+        for obj in floor.get('objects', []):
+            if obj.get('type') == 'hip_roof':
+                roof = obj
+                break
+        if roof:
+            break
+
+    if roof is None:
+        print("⚠ generate_roof_sections_svg: no hip_roof found in config")
+        return None
+
+    ridge_axis = roof.get('ridge_axis', 'y')
+    eave_xw = roof['eave_x_west']
+    eave_xe = roof['eave_x_east']
+    eave_yn = roof['eave_y_north']
+    eave_ys = roof['eave_y_south']
+    slope_uniform = roof.get('slope_angle')
+    slope_ns = roof.get('slope_angle_ns', slope_uniform)
+    slope_ew = roof.get('slope_angle_ew', slope_uniform)
+    ridge_length_override = roof.get('ridge_length')
+    roof_thickness = GLOBAL_CONFIG.get('roof_thickness', 8)
+
+    span_x = eave_xe - eave_xw
+    span_y = eave_ys - eave_yn
+
+    if ridge_axis == 'y':
+        # Transverse = E-W; Longitudinal = N-S
+        h = (span_x / 2) * math.tan(math.radians(slope_ew))
+        if ridge_length_override is not None:
+            d_hip = max(0.0, (span_y - ridge_length_override) / 2)
+            actual_ns = math.degrees(math.atan(h / d_hip)) if d_hip > 0 else 90.0
+        else:
+            d_hip = h / math.tan(math.radians(slope_ns))
+            actual_ns = slope_ns
+        trans_span = span_x
+        long_span = span_y
+        trans_angle = slope_ew
+        long_angle = actual_ns
+    else:
+        # Transverse = N-S; Longitudinal = E-W
+        h = (span_y / 2) * math.tan(math.radians(slope_ns))
+        if ridge_length_override is not None:
+            d_hip = max(0.0, (span_x - ridge_length_override) / 2)
+            actual_ew = math.degrees(math.atan(h / d_hip)) if d_hip > 0 else 90.0
+        else:
+            d_hip = h / math.tan(math.radians(slope_ew))
+            actual_ew = slope_ew
+        trans_span = span_y
+        long_span = span_x
+        trans_angle = slope_ns
+        long_angle = actual_ew
+
+    ridge_length = max(0.0, long_span - 2 * d_hip)
+    trans_horiz = trans_span / 2
+    trans_slope_len = trans_horiz / math.cos(math.radians(trans_angle))
+    long_hip_slope_len = d_hip / math.cos(math.radians(long_angle)) if d_hip > 0 else 0
+
+    # Layout: two panels side-by-side. Use a uniform scale that fits both.
+    panel_w = 900
+    panel_h = 600
+    title_h = 60
+    margin = 80
+    spacing = 40
+    draw_w = panel_w - 2 * margin
+    draw_h = panel_h - title_h - 2 * margin
+    s_trans = min(draw_w / trans_span, draw_h / max(h, 1)) * 0.85
+    s_long = min(draw_w / long_span, draw_h / max(h, 1)) * 0.85
+    scale = min(s_trans, s_long)
+
+    canvas_w = 2 * panel_w + spacing
+    canvas_h = panel_h + 60
+
+    def dim_text(val):
+        return format_dimension(val)
+
+    def panel(x_off, title, draw_section):
+        out = f'<g transform="translate({x_off},0)">\n'
+        out += f'<rect x="0" y="0" width="{panel_w}" height="{panel_h}" fill="white" stroke="#bbb" stroke-width="1"/>\n'
+        out += f'<text x="{panel_w/2}" y="{title_h - 18}" text-anchor="middle" font-size="20" font-weight="600" fill="#222">{title}</text>\n'
+        out += draw_section()
+        out += '</g>\n'
+        return out
+
+    def transverse_panel():
+        # Triangle: left eave, ridge apex, right eave. Centered horizontally.
+        span_px = trans_span * scale
+        h_px = h * scale
+        cx = panel_w / 2
+        baseline_y = panel_h - margin
+        left_x = cx - span_px / 2
+        right_x = cx + span_px / 2
+        apex_x = cx
+        apex_y = baseline_y - h_px
+        t_px = roof_thickness * scale
+
+        s = ''
+        # Roof shell (with thickness offset)
+        s += f'<line x1="{left_x}" y1="{baseline_y}" x2="{apex_x}" y2="{apex_y}" stroke="#8B4513" stroke-width="3"/>\n'
+        s += f'<line x1="{apex_x}" y1="{apex_y}" x2="{right_x}" y2="{baseline_y}" stroke="#8B4513" stroke-width="3"/>\n'
+        s += f'<line x1="{left_x}" y1="{baseline_y + t_px}" x2="{apex_x}" y2="{apex_y + t_px}" stroke="#8B4513" stroke-width="3"/>\n'
+        s += f'<line x1="{apex_x}" y1="{apex_y + t_px}" x2="{right_x}" y2="{baseline_y + t_px}" stroke="#8B4513" stroke-width="3"/>\n'
+
+        # Eave dimension (bottom)
+        dim_y = baseline_y + 60
+        s += f'<line x1="{left_x}" y1="{baseline_y}" x2="{left_x}" y2="{dim_y + 10}" stroke="#0066cc" stroke-width="0.7"/>\n'
+        s += f'<line x1="{right_x}" y1="{baseline_y}" x2="{right_x}" y2="{dim_y + 10}" stroke="#0066cc" stroke-width="0.7"/>\n'
+        s += f'<line x1="{left_x}" y1="{dim_y}" x2="{right_x}" y2="{dim_y}" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>\n'
+        s += f'<text x="{cx}" y="{dim_y - 6}" text-anchor="middle" font-size="13" fill="#0066cc">{dim_text(trans_span)}</text>\n'
+
+        # Ridge height dimension (left side)
+        h_dim_x = left_x - 50
+        s += f'<line x1="{left_x}" y1="{baseline_y}" x2="{h_dim_x - 10}" y2="{baseline_y}" stroke="#0066cc" stroke-width="0.7"/>\n'
+        s += f'<line x1="{apex_x}" y1="{apex_y}" x2="{h_dim_x - 10}" y2="{apex_y}" stroke="#0066cc" stroke-width="0.7" stroke-dasharray="4,3"/>\n'
+        s += f'<line x1="{h_dim_x}" y1="{baseline_y}" x2="{h_dim_x}" y2="{apex_y}" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>\n'
+        s += f'<text x="{h_dim_x - 6}" y="{(baseline_y + apex_y) / 2}" text-anchor="end" font-size="13" fill="#0066cc">h = {dim_text(h)}</text>\n'
+
+        # Slope angle + length annotations
+        s += f'<text x="{(left_x + apex_x) / 2 - 8}" y="{(baseline_y + apex_y) / 2 - 8}" text-anchor="end" font-size="12" fill="#444">{trans_angle:.1f}°</text>\n'
+        s += f'<text x="{(left_x + apex_x) / 2 - 8}" y="{(baseline_y + apex_y) / 2 + 12}" text-anchor="end" font-size="11" fill="#444">{dim_text(trans_slope_len)}</text>\n'
+        s += f'<text x="{(right_x + apex_x) / 2 + 8}" y="{(baseline_y + apex_y) / 2 - 8}" text-anchor="start" font-size="12" fill="#444">{trans_angle:.1f}°</text>\n'
+        s += f'<text x="{(right_x + apex_x) / 2 + 8}" y="{(baseline_y + apex_y) / 2 + 12}" text-anchor="start" font-size="11" fill="#444">{dim_text(trans_slope_len)}</text>\n'
+
+        return s
+
+    def longitudinal_panel():
+        # Trapezoid: long bottom eave, shorter top ridge. Centered horizontally.
+        span_px = long_span * scale
+        ridge_px = ridge_length * scale
+        h_px = h * scale
+        cx = panel_w / 2
+        baseline_y = panel_h - margin
+        left_x = cx - span_px / 2
+        right_x = cx + span_px / 2
+        ridge_left_x = cx - ridge_px / 2
+        ridge_right_x = cx + ridge_px / 2
+        ridge_y = baseline_y - h_px
+        t_px = roof_thickness * scale
+
+        s = ''
+        # Roof shell (with thickness)
+        s += f'<line x1="{left_x}" y1="{baseline_y}" x2="{ridge_left_x}" y2="{ridge_y}" stroke="#8B4513" stroke-width="3"/>\n'
+        s += f'<line x1="{ridge_left_x}" y1="{ridge_y}" x2="{ridge_right_x}" y2="{ridge_y}" stroke="#8B4513" stroke-width="3"/>\n'
+        s += f'<line x1="{ridge_right_x}" y1="{ridge_y}" x2="{right_x}" y2="{baseline_y}" stroke="#8B4513" stroke-width="3"/>\n'
+        s += f'<line x1="{left_x}" y1="{baseline_y + t_px}" x2="{ridge_left_x}" y2="{ridge_y + t_px}" stroke="#8B4513" stroke-width="3"/>\n'
+        s += f'<line x1="{ridge_left_x}" y1="{ridge_y + t_px}" x2="{ridge_right_x}" y2="{ridge_y + t_px}" stroke="#8B4513" stroke-width="3"/>\n'
+        s += f'<line x1="{ridge_right_x}" y1="{ridge_y + t_px}" x2="{right_x}" y2="{baseline_y + t_px}" stroke="#8B4513" stroke-width="3"/>\n'
+
+        # Eave dimension (bottom)
+        dim_y = baseline_y + 60
+        s += f'<line x1="{left_x}" y1="{baseline_y}" x2="{left_x}" y2="{dim_y + 10}" stroke="#0066cc" stroke-width="0.7"/>\n'
+        s += f'<line x1="{right_x}" y1="{baseline_y}" x2="{right_x}" y2="{dim_y + 10}" stroke="#0066cc" stroke-width="0.7"/>\n'
+        s += f'<line x1="{left_x}" y1="{dim_y}" x2="{right_x}" y2="{dim_y}" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>\n'
+        s += f'<text x="{cx}" y="{dim_y - 6}" text-anchor="middle" font-size="13" fill="#0066cc">{dim_text(long_span)}</text>\n'
+
+        # Ridge length dimension (top)
+        if ridge_length > 0:
+            rdim_y = ridge_y - 30
+            s += f'<line x1="{ridge_left_x}" y1="{ridge_y}" x2="{ridge_left_x}" y2="{rdim_y - 10}" stroke="#0066cc" stroke-width="0.7"/>\n'
+            s += f'<line x1="{ridge_right_x}" y1="{ridge_y}" x2="{ridge_right_x}" y2="{rdim_y - 10}" stroke="#0066cc" stroke-width="0.7"/>\n'
+            s += f'<line x1="{ridge_left_x}" y1="{rdim_y}" x2="{ridge_right_x}" y2="{rdim_y}" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>\n'
+            s += f'<text x="{cx}" y="{rdim_y - 6}" text-anchor="middle" font-size="13" fill="#0066cc">ridge = {dim_text(ridge_length)}</text>\n'
+
+        # Hip inset dimensions (between eave and ridge, on either side)
+        inset_y = baseline_y + 25
+        s += f'<line x1="{left_x}" y1="{inset_y - 10}" x2="{ridge_left_x}" y2="{inset_y - 10}" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>\n'
+        s += f'<text x="{(left_x + ridge_left_x) / 2}" y="{inset_y - 14}" text-anchor="middle" font-size="11" fill="#0066cc">{dim_text(d_hip)}</text>\n'
+        s += f'<line x1="{ridge_right_x}" y1="{inset_y - 10}" x2="{right_x}" y2="{inset_y - 10}" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>\n'
+        s += f'<text x="{(ridge_right_x + right_x) / 2}" y="{inset_y - 14}" text-anchor="middle" font-size="11" fill="#0066cc">{dim_text(d_hip)}</text>\n'
+
+        # Hip slope angle + length
+        if d_hip > 0:
+            s += f'<text x="{(left_x + ridge_left_x) / 2 - 4}" y="{(baseline_y + ridge_y) / 2 - 4}" text-anchor="end" font-size="12" fill="#444">{long_angle:.1f}°</text>\n'
+            s += f'<text x="{(left_x + ridge_left_x) / 2 - 4}" y="{(baseline_y + ridge_y) / 2 + 14}" text-anchor="end" font-size="11" fill="#444">{dim_text(long_hip_slope_len)}</text>\n'
+            s += f'<text x="{(ridge_right_x + right_x) / 2 + 4}" y="{(baseline_y + ridge_y) / 2 - 4}" text-anchor="start" font-size="12" fill="#444">{long_angle:.1f}°</text>\n'
+            s += f'<text x="{(ridge_right_x + right_x) / 2 + 4}" y="{(baseline_y + ridge_y) / 2 + 14}" text-anchor="start" font-size="11" fill="#444">{dim_text(long_hip_slope_len)}</text>\n'
+
+        return s
+
+    trans_title = "SECTION A–A : TRANSVERSE (across ridge)" if ridge_axis == 'y' else "SECTION A–A : TRANSVERSE (across ridge)"
+    long_title = "SECTION B–B : LONGITUDINAL (along ridge)"
+
+    svg = f'''<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="{canvas_w}" height="{canvas_h}" viewBox="0 0 {canvas_w} {canvas_h}">
+<title>Roof Sections</title>
+<defs>
+  <marker id="arr" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="#0066cc"/>
+  </marker>
+  <style>text {{ font-family: -apple-system, Arial, sans-serif; }}</style>
+</defs>
+<rect width="{canvas_w}" height="{canvas_h}" fill="#fafafa"/>
+<text x="{canvas_w/2}" y="32" text-anchor="middle" font-size="22" font-weight="bold" fill="#222">Roof Dimensions — Hip Roof</text>
+'''
+    svg += f'<g transform="translate(0,50)">\n'
+    svg += panel(0, trans_title, transverse_panel)
+    svg += panel(panel_w + spacing, long_title, longitudinal_panel)
+    svg += '</g>\n'
+    svg += '</svg>\n'
+
+    output_path = os.path.join(output_dir, 'roof_plan.svg')
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(svg)
+    print(f"✓ Roof sections saved to: {output_path}")
     return output_path
