@@ -370,6 +370,8 @@
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
+            touch-action: none;             /* iOS: let JS handle pinch/pan */
+            -webkit-touch-callout: none;    /* iOS: suppress long-press menu */
         }
         .svg-full-width.grabbing {
             cursor: grabbing;
@@ -1307,10 +1309,13 @@
                 container.classList.remove('grabbing');
             });
 
-            // Touch support for mobile
+            // Touch support for mobile. {passive: false} is required so that
+            // preventDefault() actually fires on iOS Safari — otherwise touchmove
+            // is treated as passive and the page scrolls instead of the SVG panning.
             let touchStartDistance = 0;
             container.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 2) {
+                    e.preventDefault();
                     touchStartDistance = Math.hypot(
                         e.touches[0].clientX - e.touches[1].clientX,
                         e.touches[0].clientY - e.touches[1].clientY
@@ -1320,7 +1325,7 @@
                     state.startX = e.touches[0].clientX - state.translateX;
                     state.startY = e.touches[0].clientY - state.translateY;
                 }
-            });
+            }, { passive: false });
 
             container.addEventListener('touchmove', (e) => {
                 e.preventDefault();
@@ -1341,7 +1346,7 @@
                     state.translateY = e.touches[0].clientY - state.startY;
                     updateTransform(containerId);
                 }
-            });
+            }, { passive: false });
 
             container.addEventListener('touchend', () => {
                 state.isDragging = false;
