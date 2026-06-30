@@ -90,8 +90,20 @@
       "z": 146.0,
       "height_end": null,
       "coord_key": "x",
-      "num_openings": 0,
-      "openings": []
+      "num_openings": 1,
+      "openings": [
+        {
+          "type": "door",
+          "wall": "Bathroom_2_south",
+          "x": 186.5,
+          "y": 292,
+          "width": 30,
+          "height": 65,
+          "room": "Bathroom_2",
+          "direction": "south",
+          "sill_height": null
+        }
+      ]
     },
     {
       "type": "wall",
@@ -151,7 +163,7 @@
         {
           "type": "door",
           "wall": "Bedroom_2_south",
-          "x": 90,
+          "x": 83.5,
           "y": 196,
           "width": 30,
           "height": 65,
@@ -177,7 +189,7 @@
         {
           "type": "door",
           "wall": "Bedroom_3_south",
-          "x": 124,
+          "x": 126.5,
           "y": 196,
           "width": 30,
           "height": 65,

@@ -336,7 +336,7 @@ HOUSE_CONFIG = {
                 {
                     'type': 'door',
                     'name': 'Workshop_Exit',
-                    'x': 124,
+                    'x': 126.5,         # 3 in east of separating wall (matches Bedroom_3_Entry on top floor)
                     'y': 196,
                     'width': 30,        # 3 feet wide
                     'height': 65,       # 6.5 feet tall
@@ -346,7 +346,7 @@ HOUSE_CONFIG = {
                 {
                     'type': 'door',
                     'name': 'Bedroom_Entry',
-                    'x': 90,
+                    'x': 83.5,          # 3 in west of separating wall (matches Bedroom_2_Entry on top floor)
                     'y': 196,
                     'width': 30,        # 3 feet wide
                     'height': 65,       # 6.5 feet tall
@@ -663,7 +663,7 @@ HOUSE_CONFIG = {
                 {
                     'type': 'door',
                     'name': 'Bedroom_3_Entry',
-                    'x': 124,
+                    'x': 126.5,         # 3 in east of separating wall (wall ends at x=124)
                     'y': 196,
                     'width': 30,        # 3 feet wide
                     'height': 65,       # 6.5 feet tall
@@ -673,7 +673,7 @@ HOUSE_CONFIG = {
                 {
                     'type': 'door',
                     'name': 'Bedroom_2_Entry',
-                    'x': 90,
+                    'x': 83.5,          # 3 in west of separating wall (wall starts at x=116, door right edge at 113.5)
                     'y': 196,
                     'width': 30,        # 3 feet wide
                     'height': 65,       # 6.5 feet tall
@@ -683,21 +683,21 @@ HOUSE_CONFIG = {
                 {
                     'type': 'door',
                     'name': 'Bathroom_2_Entry_N',
-                    'x': 176,
-                    'y': 209,           # centered in north half (interior y=204..244)
+                    'x': 186.5,         # 3 in east of west wall inner edge (184 + 2.5)
+                    'y': 196,           # northern face of Bedroom_3's south wall (y=196..204)
                     'width': 30,        # 3 feet wide
                     'height': 65,       # 6.5 feet tall
-                    'direction': 'west',
-                    'room': 'Bathroom_2',
+                    'direction': 'north',
+                    'wall': 'Bedroom_3_South',  # explicit — Bathroom_2 has no north wall of its own
                 },
                 {
                     'type': 'door',
                     'name': 'Bathroom_2_Entry_S',
-                    'x': 176,
-                    'y': 257,           # centered in south half (interior y=252..292)
+                    'x': 186.5,         # 3 in east of west wall inner edge
+                    'y': 292,           # northern face of Bathroom_2's south wall (y=292..300)
                     'width': 30,        # 3 feet wide
                     'height': 65,       # 6.5 feet tall
-                    'direction': 'west',
+                    'direction': 'south',
                     'room': 'Bathroom_2',
                 },
 
@@ -942,7 +942,7 @@ HOUSE_CONFIG = {
                     'eave_x_east': 300,     # 3 ft overhang east of plot (x=270)
                     'eave_y_north': -30,    # 5 ft overhang north of plot (y=0)
                     'eave_y_south': 480,    # 5 ft overhang south of plot (y=450)
-                    'eave_z': -10,
+                    'eave_z': -5,
                     'slope_angle_ew': 26,   # E and W trapezoidal main slopes
                     'slope_angle_ns': 26,   # N and S triangular hip ends
                     'ridge_length': 150,  # uncomment to override slope_angle_ns

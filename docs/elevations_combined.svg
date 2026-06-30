@@ -42,8 +42,6 @@
 <rect x="196" y="152.0" width="104" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
 <rect x="228" y="187.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
 <rect x="196" y="54.0" width="104" height="90.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
-<rect x="209" y="79.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
-<rect x="257" y="79.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
 <rect x="292.0" y="52.0" width="8" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="442.0" y="52.0" width="8" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="0.0" y="52.0" width="8" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
@@ -147,9 +145,9 @@
 <rect x="437.25" y="52.0" width="12.5" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="0.0" y="52.0" width="8" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="196.0" y="52.0" width="8" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
-<line x1="-30" y1="64.0" x2="150.0" y2="-19.47587711336712" stroke="#8B4513" stroke-width="3"/>
-<line x1="300.0" y1="-19.47587711336712" x2="480" y2="64.0" stroke="#8B4513" stroke-width="3"/>
-<line x1="150.0" y1="-19.47587711336712" x2="300.0" y2="-19.47587711336712" stroke="#8B4513" stroke-width="3"/>
+<line x1="-30" y1="59.0" x2="150.0" y2="-24.47587711336712" stroke="#8B4513" stroke-width="3"/>
+<line x1="300.0" y1="-24.47587711336712" x2="480" y2="59.0" stroke="#8B4513" stroke-width="3"/>
+<line x1="150.0" y1="-24.47587711336712" x2="300.0" y2="-24.47587711336712" stroke="#8B4513" stroke-width="3"/>
 <g class="dimension">
   <line x1="480" y1="252.0" x2="480" y2="152.0" stroke="#000" stroke-width="0.5"/>
   <line x1="450" y1="252.0" x2="480" y2="252.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
@@ -298,6 +296,7 @@
 <rect x="0" y="144.0" width="8" height="8.0" fill="#654321" stroke="#000" stroke-width="0.5"/>
 <rect x="0" y="152.0" width="94" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
 <rect x="0" y="54.0" width="94" height="90.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
+<rect x="53.5" y="79.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
 <rect x="94" y="152.0" width="40" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
 <rect x="222.0" y="52.0" width="8" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="83.75" y="52.0" width="12.5" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
@@ -372,13 +371,13 @@
 <line x1="232" y1="252.0" x2="262.0" y2="252.0" stroke="#000" stroke-width="0.5"/>
 </g>
 <rect x="146" y="152.0" width="124" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
-<rect x="150" y="187.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
+<rect x="156.5" y="187.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
 <rect x="0" y="152.0" width="154" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
-<rect x="116" y="187.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
+<rect x="113.5" y="187.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
 <rect x="146" y="54.0" width="124" height="90.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
-<rect x="150" y="79.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
+<rect x="156.5" y="79.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
 <rect x="0" y="54.0" width="154" height="90.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
-<rect x="116" y="79.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
+<rect x="113.5" y="79.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
 <rect x="0" y="46.0" width="270" height="8.0" fill="#654321" stroke="#000" stroke-width="0.5"/>
 <rect x="257.55" y="52.0" width="12.5" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="-0.05000000000001137" y="52.0" width="12.5" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
@@ -408,8 +407,8 @@
 <rect x="160.0" y="52.0" width="10" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="100.0" y="52.0" width="10" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="0.0" y="52.0" width="10" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
-<line x1="300" y1="64.0" x2="135.0" y2="-19.47587711336712" stroke="#8B4513" stroke-width="3"/>
-<line x1="135.0" y1="-19.47587711336712" x2="-30" y2="64.0" stroke="#8B4513" stroke-width="3"/>
+<line x1="300" y1="59.0" x2="135.0" y2="-24.47587711336712" stroke="#8B4513" stroke-width="3"/>
+<line x1="135.0" y1="-24.47587711336712" x2="-30" y2="59.0" stroke="#8B4513" stroke-width="3"/>
 <g class="dimension">
   <line x1="300" y1="252.0" x2="300" y2="152.0" stroke="#000" stroke-width="0.5"/>
   <line x1="270" y1="252.0" x2="300" y2="252.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
@@ -480,8 +479,6 @@
 <rect x="150" y="152.0" width="104" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
 <rect x="192" y="187.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
 <rect x="150" y="54.0" width="104" height="90.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
-<rect x="211" y="79.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
-<rect x="163" y="79.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
 <rect x="362" y="222.0" width="88" height="30.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
 <rect x="246" y="152.0" width="124" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
 <rect x="283" y="187.0" width="50" height="40.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
@@ -608,9 +605,9 @@
 <rect x="0.25" y="52.0" width="12.5" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="442.0" y="52.0" width="8" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="246.0" y="52.0" width="8" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
-<line x1="480" y1="64.0" x2="300.0" y2="-19.47587711336712" stroke="#8B4513" stroke-width="3"/>
-<line x1="150.0" y1="-19.47587711336712" x2="-30" y2="64.0" stroke="#8B4513" stroke-width="3"/>
-<line x1="300.0" y1="-19.47587711336712" x2="150.0" y2="-19.47587711336712" stroke="#8B4513" stroke-width="3"/>
+<line x1="480" y1="59.0" x2="300.0" y2="-24.47587711336712" stroke="#8B4513" stroke-width="3"/>
+<line x1="150.0" y1="-24.47587711336712" x2="-30" y2="59.0" stroke="#8B4513" stroke-width="3"/>
+<line x1="300.0" y1="-24.47587711336712" x2="150.0" y2="-24.47587711336712" stroke="#8B4513" stroke-width="3"/>
 <g class="dimension">
   <line x1="480" y1="252.0" x2="480" y2="152.0" stroke="#000" stroke-width="0.5"/>
   <line x1="450" y1="252.0" x2="480" y2="252.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
@@ -798,13 +795,13 @@
 <rect x="116.0" y="52.0" width="8" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="0" y="46.0" width="270" height="8.0" fill="#654321" stroke="#000" stroke-width="0.5"/>
 <rect x="0" y="152.0" width="124" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
-<rect x="90" y="187.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
+<rect x="83.5" y="187.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
 <rect x="116" y="152.0" width="154" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
-<rect x="124" y="187.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
+<rect x="126.5" y="187.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
 <rect x="0" y="54.0" width="124" height="90.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
-<rect x="90" y="79.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
+<rect x="83.5" y="79.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
 <rect x="116" y="54.0" width="154" height="90.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
-<rect x="124" y="79.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
+<rect x="126.5" y="79.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
 <rect x="-0.04999999999999982" y="52.0" width="12.5" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="257.55" y="52.0" width="12.5" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="0" y="144.0" width="270" height="8.0" fill="#808080" stroke="#000" stroke-width="0.5"/>
@@ -812,6 +809,7 @@
 <rect x="136" y="152.0" width="40" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
 <rect x="176" y="152.0" width="94" height="100.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
 <rect x="176" y="54.0" width="94" height="90.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
+<rect x="186.5" y="79.0" width="30" height="65.0" fill="#D2691E" stroke="#000" stroke-width="0.5"/>
 <rect x="40.0" y="52.0" width="8" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="173.75" y="52.0" width="12.5" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="0" y="46.0" width="270" height="8.0" fill="#654321" stroke="#000" stroke-width="0.5"/>
@@ -901,8 +899,8 @@
 <rect x="187.5" y="187.0" width="60" height="40.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
 <rect x="88.5" y="52.0" width="10" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <rect x="173.5" y="52.0" width="10" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
-<line x1="-30" y1="64.0" x2="135.0" y2="-19.47587711336712" stroke="#8B4513" stroke-width="3"/>
-<line x1="135.0" y1="-19.47587711336712" x2="300" y2="64.0" stroke="#8B4513" stroke-width="3"/>
+<line x1="-30" y1="59.0" x2="135.0" y2="-24.47587711336712" stroke="#8B4513" stroke-width="3"/>
+<line x1="135.0" y1="-24.47587711336712" x2="300" y2="59.0" stroke="#8B4513" stroke-width="3"/>
 <g class="dimension">
   <line x1="300" y1="252.0" x2="300" y2="152.0" stroke="#000" stroke-width="0.5"/>
   <line x1="270" y1="252.0" x2="300" y2="252.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>

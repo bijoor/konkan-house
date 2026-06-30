@@ -14,31 +14,8 @@
       "z": 146.0,
       "height_end": null,
       "coord_key": "y",
-      "num_openings": 2,
-      "openings": [
-        {
-          "type": "door",
-          "wall": "Bathroom_2_west",
-          "x": 176,
-          "y": 209,
-          "width": 30,
-          "height": 65,
-          "room": "Bathroom_2",
-          "direction": "west",
-          "sill_height": null
-        },
-        {
-          "type": "door",
-          "wall": "Bathroom_2_west",
-          "x": 176,
-          "y": 257,
-          "width": 30,
-          "height": 65,
-          "room": "Bathroom_2",
-          "direction": "west",
-          "sill_height": null
-        }
-      ]
+      "num_openings": 0,
+      "openings": []
     },
     {
       "type": "wall",
