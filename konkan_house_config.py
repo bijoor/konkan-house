@@ -37,6 +37,7 @@ from house_config import HOUSE_CONFIG, GLOBAL_CONFIG
 
 def build_plinth():
     """Build the foundation plinth"""
+    _before = _snapshot_object_names()
     config = HOUSE_CONFIG['plinth']
     create_plinth(
         x=config['x'],
@@ -46,10 +47,39 @@ def build_plinth():
         height=config.get('height'),
         material_name='plinth'
     )
+    # Plinth belongs to the ground-floor layer for viewer grouping.
+    _tag_new_objects(_before, 'f0')
+
+def _tag_new_objects(before_names: set, layer: str):
+    """Set a `layer` custom property on every Blender mesh created since
+    `before_names` was captured. The custom property flows through to the
+    glTF `extras` field on export and is exposed to three.js as
+    `object.userData.layer`, so the web viewer can group objects by layer
+    without inspecting Z coordinates."""
+    import bpy as _bpy
+    for _o in _bpy.data.objects:
+        if _o.type != 'MESH':
+            continue
+        if _o.name in before_names:
+            continue
+        # Frame members and hip roof are tagged more specifically at their
+        # own creation sites — don't overwrite those.
+        if 'layer' in _o.keys():
+            continue
+        _o['layer'] = layer
+
+
+def _snapshot_object_names():
+    """Snapshot of current mesh object names — used together with
+    `_tag_new_objects` to attribute new objects to a build phase."""
+    import bpy as _bpy
+    return {o.name for o in _bpy.data.objects if o.type == 'MESH'}
+
 
 def build_floor(floor_config: dict):
     """Build a single floor with all its objects using unified structure"""
     floor_num = floor_config['floor_number']
+    _before = _snapshot_object_names()
 
     # Support both old and new config formats
     if 'objects' in floor_config:
@@ -223,7 +253,7 @@ def build_floor(floor_config: dict):
                 _loft_slab_bottom_raw = compute_top_floor_wall_top_z(
                     floor_num, GLOBAL_CONFIG, beam_offset=0.0)
                 _eave_rel_to_loft = _derived['eave_z'] - _loft_slab_bottom_raw
-                create_hip_roof(
+                _shell = create_hip_roof(
                     eave_x_west=_derived['eave_x_west'],
                     eave_x_east=_derived['eave_x_east'],
                     eave_y_north=_derived['eave_y_north'],
@@ -238,6 +268,10 @@ def build_floor(floor_config: dict):
                     floor_number=floor_num,
                     explosion_offset=obj.get('explosion_offset', 0.0),
                 )
+                # Tag the roof shell as the 'loft' layer so the web
+                # viewer can toggle it independently of the floors below.
+                if _shell is not None:
+                    _shell['layer'] = 'loft'
 
                 # ---- Build the metal frame as individual box members ----
                 if obj.get('show_frame_3d', False):
@@ -297,6 +331,17 @@ def build_floor(floor_config: dict):
                     name=wall.get('name', 'Wall'),
                     material_name=wall.get('material', 'walls')
                 )
+
+    # Attach a layer tag to every mesh created for this floor. Floor 0 →
+    # 'f0', floor 1 → 'f1', floor 2 (the loft slab etc.) → 'loft'. Frame
+    # members and the hip-roof shell tag themselves at creation, so they
+    # are skipped here by the "already tagged" check inside the helper.
+    if floor_num == 0:
+        _tag_new_objects(_before, 'f0')
+    elif floor_num == 1:
+        _tag_new_objects(_before, 'f1')
+    else:
+        _tag_new_objects(_before, 'loft')
 
 def build_house(use_explosion=False):
     """Build the complete house from configuration

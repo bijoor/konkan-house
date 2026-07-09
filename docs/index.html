@@ -123,6 +123,39 @@
             transform: rotate(90deg);
             box-shadow: 0 6px 25px rgba(0,0,0,0.2);
         }
+        .layers-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 0.9rem 1.1rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 10;
+            font-size: 0.9rem;
+        }
+        .layers-panel h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.9rem;
+            color: #333;
+            font-weight: 600;
+        }
+        .layers-panel label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0.25rem 0;
+            color: #333;
+            cursor: pointer;
+            user-select: none;
+        }
+        .layers-panel input[type="checkbox"] {
+            accent-color: #667eea;
+        }
+        .layers-panel .swatch {
+            width: 12px; height: 12px; border-radius: 3px;
+            border: 1px solid rgba(0,0,0,0.15);
+        }
         .setting-item {
             margin-bottom: 1rem;
         }
@@ -523,6 +556,18 @@
             </div>
         </div>
 
+        <div class="layers-panel" id="layers-panel">
+            <h4>Show layers</h4>
+            <label><span class="swatch" style="background:#e88968"></span>
+                <input type="checkbox" data-layer="loft" checked> Roof shell</label>
+            <label><span class="swatch" style="background:#4b515c"></span>
+                <input type="checkbox" data-layer="frame" checked> Roof frame</label>
+            <label><span class="swatch" style="background:#f5c9a0"></span>
+                <input type="checkbox" data-layer="f1" checked> First floor</label>
+            <label><span class="swatch" style="background:#f5c9a0"></span>
+                <input type="checkbox" data-layer="f0" checked> Ground floor</label>
+        </div>
+
         <model-viewer
             id="model"
             src="konkan_house.glb"
@@ -541,8 +586,6 @@
             max-camera-orbit="auto auto auto"
             field-of-view="45deg"
             tone-mapping="commerce"
-            ar
-            ar-modes="webxr scene-viewer quick-look"
             max-field-of-view="60deg"
             min-field-of-view="20deg">
 
@@ -605,6 +648,18 @@
             </div>
         </div>
 
+        <div class="layers-panel" id="layers-panel-exploded">
+            <h4>Show layers</h4>
+            <label><span class="swatch" style="background:#e88968"></span>
+                <input type="checkbox" data-layer="loft" checked> Roof shell</label>
+            <label><span class="swatch" style="background:#4b515c"></span>
+                <input type="checkbox" data-layer="frame" checked> Roof frame</label>
+            <label><span class="swatch" style="background:#f5c9a0"></span>
+                <input type="checkbox" data-layer="f1" checked> First floor</label>
+            <label><span class="swatch" style="background:#f5c9a0"></span>
+                <input type="checkbox" data-layer="f0" checked> Ground floor</label>
+        </div>
+
         <model-viewer
             id="model-exploded"
             src="konkan_house_exploded.glb"
@@ -623,8 +678,6 @@
             max-camera-orbit="auto auto auto"
             field-of-view="45deg"
             tone-mapping="commerce"
-            ar
-            ar-modes="webxr scene-viewer quick-look"
             max-field-of-view="60deg"
             min-field-of-view="20deg">
 
@@ -1495,6 +1548,180 @@
                 }
             }
         });
+
+        // -----------------------------------------------------------------
+        // Layer visibility toggles (normal + exploded viewers)
+        //
+        // On model load, walk the underlying three.js scene and put each
+        // mesh into one of four groups. Frame members are identified by
+        // name prefix (they were tagged that way in blender_3d.py). Roof
+        // shell = Hip_Roof + Floor_Slab_2 by name. Everything else is
+        // split into Ground / First floor by finding the largest Z gap in
+        // the sorted vertical distribution — this works in both normal
+        // and exploded views because the ordering is preserved even when
+        // the floors are lifted apart.
+        //
+        // Model-viewer 3.x exposes its three.js scene via Symbol.for('scene').
+        // -----------------------------------------------------------------
+        // Layer classification — the Blender build sets a `layer`
+        // custom property on every mesh (`f0`, `f1`, `loft`, `frame`),
+        // which is exported as glTF `extras.layer` and reappears here
+        // as `object.userData.layer`. If for some reason a mesh has no
+        // tag (legacy GLB, third-party asset) we fall back to name
+        // prefix + largest-Y-gap clustering.
+        const LEGACY_FRAME_PREFIXES = [
+            'rafter_', 'purlin_', 'ring_beam', 'hip_ridge', 'hip_end',
+            'hip_bay', 'central_ridge', 'pani_patti_',
+            'T1_', 'T2_', 'T3_',
+        ];
+        const LEGACY_LOFT_RE = /^(Hip_Roof|Floor_Slab_2)/;
+
+        // Model-viewer 3.3.0 stashes its three.js scene on per-module
+        // Symbol-keyed properties, so it can't be reached via Symbol.for.
+        // Walk every Symbol on the element AND all reachable objects
+        // (up to a small depth) looking for the first Object3D subtree
+        // that contains a Mesh — that's the loaded scene.
+        function findThreeScene(mv) {
+            const seen = new WeakSet();
+            const queue = [mv, mv.model].filter(Boolean);
+            for (let depth = 0; depth < 6 && queue.length; depth++) {
+                const level = queue.splice(0, queue.length);
+                for (const host of level) {
+                    if (!host || typeof host !== 'object' || seen.has(host)) continue;
+                    seen.add(host);
+                    const syms = Object.getOwnPropertySymbols(host);
+                    for (const sym of syms) {
+                        const val = host[sym];
+                        if (!val || typeof val !== 'object') continue;
+                        // Direct hit — an Object3D-like with meshes
+                        if (typeof val.traverse === 'function') {
+                            let hasMesh = false;
+                            try {
+                                val.traverse(o => { if (o.isMesh) hasMesh = true; });
+                            } catch (_) { /* ignore */ }
+                            if (hasMesh) return val;
+                        }
+                        // Otherwise queue this object for deeper inspection
+                        queue.push(val);
+                    }
+                }
+            }
+            return null;
+        }
+
+        function setupLayerToggles(mv, panelId) {
+            const panel = document.getElementById(panelId);
+            if (!panel) return;
+            const inputs = panel.querySelectorAll('input[type="checkbox"]');
+            const groups = { f0: [], f1: [], loft: [], frame: [] };
+
+            const apply = (evt) => {
+                let changed = null;
+                inputs.forEach(input => {
+                    const key = input.dataset.layer;
+                    const visible = input.checked;
+                    const list = groups[key] || [];
+                    list.forEach(o => { o.visible = visible; });
+                    if (evt && evt.target === input) changed = { key, visible, size: list.length };
+                });
+                if (evt) console.log(`[${panelId}] toggle`, changed);
+            };
+            inputs.forEach(input => input.addEventListener('change', apply));
+
+            const classify = () => {
+                for (const k of Object.keys(groups)) groups[k].length = 0;
+                const scene = findThreeScene(mv);
+                if (!scene) return false;
+
+                // Diagnostics: describe the scene root we picked.
+                try {
+                    const sceneInfo = {
+                        constructor: scene.constructor?.name,
+                        type: scene.type,
+                        name: scene.name,
+                        children: scene.children?.length,
+                        parent: scene.parent?.constructor?.name,
+                    };
+                    console.log(`[${panelId}] findThreeScene root:`, sceneInfo);
+                    // Also list a few sample mesh names encountered
+                    const sample = [];
+                    scene.traverse(o => {
+                        if (o.isMesh && sample.length < 5) sample.push(o.name || '(unnamed)');
+                    });
+                    console.log(`[${panelId}] first meshes seen:`, sample);
+                } catch (_) { /* ignore */ }
+
+                let tagged = 0;
+                const legacyRest = [];
+                scene.traverse(obj => {
+                    if (!obj.isMesh) return;
+                    // Preferred: layer tag from Blender custom property.
+                    const layer = obj.userData && obj.userData.layer;
+                    if (layer && groups[layer]) {
+                        groups[layer].push(obj);
+                        tagged++;
+                        return;
+                    }
+                    // Fallback for untagged GLBs.
+                    const name = obj.name || '';
+                    if (LEGACY_FRAME_PREFIXES.some(p => name.startsWith(p))) {
+                        groups.frame.push(obj);
+                    } else if (LEGACY_LOFT_RE.test(name)) {
+                        groups.loft.push(obj);
+                    } else if (name) {
+                        obj.updateWorldMatrix(true, false);
+                        legacyRest.push({ obj, y: obj.matrixWorld.elements[13] });
+                    }
+                });
+
+                if (tagged === 0 && legacyRest.length) {
+                    // Only used when nothing is tagged (older GLBs).
+                    legacyRest.sort((a, b) => a.y - b.y);
+                    let bestGap = -Infinity, bestI = Math.floor(legacyRest.length / 2);
+                    for (let i = 1; i < legacyRest.length; i++) {
+                        const g = legacyRest[i].y - legacyRest[i - 1].y;
+                        if (g > bestGap) { bestGap = g; bestI = i; }
+                    }
+                    for (let i = 0; i < legacyRest.length; i++) {
+                        if (i < bestI) groups.f0.push(legacyRest[i].obj);
+                        else groups.f1.push(legacyRest[i].obj);
+                    }
+                }
+
+                apply();  // sync to current checkbox state
+                console.log(`[${panelId}] classified — f0:${groups.f0.length} f1:${groups.f1.length} loft:${groups.loft.length} frame:${groups.frame.length}`);
+                // Expose groups + scene globally for manual console debugging.
+                window[`_${panelId.replace(/-/g, '_')}`] = { groups, scene };
+                return true;
+            };
+
+            // Poll for the scene rather than relying on model-viewer's 'load'
+            // event — the event isn't consistent across versions and doesn't
+            // fire at all if the viewer's tab hasn't been shown yet.
+            let done = false;
+            const tryClassify = () => {
+                if (done) return;
+                if (classify()) { done = true; return; }
+            };
+            let tries = 80;   // ~40 s at 500 ms
+            const iv = setInterval(() => {
+                tryClassify();
+                if (done || --tries <= 0) {
+                    clearInterval(iv);
+                    if (!done) {
+                        console.warn(`[${panelId}] three.js scene not found — toggles disabled`);
+                        panel.style.opacity = '0.5';
+                        panel.title = 'Layer toggles unavailable in this browser';
+                    }
+                }
+            }, 500);
+            // Also try immediately in case the scene is already there.
+            tryClassify();
+            mv.addEventListener('load', tryClassify);
+        }
+
+        setupLayerToggles(modelViewer, 'layers-panel');
+        setupLayerToggles(modelViewerExploded, 'layers-panel-exploded');
     </script>
 </body>
 </html>

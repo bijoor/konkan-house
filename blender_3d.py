@@ -1574,6 +1574,11 @@ def create_roof_frame_3d(members, frame_z_lift: float = 0.0,
         else:
             obj.data.materials[0] = mat
 
+        # Tag as the metal-frame layer for the web viewer's toggle panel
+        # (surfaces on the glTF node as `extras.layer`, exposed as
+        # `object.userData.layer` in three.js).
+        obj['layer'] = 'frame'
+
         # Move into target collection (unlink from wherever it landed)
         for c in list(obj.users_collection):
             c.objects.unlink(obj)
@@ -1786,7 +1791,8 @@ def export_to_web(filepath: str = None):
         export_lights=False,
         export_apply=False,  # Already applied modifiers manually
         export_normals=True,  # Export vertex normals
-        export_tangents=True  # Export tangents for lighting
+        export_tangents=True,  # Export tangents for lighting
+        export_extras=True     # Include Blender custom props (e.g. `layer`)
     )
 
     file_size = os.path.getsize(filepath) / 1024
