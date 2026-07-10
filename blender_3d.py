@@ -211,6 +211,81 @@ def create_box(name: str, location: Tuple[float, float, float],
 # MAIN CONSTRUCTION FUNCTIONS
 # ============================================================================
 
+def apply_grid_texture(obj, tile_units: float = 100.0,
+                       texture_path: Optional[str] = None):
+    """Apply the repeating grid PNG (docs/ground_grid.png) to `obj`'s
+    material so the surface reads as architectural graph paper. One
+    tile of the texture spans `tile_units` world units in both X and Y
+    (default 100 = 10 ft per tile).
+
+    The material's principled-BSDF Base Color input is wired to an
+    Image Texture whose UV coords are scaled via a Mapping node so the
+    tile size matches `tile_units` for the object's world dimensions.
+    """
+    import os
+    # Locate the texture file relative to the project docs folder.
+    if texture_path is None:
+        try:
+            blend_dir = os.path.dirname(bpy.data.filepath) if bpy.data.filepath else ''
+        except Exception:
+            blend_dir = ''
+        # Fall back to the script's own directory if we're not inside a
+        # saved .blend file.
+        candidates = [
+            os.path.join(blend_dir, 'docs', 'ground_grid.png') if blend_dir else None,
+            os.path.join(os.path.dirname(__file__), 'docs', 'ground_grid.png'),
+        ]
+        texture_path = next((p for p in candidates if p and os.path.exists(p)), None)
+    if not texture_path or not os.path.exists(texture_path):
+        raise FileNotFoundError('ground_grid.png not found')
+
+    # Ensure the material exists and uses nodes.
+    if not obj.data.materials:
+        mat = bpy.data.materials.new(name='ground_grid')
+        obj.data.materials.append(mat)
+    else:
+        mat = obj.data.materials[0]
+    mat.use_nodes = True
+    nt = mat.node_tree
+
+    # Wipe any existing nodes we manage so this call is idempotent.
+    bsdf = nt.nodes.get('Principled BSDF')
+    if bsdf is None:
+        bsdf = nt.nodes.new('ShaderNodeBsdfPrincipled')
+    output = nt.nodes.get('Material Output')
+    if output is None:
+        output = nt.nodes.new('ShaderNodeOutputMaterial')
+    nt.links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
+
+    tex = nt.nodes.new('ShaderNodeTexImage')
+    tex.image = bpy.data.images.load(texture_path, check_existing=True)
+    tex.image.colorspace_settings.name = 'sRGB'
+    tex.extension = 'REPEAT'
+
+    mapping = nt.nodes.new('ShaderNodeMapping')
+    tex_coord = nt.nodes.new('ShaderNodeTexCoord')
+
+    # Scale UV so one tile = `tile_units` world units. UVs on a Blender
+    # primitive plane are 0..1; the object's world dimensions are
+    # (width, length) in metres (already scaled by inkscape_to_blender).
+    # We use Generated coordinates so the tiling is world-space consistent.
+    dims = obj.dimensions
+    world_w = max(dims.x, 1e-6)
+    world_l = max(dims.y, 1e-6)
+    tile_m = to_meters(tile_units)
+    mapping.inputs['Scale'].default_value = (world_w / tile_m, world_l / tile_m, 1.0)
+
+    nt.links.new(tex_coord.outputs['Generated'], mapping.inputs['Vector'])
+    nt.links.new(mapping.outputs['Vector'], tex.inputs['Vector'])
+    nt.links.new(tex.outputs['Color'], bsdf.inputs['Base Color'])
+    if 'Roughness' in bsdf.inputs:
+        bsdf.inputs['Roughness'].default_value = 0.9
+    if 'Specular' in bsdf.inputs:
+        bsdf.inputs['Specular'].default_value = 0.1
+    elif 'Specular IOR Level' in bsdf.inputs:
+        bsdf.inputs['Specular IOR Level'].default_value = 0.1
+
+
 def create_ground_plane(center_x: float, center_y: float,
                         width: float, length: float,
                         thickness: float = 1.0,

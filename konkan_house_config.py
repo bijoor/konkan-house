@@ -36,22 +36,29 @@ from house_config import HOUSE_CONFIG, GLOBAL_CONFIG
 # ============================================================================
 
 def build_ground():
-    """Build a large flat ground plane so the model doesn't look like it
-    is hanging in mid-air. Sized ~2× the plot dimensions and centred on
-    the plinth."""
+    """Build a large ground plane so the model reads as sitting in an
+    open landscape. Sized generously (8× the plot) so its edge falls
+    outside any typical orbit view; a repeating grid texture (from
+    docs/ground_grid.png) is applied via `apply_grid_texture` after
+    creation for that architectural graph-paper look."""
     _before = _snapshot_object_names()
     site = HOUSE_CONFIG.get('site', {})
     plinth = HOUSE_CONFIG['plinth']
-    # Base dimensions from the plot; fall back to the plinth footprint.
     plot_w = float(site.get('plot_width', plinth['width']))
     plot_l = float(site.get('plot_length', plinth['length']))
-    # 2× the plot each way, giving a comfortable border around the house.
-    ground_w = plot_w * 2.0
-    ground_l = plot_l * 2.0
+    ground_w = plot_w * 8.0
+    ground_l = plot_l * 8.0
     center_x = plinth['x'] + plinth['width'] / 2.0
     center_y = plinth['y'] + plinth['length'] / 2.0
-    create_ground_plane(center_x, center_y, ground_w, ground_l,
-                        thickness=1.0, material_name='ground')
+    ground = create_ground_plane(center_x, center_y, ground_w, ground_l,
+                                 thickness=1.0, material_name='ground')
+    # Overlay a repeating grid texture. Each tile represents 10 ft (=100
+    # world units), so the ground reads like architectural graph paper.
+    try:
+        from blender_3d import apply_grid_texture
+        apply_grid_texture(ground, tile_units=100.0)
+    except Exception as _e:
+        print(f"⚠ grid texture skipped: {_e}", flush=True)
     _tag_new_objects(_before, 'ground')
 
 
