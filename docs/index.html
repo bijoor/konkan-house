@@ -431,6 +431,13 @@
             transform-origin: 0 0;
             transition: transform 0.1s ease-out;
         }
+        /* Thin separator between the close button and the zoom cluster
+           inside the same top-right control panel. */
+        .zoom-divider {
+            height: 1px;
+            background: rgba(0, 0, 0, 0.12);
+            margin: 0.15rem 0;
+        }
         .zoom-controls {
             position: absolute;
             top: 20px;
@@ -998,6 +1005,8 @@
         <!-- Shared SVG Container with zoom controls -->
         <div class="svg-full-width" id="svg-container" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
             <div class="zoom-controls">
+                <button class="zoom-btn" onclick="closeSvgLightbox()" title="Close (Esc)" aria-label="Close viewer">✕</button>
+                <div class="zoom-divider" aria-hidden="true"></div>
                 <button class="zoom-btn" onclick="zoomIn()" title="Zoom In">+</button>
                 <div class="zoom-info" id="svg-zoom">100%</div>
                 <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">−</button>
@@ -1681,8 +1690,16 @@
                         e.touches[0].clientY - e.touches[1].clientY
                     );
                     const delta = newDistance / touchStartDistance;
+                    // Pivot around the midpoint of the two fingers, mapped
+                    // to container-local coordinates (matching the wheel
+                    // handler's pivot math).
+                    const rect = container.getBoundingClientRect();
+                    const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+                    const my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
                     const newScale = svgState.scale * delta;
                     if (newScale >= 0.1 && newScale <= 10) {
+                        svgState.translateX = mx - (mx - svgState.translateX) * delta;
+                        svgState.translateY = my - (my - svgState.translateY) * delta;
                         svgState.scale = newScale;
                         touchStartDistance = newDistance;
                         updateTransform();
@@ -1727,16 +1744,34 @@
             }
         }
 
-        function zoomIn() {
-            if (svgState.scale >= 10) return;
-            svgState.scale *= 1.2;
+        // Scale by `factor` while keeping the container-space point
+        // (anchorX, anchorY) fixed on screen. Because our CSS uses
+        // `transform-origin: 0 0`, a bare scale change pulls everything
+        // toward the top-left; adjusting the translation the same way
+        // the wheel handler does keeps the pivot where the user expects.
+        function zoomAround(factor, anchorX, anchorY) {
+            const newScale = svgState.scale * factor;
+            if (newScale < 0.1 || newScale > 10) return;
+            svgState.translateX = anchorX - (anchorX - svgState.translateX) * factor;
+            svgState.translateY = anchorY - (anchorY - svgState.translateY) * factor;
+            svgState.scale = newScale;
             updateTransform();
         }
 
+        function containerCenter() {
+            const el = document.getElementById('svg-container');
+            const r = el.getBoundingClientRect();
+            return { x: r.width / 2, y: r.height / 2 };
+        }
+
+        function zoomIn() {
+            const c = containerCenter();
+            zoomAround(1.2, c.x, c.y);
+        }
+
         function zoomOut() {
-            if (svgState.scale <= 0.1) return;
-            svgState.scale *= 0.8;
-            updateTransform();
+            const c = containerCenter();
+            zoomAround(0.8, c.x, c.y);
         }
 
         function resetZoom() {
@@ -1820,21 +1855,40 @@
         }
 
         // Open individual SVG - show container and load the SVG
+        // Which tab was active when the SVG lightbox was opened. Used by
+        // closeSvgLightbox to jump back where the user came from.
+        let svgLightboxReturnTab = null;
+
         async function openSvgLightbox(filename, caption) {
-            // Show svg-container
+            // Remember the tab the user is coming from so the close
+            // button (or Esc) can put them back on it.
+            const activeTab = document.querySelector('.tab.active');
+            svgLightboxReturnTab = activeTab ? activeTab.getAttribute('onclick') : null;
+
             const svgContainer = document.getElementById('svg-container');
             svgContainer.style.display = 'block';
 
-            // Switch to all-plans view
-            switchView('view-all-plans');
-
-            // Load the individual SVG using setupPanZoom
+            // Load the SVG via the pan/zoom helper.
             await setupPanZoom(filename);
+        }
+
+        function closeSvgLightbox() {
+            const svgContainer = document.getElementById('svg-container');
+            svgContainer.style.display = 'none';
+            // Restore the tab the user came from. The onclick attributes
+            // on tabs are of the form "switchView('plans')" etc.; running
+            // it re-activates the same tab.
+            if (svgLightboxReturnTab) {
+                try { new Function(svgLightboxReturnTab)(); }
+                catch (e) { console.warn('[svg lightbox] could not restore tab', e); }
+            }
+            svgLightboxReturnTab = null;
         }
 
         // Keyboard navigation for lightboxes
         document.addEventListener('keydown', function(e) {
             const lightbox = document.getElementById('lightbox');
+            const svgContainer = document.getElementById('svg-container');
 
             if (lightbox.classList.contains('active')) {
                 if (e.key === 'Escape') {
@@ -1844,6 +1898,9 @@
                 } else if (e.key === 'ArrowRight') {
                     changePerspective(1);
                 }
+            } else if (svgContainer && svgContainer.style.display !== 'none'
+                       && e.key === 'Escape') {
+                closeSvgLightbox();
             }
         });
 
