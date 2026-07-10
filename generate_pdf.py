@@ -32,6 +32,18 @@ RENDERS = [
 ]
 
 
+def load_roof_panel_manifest():
+    """Return the list of roof-panel manifest entries emitted by
+    svg_2d.generate_roof_sections_svg (docs/roof_panels.json), or [] if
+    the file isn't present yet."""
+    import json
+    manifest_path = os.path.join(DOCS_DIR, "roof_panels.json")
+    if not os.path.exists(manifest_path):
+        return []
+    with open(manifest_path) as f:
+        return json.load(f)
+
+
 def check_files():
     """Verify all expected inputs exist before building."""
     required = [
@@ -39,6 +51,10 @@ def check_files():
         os.path.join(DOCS_DIR, "elevations_combined.svg"),
         os.path.join(DOCS_DIR, "roof_plan.svg"),
     ]
+    # Include the split roof panels if present so the PDF can page them
+    # separately instead of the single very-tall roof_plan.svg.
+    for entry in load_roof_panel_manifest():
+        required.append(os.path.join(DOCS_DIR, entry["file"]))
     missing = [p for p in required if not os.path.exists(p)]
     for fname, _ in RENDERS:
         if not os.path.exists(os.path.join(RENDER_DIR, fname)):
@@ -108,6 +124,10 @@ def build_html():
     # and its border/margin without pushing the SVG onto a second page.
     roof_page_h_mm = roof_content_w_mm * roof_aspect + 2 * page_margin_mm + 25
 
+    # Per-panel roof pages — one landscape A3 page per detail. Chrome
+    # will scale the SVG to fit the page's content box.
+    roof_panels = load_roof_panel_manifest()
+
     html = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -164,10 +184,16 @@ def build_html():
   <div class="drawing"><img src="elevations_combined.svg" alt="Combined elevations"></div>
 </section>
 
-<section class="page roof-page">
-  <h2>Roof — Dimensioned Cross Sections</h2>
-  <div class="drawing"><img src="roof_plan.svg" alt="Roof sections"></div>
-</section>
+{"".join(
+    f'<section class="page"><h2>Roof — {p["title"]}</h2>'
+    f'<div class="drawing"><img src="{p["file"]}" alt="{p["title"]}"></div></section>\n'
+    for p in roof_panels
+) if roof_panels else (
+    '<section class="page roof-page">\n'
+    '  <h2>Roof — Dimensioned Cross Sections</h2>\n'
+    '  <div class="drawing"><img src="roof_plan.svg" alt="Roof sections"></div>\n'
+    '</section>'
+)}
 
 <section class="page">
   <h2>3D Perspective Renders</h2>

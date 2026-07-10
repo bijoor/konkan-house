@@ -8113,6 +8113,19 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
         return s
 
     # ---------- Compose SVG ----------
+    # `panels_meta` records each panel's SVG fragment + its bounding box
+    # in canvas coords. Used to write per-panel SVG files (one card per
+    # detail) in addition to the combined roof_plan.svg.
+    panels_meta = []
+
+    def _record(pid, title, x0, y0, w, h, svg_fragment):
+        panels_meta.append({
+            'id': pid, 'title': title,
+            'x0': x0, 'y0': y0, 'width': w, 'height': h,
+            'svg': svg_fragment,
+        })
+        return svg_fragment
+
     svg = f'''<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="{canvas_w}" height="{canvas_h}" viewBox="0 0 {canvas_w} {canvas_h}">
 <title>Hip Roof — Slope Views &amp; Framing</title>
@@ -8127,16 +8140,24 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
 '''
     # Row 0: top view (roof plan showing rafters + purlins)
     top_view_y0 = canvas_title_h + outer_pad
-    svg += top_view_panel(outer_pad, top_view_y0,
-                          canvas_w - 2 * outer_pad, top_view_h)
+    _w = canvas_w - 2 * outer_pad
+    svg += _record('top_view', 'Roof plan — rafters, purlins & ring beam',
+                   outer_pad, top_view_y0, _w, top_view_h,
+                   top_view_panel(outer_pad, top_view_y0, _w, top_view_h))
 
     # Row 1: perspective on the left, two cross sections stacked on the right
     persp_y0 = top_view_y0 + top_view_h + row_gap
-    svg += perspective_panel(outer_pad, persp_y0, panel_w, persp_row_h)
+    svg += _record('perspective', 'Isometric view — structural frame',
+                   outer_pad, persp_y0, panel_w, persp_row_h,
+                   perspective_panel(outer_pad, persp_y0, panel_w, persp_row_h))
     right_col_x = outer_pad + panel_w + col_gap
-    svg += section_aa_panel(right_col_x, persp_y0, panel_w, section_h)
-    svg += section_bb_panel(right_col_x, persp_y0 + section_h + row_gap,
-                            panel_w, section_h)
+    svg += _record('section_aa', 'Section A-A — long axis cross-section',
+                   right_col_x, persp_y0, panel_w, section_h,
+                   section_aa_panel(right_col_x, persp_y0, panel_w, section_h))
+    _bb_y = persp_y0 + section_h + row_gap
+    svg += _record('section_bb', 'Section B-B — short axis cross-section',
+                   right_col_x, _bb_y, panel_w, section_h,
+                   section_bb_panel(right_col_x, _bb_y, panel_w, section_h))
 
     # Row 2: one MAIN slope + N hip. Main slopes W/E are still identical.
     # For asymmetric roofs the N and S hip ends differ — S is drawn on a
@@ -8157,73 +8178,131 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
                                f'(triangle, {hip_n_repr["pitch"]:.1f}°)')
         hip_s_repr['title'] = (f'HIP END — {slopes[3]["code"]} '
                                f'(triangle, {hip_s_repr["pitch"]:.1f}°)')
-    svg += slope_panel(outer_pad, grid_y0, main_repr)
-    svg += slope_panel(outer_pad + panel_w + col_gap, grid_y0, hip_n_repr)
+    svg += _record('slope_main', main_repr['title'].replace('&amp;', '&'),
+                   outer_pad, grid_y0, panel_w, panel_h,
+                   slope_panel(outer_pad, grid_y0, main_repr))
+    _hip_n_x = outer_pad + panel_w + col_gap
+    svg += _record('slope_hip_n', hip_n_repr['title'].replace('&amp;', '&'),
+                   _hip_n_x, grid_y0, panel_w, panel_h,
+                   slope_panel(_hip_n_x, grid_y0, hip_n_repr))
     # Row 2b: S hip panel when hips are asymmetric
     if not _hips_are_identical:
         grid_y0_s = grid_y0 + panel_h + row_gap
-        svg += slope_panel(outer_pad + panel_w + col_gap, grid_y0_s, hip_s_repr)
+        svg += _record('slope_hip_s', hip_s_repr['title'].replace('&amp;', '&'),
+                       _hip_n_x, grid_y0_s, panel_w, panel_h,
+                       slope_panel(_hip_n_x, grid_y0_s, hip_s_repr))
         framing_y0 = grid_y0_s + panel_h + row_gap
     else:
         framing_y0 = grid_y0 + panel_h + row_gap
-    svg += framing_detail_panel(outer_pad, framing_y0)
+    svg += _record('framing_detail', 'Framing detail — metal pipe cross sections',
+                   outer_pad, framing_y0, canvas_w - 2 * outer_pad, framing_panel_h,
+                   framing_detail_panel(outer_pad, framing_y0))
 
     # ---- Embed hand-maintained eave cross-section ----
     # docs/roof-cross-section.svg is A4-landscape (viewBox 297 × 210 mm).
     # Read it at generation time and drop the inner content into a nested
     # <svg> element sized to our panel, preserving the aspect ratio.
     eave_y0 = framing_y0 + framing_panel_h + row_gap
-    svg += (f'<rect x="{outer_pad}" y="{eave_y0}" '
-            f'width="{external_eave_panel_w}" height="{external_eave_panel_h:.1f}" '
-            f'fill="#ffffff" stroke="#bbb" stroke-width="1"/>\n')
-    svg += (f'<rect x="{outer_pad}" y="{eave_y0}" '
-            f'width="{external_eave_panel_w}" height="40" '
-            f'fill="#f2f2f2" stroke="#bbb" stroke-width="1"/>\n')
-    svg += (f'<text x="{outer_pad + external_eave_panel_w / 2}" y="{eave_y0 + 27}" '
-            f'text-anchor="middle" font-size="18" font-weight="600" fill="#222">'
-            f'EAVE CROSS SECTION — hand-drawn detail '
-            f'(docs/roof-cross-section.svg)</text>\n')
+    _eave_frag = ''
+    _eave_frag += (f'<rect x="{outer_pad}" y="{eave_y0}" '
+                   f'width="{external_eave_panel_w}" height="{external_eave_panel_h:.1f}" '
+                   f'fill="#ffffff" stroke="#bbb" stroke-width="1"/>\n')
+    _eave_frag += (f'<rect x="{outer_pad}" y="{eave_y0}" '
+                   f'width="{external_eave_panel_w}" height="40" '
+                   f'fill="#f2f2f2" stroke="#bbb" stroke-width="1"/>\n')
+    _eave_frag += (f'<text x="{outer_pad + external_eave_panel_w / 2}" y="{eave_y0 + 27}" '
+                   f'text-anchor="middle" font-size="18" font-weight="600" fill="#222">'
+                   f'EAVE CROSS SECTION — hand-drawn detail '
+                   f'(docs/roof-cross-section.svg)</text>\n')
     try:
         with open(external_eave_svg_path, 'r', encoding='utf-8') as _ef:
             _external = _ef.read()
-        # Strip the XML declaration and outer <svg ...> wrapper; keep only
-        # the inner content between opening <svg ...> and </svg>.
         import re as _re
         _m = _re.search(r'<svg\b[^>]*>(.*)</svg>', _external, flags=_re.DOTALL)
         _inner = _m.group(1) if _m else ''
-        # Extract the source viewBox so we can preserve it
         _vb = _re.search(r'viewBox\s*=\s*"([^"]+)"', _external)
         _view_box = _vb.group(1) if _vb else '0 0 297 210'
-        # Wrap the inner content in a nested <svg> positioned as a panel.
-        # A small vertical offset accounts for our 40 px title bar.
         _title_bar = 40
-        svg += (f'<svg x="{outer_pad}" y="{eave_y0 + _title_bar}" '
-                f'width="{external_eave_panel_w}" '
-                f'height="{external_eave_panel_h - _title_bar:.1f}" '
-                f'viewBox="{_view_box}" '
-                f'preserveAspectRatio="xMidYMid meet">\n')
-        svg += _inner
-        svg += '</svg>\n'
+        _eave_frag += (f'<svg x="{outer_pad}" y="{eave_y0 + _title_bar}" '
+                       f'width="{external_eave_panel_w}" '
+                       f'height="{external_eave_panel_h - _title_bar:.1f}" '
+                       f'viewBox="{_view_box}" '
+                       f'preserveAspectRatio="xMidYMid meet">\n')
+        _eave_frag += _inner
+        _eave_frag += '</svg>\n'
     except FileNotFoundError:
-        # Fallback message if the standalone file is missing.
-        svg += (f'<text x="{outer_pad + external_eave_panel_w / 2}" '
-                f'y="{eave_y0 + external_eave_panel_h / 2}" '
-                f'text-anchor="middle" font-size="14" fill="#b00">'
-                f'(docs/roof-cross-section.svg not found — panel skipped)</text>\n')
+        _eave_frag += (f'<text x="{outer_pad + external_eave_panel_w / 2}" '
+                       f'y="{eave_y0 + external_eave_panel_h / 2}" '
+                       f'text-anchor="middle" font-size="14" fill="#b00">'
+                       f'(docs/roof-cross-section.svg not found — panel skipped)</text>\n')
+    svg += _record('eave_cross_section', 'Eave cross section — hand-drawn detail',
+                   outer_pad, eave_y0, external_eave_panel_w, external_eave_panel_h,
+                   _eave_frag)
 
     # Truss elevation detail panel (after the eave cross-section)
     truss_panel_y0 = eave_y0 + external_eave_panel_h + row_gap
-    svg += truss_elevation_panel(outer_pad, truss_panel_y0)
+    svg += _record('truss_elevation', 'Fink truss elevation — bottom chord on ring beam',
+                   outer_pad, truss_panel_y0, canvas_w - 2 * outer_pad, truss_panel_h,
+                   truss_elevation_panel(outer_pad, truss_panel_y0))
     materials_y0 = truss_panel_y0 + truss_panel_h + row_gap
-    svg += materials_takeoff_panel(outer_pad, materials_y0)
+    svg += _record('materials_takeoff', 'Materials takeoff — verification of quantities',
+                   outer_pad, materials_y0, canvas_w - 2 * outer_pad, materials_panel_h,
+                   materials_takeoff_panel(outer_pad, materials_y0))
     consolidated_y0 = materials_y0 + materials_panel_h + row_gap
-    svg += consolidated_bom_panel(outer_pad, consolidated_y0)
+    svg += _record('consolidated_bom', 'Consolidated procurement list — totals by material spec',
+                   outer_pad, consolidated_y0, canvas_w - 2 * outer_pad, consolidated_panel_h,
+                   consolidated_bom_panel(outer_pad, consolidated_y0))
     tile_y0 = consolidated_y0 + consolidated_panel_h + row_gap
-    svg += tile_panel(outer_pad, tile_y0)
+    svg += _record('tile_roofing', 'Tile roofing — procured items',
+                   outer_pad, tile_y0, canvas_w - 2 * outer_pad, tile_panel_h,
+                   tile_panel(outer_pad, tile_y0))
     svg += '</svg>\n'
 
     output_path = os.path.join(output_dir, 'roof_plan.svg')
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(svg)
     print(f"✓ Roof slope drawings + framing detail saved to: {output_path}")
+
+    # ---- Split into per-panel SVG files (one card per detail) ----
+    # Each file wraps the panel's fragment in an SVG whose viewBox crops
+    # to the panel's bounding box on the master canvas, so coordinates
+    # don't need to be re-computed.
+    _defs = (
+        '<defs>\n'
+        '  <marker id="arr" viewBox="0 0 10 10" refX="5" refY="5" '
+        'markerWidth="6" markerHeight="6" orient="auto-start-reverse">\n'
+        '    <path d="M0,0 L10,5 L0,10 z" fill="#0066cc"/>\n'
+        '  </marker>\n'
+        '  <style>text { font-family: -apple-system, Arial, sans-serif; }</style>\n'
+        '</defs>\n'
+        '<rect x="0" y="0" width="100%" height="100%" fill="#fafafa"/>\n'
+    )
+    panel_manifest = []
+    for p in panels_meta:
+        panel_svg = (
+            f'<?xml version="1.0" encoding="UTF-8"?>\n'
+            f'<svg xmlns="http://www.w3.org/2000/svg" '
+            f'width="{p["width"]}" height="{p["height"]}" '
+            f'viewBox="{p["x0"]} {p["y0"]} {p["width"]} {p["height"]}">\n'
+            f'<title>{p["title"]}</title>\n'
+            f'{_defs}'
+            f'{p["svg"]}'
+            f'</svg>\n'
+        )
+        pf = os.path.join(output_dir, f'roof_{p["id"]}.svg')
+        with open(pf, 'w', encoding='utf-8') as f:
+            f.write(panel_svg)
+        panel_manifest.append({
+            'id': p['id'], 'title': p['title'],
+            'file': f'roof_{p["id"]}.svg',
+            'width': p['width'], 'height': p['height'],
+        })
+    # Manifest so the web viewer and PDF generator can iterate the panels
+    # without re-implementing the ordering.
+    import json as _json
+    manifest_path = os.path.join(output_dir, 'roof_panels.json')
+    with open(manifest_path, 'w', encoding='utf-8') as f:
+        _json.dump(panel_manifest, f, indent=2)
+    print(f"✓ Wrote {len(panel_manifest)} per-panel SVGs + manifest: {manifest_path}")
+
     return output_path

@@ -721,6 +721,7 @@
             <button class="tab" onclick="switchView('plans')" title="Floor Plans">📐<span class="tab-label"> Floor Plans</span></button>
             <button class="tab" onclick="switchView('all-plans')" title="All Floor Plans">📊<span class="tab-label"> All Floor Plans</span></button>
             <button class="tab" onclick="switchView('elevations')" title="Elevations">📏<span class="tab-label"> Elevations</span></button>
+            <button class="tab" onclick="switchView('roof')" title="Roof Details">🧱<span class="tab-label"> Roof Details</span></button>
             <button class="tab" onclick="switchView('all-elevations')" title="All Elevations">🏛️<span class="tab-label"> All Elevations</span></button>
             <button class="tab" onclick="switchView('perspectives')" title="Perspective Views">🎨<span class="tab-label"> Perspective Views</span></button>
         </div>
@@ -932,14 +933,20 @@
                 <div class="svg-grid" id="elevations-grid">
                     <!-- Elevations will be loaded here dynamically -->
                 </div>
-
-                <h2 class="section-header" style="margin-top: 2.5rem;">Roof Sections</h2>
-                <div style="text-align: center; padding: 1rem;">
-                    <img src="roof_plan.svg" alt="Roof cross sections with dimensions" style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 4px; background: white;">
-                </div>
             </div>
         </div>
         <!-- End Elevations View -->
+
+        <!-- Roof Details View -->
+        <div id="view-roof" class="view-container">
+            <div class="svg-views-container">
+                <h2 class="section-header">Roof Details</h2>
+                <div class="svg-grid" id="roof-panels-grid">
+                    <!-- Roof panels loaded here dynamically from roof_panels.json -->
+                </div>
+            </div>
+        </div>
+        <!-- End Roof Details View -->
 
         <!-- All Floor Plans Combined View -->
         <div id="view-all-plans" class="view-container">
@@ -1262,6 +1269,10 @@
                 document.getElementById('view-elevations').classList.add('active');
                 svgContainer.style.display = 'none';
                 loadElevations();
+            } else if (view === 'roof') {
+                document.getElementById('view-roof').classList.add('active');
+                svgContainer.style.display = 'none';
+                loadRoofPanels();
             } else if (view === 'all-plans') {
                 document.getElementById('view-all-plans').classList.add('active');
                 loadCombinedFloorPlans();
@@ -1401,6 +1412,49 @@
             }
 
             elevationsLoaded = true;
+        }
+
+        // Load roof panels dynamically from the manifest emitted by the
+        // SVG generator (docs/roof_panels.json). One card per panel; SVGs
+        // are inlined so lightbox click-through works the same way.
+        let roofPanelsLoaded = false;
+        async function loadRoofPanels() {
+            if (roofPanelsLoaded) return;
+            const grid = document.getElementById('roof-panels-grid');
+            grid.innerHTML = '<p style="text-align: center; color: #666;">Loading roof panels…</p>';
+            let manifest = [];
+            try {
+                const r = await fetch('roof_panels.json?t=' + Date.now());
+                if (!r.ok) throw new Error('roof_panels.json HTTP ' + r.status);
+                manifest = await r.json();
+            } catch (e) {
+                grid.innerHTML = `
+                    <div style="text-align: center; padding: 3rem; color: #666;">
+                        <h3>Roof panels not available</h3>
+                        <p>Re-run the SVG generator to produce roof_panels.json + roof_&lt;id&gt;.svg files.</p>
+                    </div>`;
+                console.warn('[roof panels]', e);
+                return;
+            }
+            grid.innerHTML = '';
+            for (const p of manifest) {
+                try {
+                    const r = await fetch(p.file + '?t=' + Date.now());
+                    if (!r.ok) continue;
+                    const svg = await r.text();
+                    const item = document.createElement('div');
+                    item.className = 'svg-item';
+                    item.innerHTML = `<h3>${p.title}</h3>${svg}`;
+                    grid.appendChild(item);
+                    const svgEl = item.querySelector('svg');
+                    if (svgEl) {
+                        svgEl.addEventListener('click', () => openSvgLightbox(p.file, p.title));
+                    }
+                } catch (e) {
+                    console.warn('[roof panels]', p.id, e);
+                }
+            }
+            roofPanelsLoaded = true;
         }
 
         // Zoom and Pan state for combined views
@@ -1604,6 +1658,7 @@
             // is treated as passive and the page scrolls instead of the SVG panning.
             let touchStartDistance = 0;
             container.addEventListener('touchstart', (e) => {
+                if (e.target.closest('.zoom-controls')) return;
                 if (e.touches.length === 2) {
                     e.preventDefault();
                     touchStartDistance = Math.hypot(
@@ -1611,35 +1666,41 @@
                         e.touches[0].clientY - e.touches[1].clientY
                     );
                 } else if (e.touches.length === 1) {
-                    state.isDragging = true;
-                    state.startX = e.touches[0].clientX - state.translateX;
-                    state.startY = e.touches[0].clientY - state.translateY;
+                    e.preventDefault();
+                    svgState.isDragging = true;
+                    svgState.startX = e.touches[0].clientX - svgState.translateX;
+                    svgState.startY = e.touches[0].clientY - svgState.translateY;
                 }
             }, { passive: false });
 
             container.addEventListener('touchmove', (e) => {
-                e.preventDefault();
                 if (e.touches.length === 2 && touchStartDistance > 0) {
+                    e.preventDefault();
                     const newDistance = Math.hypot(
                         e.touches[0].clientX - e.touches[1].clientX,
                         e.touches[0].clientY - e.touches[1].clientY
                     );
                     const delta = newDistance / touchStartDistance;
-                    const newScale = state.scale * delta;
+                    const newScale = svgState.scale * delta;
                     if (newScale >= 0.1 && newScale <= 10) {
-                        state.scale = newScale;
+                        svgState.scale = newScale;
                         touchStartDistance = newDistance;
-                        updateTransform(containerId);
+                        updateTransform();
                     }
-                } else if (e.touches.length === 1 && state.isDragging) {
-                    state.translateX = e.touches[0].clientX - state.startX;
-                    state.translateY = e.touches[0].clientY - state.startY;
-                    updateTransform(containerId);
+                } else if (e.touches.length === 1 && svgState.isDragging) {
+                    e.preventDefault();
+                    svgState.translateX = e.touches[0].clientX - svgState.startX;
+                    svgState.translateY = e.touches[0].clientY - svgState.startY;
+                    updateTransform();
                 }
             }, { passive: false });
 
             container.addEventListener('touchend', () => {
-                state.isDragging = false;
+                svgState.isDragging = false;
+                touchStartDistance = 0;
+            });
+            container.addEventListener('touchcancel', () => {
+                svgState.isDragging = false;
                 touchStartDistance = 0;
             });
         }
