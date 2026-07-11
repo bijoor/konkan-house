@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Konkan House - 3D Model Viewer</title>
     <style>
         * {
@@ -616,35 +616,41 @@
                floating 📚 button on the top-left. */
             .layers-panel {
                 display: none;
-                top: 72px;
-                left: 12px;
+                /* Sit just below the floating 📚 toggle (60 px + button + gap). */
+                top: calc(max(env(safe-area-inset-top, 0px), 60px) + 52px);
+                left: max(env(safe-area-inset-left, 0px), 12px);
                 right: auto;
                 max-width: 220px;
                 /* Leave room for the fixed footer + safe area. */
-                max-height: calc(100vh - 72px - 80px - env(safe-area-inset-bottom, 0px));
+                max-height: calc(100vh - max(env(safe-area-inset-top, 0px), 60px) - 132px - env(safe-area-inset-bottom, 0px));
                 overflow-y: auto;
             }
             .layers-panel.active {
                 display: block;
             }
+            /* iPad Safari overlays a floating URL/toolbar chrome that
+               isn't reflected in `env(safe-area-inset-top)`. Pin the
+               toggle far enough down that it clears the typical toolbar
+               height (~55 px) while still respecting the safe area when
+               the browser does publish one. */
             .layers-toggle {
                 display: flex;
-                top: 12px;
-                left: 12px;
+                top: max(env(safe-area-inset-top, 0px), 60px);
+                left: max(env(safe-area-inset-left, 0px), 12px);
                 width: 40px; height: 40px;
             }
 
             /* Shrink the settings gear so it doesn't crowd the model */
             .settings-toggle {
-                top: 12px;
-                right: 12px;
+                top: max(env(safe-area-inset-top, 0px), 60px);
+                right: max(env(safe-area-inset-right, 0px), 12px);
                 width: 40px; height: 40px;
                 padding: 0.4rem;
                 font-size: 1.1rem;
             }
             .settings-panel {
-                top: 62px;
-                right: 12px;
+                top: calc(max(env(safe-area-inset-top, 0px), 60px) + 52px);
+                right: max(env(safe-area-inset-right, 0px), 12px);
                 min-width: 220px;
                 max-width: calc(100vw - 24px);
                 padding: 1rem;
