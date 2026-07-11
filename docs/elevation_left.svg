@@ -141,7 +141,9 @@
 <rect x="196.0" y="76.0" width="8" height="200.0" fill="#000" stroke="#000" stroke-width="0.5"/>
 <line x1="-25.0" y1="90.29573789504204" x2="86.225" y2="-3.0" stroke="#8B4513" stroke-width="3"/>
 <line x1="296.0" y1="-3.0" x2="494.6506233690925" y2="90.29573789504204" stroke="#8B4513" stroke-width="3"/>
-<line x1="86.225" y1="-3.0" x2="296.0" y2="-3.0" stroke="#8B4513" stroke-width="3"/>
+<line x1="36.224999999999994" y1="-3.0" x2="346.0" y2="-3.0" stroke="#8B4513" stroke-width="3"/>
+<line x1="36.224999999999994" y1="-3.0" x2="36.224999999999994" y2="1.5" stroke="#8B4513" stroke-width="2.4000000000000004"/>
+<line x1="346.0" y1="-3.0" x2="346.0" y2="1.5" stroke="#8B4513" stroke-width="2.4000000000000004"/>
 <g class="dimension">
   <line x1="480" y1="276.0" x2="480" y2="176.0" stroke="#000" stroke-width="0.5"/>
   <line x1="450" y1="276.0" x2="480" y2="276.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>

@@ -23,13 +23,17 @@ namespace = {'GLOBAL_CONFIG': GLOBAL_CONFIG}
 exec(config_code, namespace)
 
 # Import SVG functions (no Blender dependency)
-from svg_2d import generate_combined_floor_plans, generate_combined_elevations, generate_roof_sections_svg
+from svg_2d import (
+    generate_combined_floor_plans, generate_combined_elevations,
+    generate_roof_sections_svg,
+    generate_all_floor_plans, generate_all_elevations,
+)
 
 HOUSE_CONFIG = namespace['HOUSE_CONFIG']
 
 if __name__ == "__main__":
     print("\n" + "="*70)
-    print("Regenerating Combined SVGs")
+    print("Regenerating SVGs")
     print("="*70)
 
     print("\n1. Generating combined floor plans...")
@@ -40,6 +44,12 @@ if __name__ == "__main__":
 
     print("\n3. Generating roof sections...")
     rs_path = generate_roof_sections_svg(HOUSE_CONFIG)
+
+    print("\n4. Generating individual floor plan SVGs (per floor)...")
+    generate_all_floor_plans(HOUSE_CONFIG)
+
+    print("\n5. Generating individual elevation SVGs (front/back/left/right)...")
+    generate_all_elevations(HOUSE_CONFIG)
 
     print("\n" + "="*70)
     print("✓ Done!")

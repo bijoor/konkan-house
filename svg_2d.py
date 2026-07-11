@@ -2320,11 +2320,40 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                         ridge_high_svg_x = world_to_svg_x(trap_ridge_high, 0)
                         eave_svg_y = z_to_y(eave_z_abs)
                         ridge_svg_y = z_to_y(ridge_top_z)
-                        # Two slanted sides (eave corner to ridge corner)
+                        # Two slanted sides (eave corner to ridge corner —
+                        # still at the ORIGINAL hip apex R1 / R2)
                         roof_svg += f'<line x1="{eave_low_svg_x}" y1="{eave_svg_y}" x2="{ridge_low_svg_x}" y2="{ridge_svg_y}" stroke="#8B4513" stroke-width="{roof_thickness_val}"/>\n'
                         roof_svg += f'<line x1="{ridge_high_svg_x}" y1="{ridge_svg_y}" x2="{eave_high_svg_x}" y2="{eave_svg_y}" stroke="#8B4513" stroke-width="{roof_thickness_val}"/>\n'
-                        # Ridge line at top
-                        roof_svg += f'<line x1="{ridge_low_svg_x}" y1="{ridge_svg_y}" x2="{ridge_high_svg_x}" y2="{ridge_svg_y}" stroke="#8B4513" stroke-width="{roof_thickness_val}"/>\n'
+                        # Ridge line at top — extended past R1 / R2 when the
+                        # optional ridge-end ventilation feature is on.
+                        vent_ext_u = float(obj.get('ridge_ext_u', 0.0))
+                        if vent_ext_u > 0:
+                            # Extension direction depends on axis. In the
+                            # trapezoid view "trap_ridge_low" is the small-
+                            # coordinate end (N for ridge_axis='y', W for
+                            # ridge_axis='x'); the extension goes further
+                            # in that direction on the low end and the
+                            # opposite direction on the high end. World-x
+                            # deltas map to svg-x via world_to_svg_x's
+                            # linear scale, so we can call it for the
+                            # extended world coordinates directly.
+                            ext_low_world = trap_ridge_low - vent_ext_u
+                            ext_high_world = trap_ridge_high + vent_ext_u
+                            ext_low_svg_x = world_to_svg_x(ext_low_world, 0)
+                            ext_high_svg_x = world_to_svg_x(ext_high_world, 0)
+                            # Horizontal caps sticking out past R1 and R2 —
+                            # drawn a touch heavier so they read as
+                            # continuous with the main ridge line.
+                            roof_svg += f'<line x1="{ext_low_svg_x}" y1="{ridge_svg_y}" x2="{ext_high_svg_x}" y2="{ridge_svg_y}" stroke="#8B4513" stroke-width="{roof_thickness_val}"/>\n'
+                            # Tiny vertical drop tick at each extension end
+                            # so the reader can distinguish the cap from
+                            # a lengthened pyramid ridge at a glance.
+                            _tick = max(4, roof_thickness_val * 1.5)
+                            roof_svg += f'<line x1="{ext_low_svg_x}" y1="{ridge_svg_y}" x2="{ext_low_svg_x}" y2="{ridge_svg_y + _tick}" stroke="#8B4513" stroke-width="{roof_thickness_val * 0.8}"/>\n'
+                            roof_svg += f'<line x1="{ext_high_svg_x}" y1="{ridge_svg_y}" x2="{ext_high_svg_x}" y2="{ridge_svg_y + _tick}" stroke="#8B4513" stroke-width="{roof_thickness_val * 0.8}"/>\n'
+                        else:
+                            # Plain ridge (no vent)
+                            roof_svg += f'<line x1="{ridge_low_svg_x}" y1="{ridge_svg_y}" x2="{ridge_high_svg_x}" y2="{ridge_svg_y}" stroke="#8B4513" stroke-width="{roof_thickness_val}"/>\n'
 
         current_z = wall_top
 
