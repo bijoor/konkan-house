@@ -154,11 +154,15 @@
 <line x1="449.1" y1="796.1" x2="1034.9" y2="796.1" stroke="#4a8fbf" stroke-width="2.8031654368516734" clip-path="url(#topfv_S)"/>
 <line x1="449.1" y1="780.8" x2="1034.9" y2="780.8" stroke="#4a8fbf" stroke-width="2.8031654368516734" clip-path="url(#topfv_S)"/>
 <line x1="449.1" y1="765.5" x2="1034.9" y2="765.5" stroke="#4a8fbf" stroke-width="2.8031654368516734" clip-path="url(#topfv_S)"/>
-<line x1="742.0" y1="400.1" x2="742.0" y2="752.9" stroke="#5a3a17" stroke-width="8.40949631055502"/>
+<line x1="742.0" y1="316.0" x2="742.0" y2="837.0" stroke="#5a3a17" stroke-width="8.40949631055502"/>
 <line x1="742.0" y1="400.1" x2="449.1" y2="213.0" stroke="#5a3a17" stroke-width="8.40949631055502"/>
 <line x1="742.0" y1="400.1" x2="1034.9" y2="213.0" stroke="#5a3a17" stroke-width="8.40949631055502"/>
 <line x1="742.0" y1="752.9" x2="449.1" y2="1087.0" stroke="#5a3a17" stroke-width="8.40949631055502"/>
 <line x1="742.0" y1="752.9" x2="1034.9" y2="1087.0" stroke="#5a3a17" stroke-width="8.40949631055502"/>
+<line x1="742.0" y1="316.0" x2="671.1" y2="354.8" stroke="#5a3a17" stroke-width="4.2" stroke-dasharray="5,3" opacity="0.85"/>
+<line x1="742.0" y1="316.0" x2="812.9" y2="354.8" stroke="#5a3a17" stroke-width="4.2" stroke-dasharray="5,3" opacity="0.85"/>
+<line x1="742.0" y1="837.0" x2="686.6" y2="816.1" stroke="#5a3a17" stroke-width="4.2" stroke-dasharray="5,3" opacity="0.85"/>
+<line x1="742.0" y1="837.0" x2="797.4" y2="816.1" stroke="#5a3a17" stroke-width="4.2" stroke-dasharray="5,3" opacity="0.85"/>
 <line x1="449.1" y1="400.1" x2="1034.9" y2="400.1" stroke="#8b0000" stroke-width="2.8" opacity="0.85"/>
 <circle cx="742.0" cy="400.1" r="8" fill="white" stroke="#8b0000" stroke-width="1.2"/>
 <text x="742.0" y="404.1" text-anchor="middle" font-size="10" font-weight="700" fill="#8b0000">T1</text>

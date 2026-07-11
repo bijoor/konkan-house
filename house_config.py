@@ -93,6 +93,9 @@ GLOBAL_CONFIG.update({
         'ring_beam', 'central_ridge', 'hip_ridge', 'hip_end_beam',
         'truss_bottom_chord', 'truss_top_chord', 'truss_king_post',
         'truss_diagonal', 'truss_vertical', 'pani_patti',
+        # Ridge-vent members — all live with the "ridges & trusses" spine
+        # so a single toggle hides the whole ventilation feature.
+        'vent_strut', 'vent_mesh',
     ],
 })
 
@@ -1053,6 +1056,20 @@ HOUSE_CONFIG = {
                     #                       structurally anchored to pillar rows
                     'ridge_h_ft':        7.0,
                     'min_overhang_ft':   2.5,
+                    # --- Optional ridge-end ventilation ---
+                    # extension_ft = 0 or the whole block absent → feature
+                    # disabled (identical output to the pre-vent build).
+                    # The extension creates a wedge-shaped opening between
+                    # the extended cap and the hip surface below on both
+                    # the E and W sides of each end, screened with a metal
+                    # mesh to keep insects/rats out while letting air flow.
+                    'ridge_ventilation': {
+                        'extension_ft':   5.0,   # 5 ft past R1 / R2 — a
+                                                  # prominent ridge-cap
+                                                  # extension in Konkan style.
+                        'end_pani_patti': True,
+                        'mesh_screen':    True,
+                    },
                     'trusses': {
                         'type': 'fink',
                         # T1 over pillar row A (y=86.225),

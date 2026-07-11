@@ -326,6 +326,11 @@ def build_floor(floor_config: dict):
                     material_name=obj.get('material', 'roof'),
                     floor_number=floor_num,
                     explosion_offset=obj.get('explosion_offset', 0.0),
+                    # Optional ridge-end ventilation: extends the ridge
+                    # past the hip apex + adds a small tent-cap over
+                    # each extension. `ridge_ext_u = 0` when the vent
+                    # is not configured (regression-safe).
+                    ridge_ext_u=_derived.get('ridge_ext_u', 0.0),
                 )
                 # Tag the roof shell as the 'loft' layer so the web
                 # viewer can toggle it independently of the floors below.

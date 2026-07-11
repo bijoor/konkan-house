@@ -1362,7 +1362,8 @@ def create_hip_roof(eave_x_west: float, eave_x_east: float,
                     material_name: str = 'roof',
                     thickness: float = None,
                     floor_number: int = None,
-                    explosion_offset: float = 0.0) -> bpy.types.Object:
+                    explosion_offset: float = 0.0,
+                    ridge_ext_u: float = 0.0) -> bpy.types.Object:
     """
     Create a four-sided hip roof: trapezoidal "main" slopes along the ridge axis
     and triangular "hip end" slopes perpendicular to it.
@@ -1531,6 +1532,107 @@ def create_hip_roof(eave_x_west: float, eave_x_east: float,
         # Central ridge cap (strip between bottom and top ridge lines)
         [4, 5, 11, 10],
     ])
+
+    # ---- Optional ridge-end ventilation ---------------------------------
+    # The main hip roof stays completely unchanged (main W/E slopes still
+    # end at R1/R2; N/S hip triangles unchanged). We add a small tent-
+    # shaped HOOD over the extension at each end: two slope triangles
+    # spanning the extended ridge (R1 → R1_ext) down to the strut foot
+    # on each hip ridge. The wedge below the hood — between the hood
+    # and the original hip surface — is the ventilation opening.
+    #
+    # Hood vertices are lifted by `hood_clearance` above ridge_z so the
+    # tent shell sits above the metal ridge cap (which is centred at
+    # ridge_z with a 3" cross-section) rather than intersecting it.
+    if ridge_ext_u > 0 and ridge_axis == 'y':
+        import math as _math
+
+        def _pt_along(a, b, dist):
+            dx, dy, dz = b[0] - a[0], b[1] - a[1], b[2] - a[2]
+            length = _math.sqrt(dx * dx + dy * dy + dz * dz)
+            if length <= 0:
+                return a
+            t = dist / length
+            return (a[0] + t * dx, a[1] + t * dy, a[2] + t * dz)
+
+        # Hood ridge is at ridge_z — same plane as the main roof ridge
+        # so the tent-hood merges seamlessly with the main hip apex at
+        # R1 / R2 with no visible step. The metal ridge cap frame ends
+        # up sandwiched inside the shell thickness (bottom at ridge_z,
+        # top at ridge_z + roof_thickness) the same way it does along
+        # the main ridge — hidden by the shell top face.
+        R1 = n_ridge          # (ridge_x, _rs, ridge_z_abs)
+        R2 = s_ridge          # (ridge_x, _re, ridge_z_abs)
+        NW = (eave_x_west,  eave_y_north, eave_z_abs)
+        NE = (eave_x_east,  eave_y_north, eave_z_abs)
+        SW = (eave_x_west,  eave_y_south, eave_z_abs)
+        SE = (eave_x_east,  eave_y_south, eave_z_abs)
+
+        # Hood-ridge endpoints. The inner one (R1_hood) is at R1 itself
+        # so the tent shares the apex with the main hip roof — no gap.
+        R1_hood     = R1
+        R1_ext_hood = (ridge_x, _rs - ridge_ext_u, ridge_z_abs)
+        R2_hood     = R2
+        R2_ext_hood = (ridge_x, _re + ridge_ext_u, ridge_z_abs)
+
+        # Strut-foot anchor points on each of the four hip ridges,
+        # matching the frame's `vent_strut_*` end points (`ridge_ext_u`
+        # along the hip ridge from the apex).
+        p_NW = _pt_along(R1, NW, ridge_ext_u)
+        p_NE = _pt_along(R1, NE, ridge_ext_u)
+        p_SW = _pt_along(R2, SW, ridge_ext_u)
+        p_SE = _pt_along(R2, SE, ridge_ext_u)
+
+        _t = thickness if thickness is not None else GLOBAL_CONFIG.get('roof_thickness', 3)
+        # 8 new bottom-layer anchor points (4 hood ridge pts + 4 strut feet).
+        hood_bottom = [R1_hood, R1_ext_hood, R2_hood, R2_ext_hood,
+                       p_NW, p_NE, p_SW, p_SE]
+        base_index = len(vertices) // 2   # 6 for the original hip
+        full_base = base_inputs + hood_bottom
+        full_top = [(x, y, z + _t) for (x, y, z) in full_base]
+        vertices = [inkscape_to_blender(x, y, z) for (x, y, z) in full_base + full_top]
+
+        N = len(full_base)                # 14
+        # Bottom-layer indices for the hood anchors.
+        iR1H  = base_index + 0
+        iR1XH = base_index + 1
+        iR2H  = base_index + 2
+        iR2XH = base_index + 3
+        iPNW  = base_index + 4
+        iPNE  = base_index + 5
+        iPSW  = base_index + 6
+        iPSE  = base_index + 7
+        TOP = N
+        # Renumber the existing top-layer indices (6..11) to the new
+        # top-layer range (TOP..TOP+5).
+        faces = [[(v if v < 6 else v - 6 + TOP) for v in f] for f in faces]
+
+        # ---- Hood tent slopes (bottom layer) --------------------------
+        # Two triangles per end, sharing the (lifted) extended ridge
+        # segment R1_hood → R1_ext_hood as their common edge.
+        #  * N-W hood slope: R1_hood, R1_ext_hood, P_NW
+        #  * N-E hood slope: R1_hood, P_NE, R1_ext_hood  (opposite winding)
+        # Same pattern on the S end. Winding chosen so outward normals
+        # point away from the roof interior (up-and-out).
+        hood_bot = [
+            [iR1H,  iR1XH, iPNW],       # N-W hood
+            [iR1H,  iPNE,  iR1XH],      # N-E hood
+            [iR2H,  iR2XH, iPSE],       # S-E hood
+            [iR2H,  iPSW,  iR2XH],      # S-W hood
+        ]
+        # Top-layer mirror with reversed winding — matches the pattern
+        # used by the rest of the roof shell.
+        def _top(f):
+            return [(v if v >= TOP else v + TOP) for v in reversed(f)]
+        hood_top = [_top(f) for f in hood_bot]
+
+        # ---- Hood ridge cap strip (top of the tent, along R1_hood → R1_ext_hood) ----
+        hood_caps = [
+            [iR1H,  iR1XH,  iR1XH + TOP, iR1H  + TOP],   # N end cap
+            [iR2H,  iR2XH,  iR2XH + TOP, iR2H  + TOP],   # S end cap
+        ]
+
+        faces.extend(hood_bot + hood_top + hood_caps)
 
     mesh = bpy.data.meshes.new('Hip_Roof_Mesh')
     mesh.from_pydata(vertices, [], faces)

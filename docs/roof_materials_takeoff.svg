@@ -34,8 +34,8 @@
 <text x="70" y="5216.989898989899" font-size="12" fill="#333">Central ridge</text>
 <text x="290" y="5216.989898989899" font-size="12" fill="#333">6"×3"×2mm</text>
 <text x="500" y="5216.989898989899" font-size="12" fill="#333">1</text>
-<text x="650" y="5216.989898989899" font-size="12" fill="#333">21'</text>
-<text x="810" y="5216.989898989899" font-size="12" fill="#333">21'</text>
+<text x="650" y="5216.989898989899" font-size="12" fill="#333">31'</text>
+<text x="810" y="5216.989898989899" font-size="12" fill="#333">31'</text>
 <text x="950" y="5216.989898989899" font-size="12" fill="#333">Top ridge = configured ridge_length</text>
 <text x="70" y="5240.989898989899" font-size="12" fill="#333">Hip ridges (N)</text>
 <text x="290" y="5240.989898989899" font-size="12" fill="#333">6"×3"×2mm</text>
@@ -121,39 +121,45 @@
 <text x="650" y="5552.989898989899" font-size="12" fill="#333">135'</text>
 <text x="810" y="5552.989898989899" font-size="12" fill="#333">15' 5"</text>
 <text x="950" y="5552.989898989899" font-size="12" fill="#333">3 per hip end (× 2 ends) — corner truss to N/S wall; extended through 2 ridge-zone bay(s) — continuous N wall → S wall</text>
-<line x1="60" y1="5568.989898989899" x2="1724" y2="5568.989898989899" stroke="#333" stroke-width="1"/>
-<text x="70" y="5588.989898989899" font-size="14" font-weight="600" fill="#222">How the quantities were computed</text>
-<text x="70" y="5610.989898989899" font-size="12" fill="#333" font-weight="600">Inputs (from the config):</text>
-<text x="70" y="5625.989898989899" font-size="12" fill="#333">  • Eave bounding box: 34' 10" × 52' (perimeter 173' 8")</text>
-<text x="70" y="5640.989898989899" font-size="12" fill="#333">  • Main slope pitch: 27.4°   |   Hip-end pitch: 39.1°   |   Ridge height above eave h = 9'</text>
-<text x="70" y="5655.989898989899" font-size="12" fill="#333">  • Rafter spacing: 36"   |   Purlin spacing: 12"</text>
-<text x="70" y="5670.989898989899" font-size="12" fill="#333">  • Slope L (perpendicular height on the slope face): main = 19' 7", hip end = 14' 4"</text>
-<text x="70" y="5685.989898989899" font-size="12" fill="#333"></text>
-<text x="70" y="5700.989898989899" font-size="12" fill="#333">Rafters — per slope, rafter count = floor(eave / spacing) + 1; each rafter's length</text>
-<text x="70" y="5715.989898989899" font-size="12" fill="#333">is the perpendicular distance from its position on the eave up to either the top edge</text>
-<text x="70" y="5730.989898989899" font-size="12" fill="#333">(central ridge, on the trapezoidal main slopes) or to a hip ridge (on the triangular</text>
-<text x="70" y="5745.989898989899" font-size="12" fill="#333">hip ends, and near the corners of the main slopes).</text>
-<text x="70" y="5760.989898989899" font-size="12" fill="#333">   W slope: 18 rafters, total 238'  (longest 19' 7")</text>
-<text x="70" y="5775.989898989899" font-size="12" fill="#333">   E slope: 18 rafters, total 238'  (longest 19' 7")</text>
-<text x="70" y="5790.989898989899" font-size="12" fill="#333">   N slope: 12 rafters, total 83' 1"  (longest 13' 1")</text>
-<text x="70" y="5805.989898989899" font-size="12" fill="#333">   S slope: 12 rafters, total 126' 6"  (longest 19' 11")</text>
-<text x="70" y="5820.989898989899" font-size="12" fill="#333" font-weight="600">   Total: 60 rafters, 685' 7"</text>
-<text x="70" y="5835.989898989899" font-size="12" fill="#333"></text>
-<text x="70" y="5850.989898989899" font-size="12" fill="#333">Purlins — placed every 12" starting 12" above the eave (the y=0 row is the eave-edge</text>
-<text x="70" y="5865.989898989899" font-size="12" fill="#333">pipe, counted separately). At height y, each purlin spans between the two hip ridges:</text>
-<text x="70" y="5880.989898989899" font-size="12" fill="#333">L(y) = eave − 2·d_hip·y/height   (for the triangular hip ends, d_hip = eave/2).</text>
-<text x="70" y="5895.989898989899" font-size="12" fill="#333">   W slope: 19 purlins, total 687' 2"  (longest 50' 5")</text>
-<text x="70" y="5910.989898989899" font-size="12" fill="#333">   E slope: 19 purlins, total 687' 2"  (longest 50' 5")</text>
-<text x="70" y="5925.989898989899" font-size="12" fill="#333">   N slope: 14 purlins, total 232' 4"  (longest 32' 5")</text>
-<text x="70" y="5940.989898989899" font-size="12" fill="#333">   S slope: 21 purlins, total 362' 8"  (longest 33' 3")</text>
-<text x="70" y="5955.989898989899" font-size="12" fill="#333" font-weight="600">   Total: 73 purlins, 1969' 5"</text>
-<text x="70" y="5970.989898989899" font-size="12" fill="#333"></text>
-<text x="70" y="5985.989898989899" font-size="12" fill="#333">Central ridge — 1 piece, length = ridge_length = 21'.</text>
-<text x="70" y="6000.989898989899" font-size="12" fill="#333"></text>
-<text x="70" y="6015.989898989899" font-size="12" fill="#333">Hip ridges — 4 pieces (one per corner). Each is the 3-D diagonal from a ridge</text>
-<text x="70" y="6030.989898989899" font-size="12" fill="#333">endpoint to an eave corner:  L = √((eave_x_east−eave_x_west)/2)² + d_hip² + h²)</text>
-<text x="70" y="6045.989898989899" font-size="12" fill="#333" font-weight="600">   N pair: 2 × 22' 7" = 45' 1"   |   S pair: 2 × 27' 11" = 55' 10"   |   Total: 100' 11"</text>
-<text x="70" y="6060.989898989899" font-size="12" fill="#333"></text>
-<text x="70" y="6075.989898989899" font-size="12" fill="#333">Eave edge — one continuous run around the eave bounding box:</text>
-<text x="70" y="6090.989898989899" font-size="12" fill="#333" font-weight="600">   2 × (34' 10" + 52') = 173' 8"</text>
+<text x="70" y="5576.989898989899" font-size="12" fill="#333">Vent-strut</text>
+<text x="290" y="5576.989898989899" font-size="12" fill="#333">2"×2"×2mm</text>
+<text x="500" y="5576.989898989899" font-size="12" fill="#333">4</text>
+<text x="650" y="5576.989898989899" font-size="12" fill="#333">28' 3"</text>
+<text x="810" y="5576.989898989899" font-size="12" fill="#333">7' 1"</text>
+<text x="950" y="5576.989898989899" font-size="12" fill="#333">2 per end — ties extended ridge back to hip ridges</text>
+<line x1="60" y1="5592.989898989899" x2="1724" y2="5592.989898989899" stroke="#333" stroke-width="1"/>
+<text x="70" y="5612.989898989899" font-size="14" font-weight="600" fill="#222">How the quantities were computed</text>
+<text x="70" y="5634.989898989899" font-size="12" fill="#333" font-weight="600">Inputs (from the config):</text>
+<text x="70" y="5649.989898989899" font-size="12" fill="#333">  • Eave bounding box: 34' 10" × 52' (perimeter 173' 8")</text>
+<text x="70" y="5664.989898989899" font-size="12" fill="#333">  • Main slope pitch: 27.4°   |   Hip-end pitch: 39.1°   |   Ridge height above eave h = 9'</text>
+<text x="70" y="5679.989898989899" font-size="12" fill="#333">  • Rafter spacing: 36"   |   Purlin spacing: 12"</text>
+<text x="70" y="5694.989898989899" font-size="12" fill="#333">  • Slope L (perpendicular height on the slope face): main = 19' 7", hip end = 14' 4"</text>
+<text x="70" y="5709.989898989899" font-size="12" fill="#333"></text>
+<text x="70" y="5724.989898989899" font-size="12" fill="#333">Rafters — per slope, rafter count = floor(eave / spacing) + 1; each rafter's length</text>
+<text x="70" y="5739.989898989899" font-size="12" fill="#333">is the perpendicular distance from its position on the eave up to either the top edge</text>
+<text x="70" y="5754.989898989899" font-size="12" fill="#333">(central ridge, on the trapezoidal main slopes) or to a hip ridge (on the triangular</text>
+<text x="70" y="5769.989898989899" font-size="12" fill="#333">hip ends, and near the corners of the main slopes).</text>
+<text x="70" y="5784.989898989899" font-size="12" fill="#333">   W slope: 18 rafters, total 238'  (longest 19' 7")</text>
+<text x="70" y="5799.989898989899" font-size="12" fill="#333">   E slope: 18 rafters, total 238'  (longest 19' 7")</text>
+<text x="70" y="5814.989898989899" font-size="12" fill="#333">   N slope: 12 rafters, total 83' 1"  (longest 13' 1")</text>
+<text x="70" y="5829.989898989899" font-size="12" fill="#333">   S slope: 12 rafters, total 126' 6"  (longest 19' 11")</text>
+<text x="70" y="5844.989898989899" font-size="12" fill="#333" font-weight="600">   Total: 60 rafters, 685' 7"</text>
+<text x="70" y="5859.989898989899" font-size="12" fill="#333"></text>
+<text x="70" y="5874.989898989899" font-size="12" fill="#333">Purlins — placed every 12" starting 12" above the eave (the y=0 row is the eave-edge</text>
+<text x="70" y="5889.989898989899" font-size="12" fill="#333">pipe, counted separately). At height y, each purlin spans between the two hip ridges:</text>
+<text x="70" y="5904.989898989899" font-size="12" fill="#333">L(y) = eave − 2·d_hip·y/height   (for the triangular hip ends, d_hip = eave/2).</text>
+<text x="70" y="5919.989898989899" font-size="12" fill="#333">   W slope: 19 purlins, total 687' 2"  (longest 50' 5")</text>
+<text x="70" y="5934.989898989899" font-size="12" fill="#333">   E slope: 19 purlins, total 687' 2"  (longest 50' 5")</text>
+<text x="70" y="5949.989898989899" font-size="12" fill="#333">   N slope: 14 purlins, total 232' 4"  (longest 32' 5")</text>
+<text x="70" y="5964.989898989899" font-size="12" fill="#333">   S slope: 21 purlins, total 362' 8"  (longest 33' 3")</text>
+<text x="70" y="5979.989898989899" font-size="12" fill="#333" font-weight="600">   Total: 73 purlins, 1969' 5"</text>
+<text x="70" y="5994.989898989899" font-size="12" fill="#333"></text>
+<text x="70" y="6009.989898989899" font-size="12" fill="#333">Central ridge — 1 piece, length = ridge_length = 31'.</text>
+<text x="70" y="6024.989898989899" font-size="12" fill="#333"></text>
+<text x="70" y="6039.989898989899" font-size="12" fill="#333">Hip ridges — 4 pieces (one per corner). Each is the 3-D diagonal from a ridge</text>
+<text x="70" y="6054.989898989899" font-size="12" fill="#333">endpoint to an eave corner:  L = √((eave_x_east−eave_x_west)/2)² + d_hip² + h²)</text>
+<text x="70" y="6069.989898989899" font-size="12" fill="#333" font-weight="600">   N pair: 2 × 22' 7" = 45' 1"   |   S pair: 2 × 27' 11" = 55' 10"   |   Total: 100' 11"</text>
+<text x="70" y="6084.989898989899" font-size="12" fill="#333"></text>
+<text x="70" y="6099.989898989899" font-size="12" fill="#333">Eave edge — one continuous run around the eave bounding box:</text>
+<text x="70" y="6114.989898989899" font-size="12" fill="#333" font-weight="600">   2 × (34' 10" + 52') = 173' 8"</text>
 </svg>

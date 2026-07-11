@@ -155,11 +155,15 @@
 <line x1="449.1" y1="796.1" x2="1034.9" y2="796.1" stroke="#4a8fbf" stroke-width="2.8031654368516734" clip-path="url(#topfv_S)"/>
 <line x1="449.1" y1="780.8" x2="1034.9" y2="780.8" stroke="#4a8fbf" stroke-width="2.8031654368516734" clip-path="url(#topfv_S)"/>
 <line x1="449.1" y1="765.5" x2="1034.9" y2="765.5" stroke="#4a8fbf" stroke-width="2.8031654368516734" clip-path="url(#topfv_S)"/>
-<line x1="742.0" y1="400.1" x2="742.0" y2="752.9" stroke="#5a3a17" stroke-width="8.40949631055502"/>
+<line x1="742.0" y1="316.0" x2="742.0" y2="837.0" stroke="#5a3a17" stroke-width="8.40949631055502"/>
 <line x1="742.0" y1="400.1" x2="449.1" y2="213.0" stroke="#5a3a17" stroke-width="8.40949631055502"/>
 <line x1="742.0" y1="400.1" x2="1034.9" y2="213.0" stroke="#5a3a17" stroke-width="8.40949631055502"/>
 <line x1="742.0" y1="752.9" x2="449.1" y2="1087.0" stroke="#5a3a17" stroke-width="8.40949631055502"/>
 <line x1="742.0" y1="752.9" x2="1034.9" y2="1087.0" stroke="#5a3a17" stroke-width="8.40949631055502"/>
+<line x1="742.0" y1="316.0" x2="671.1" y2="354.8" stroke="#5a3a17" stroke-width="4.2" stroke-dasharray="5,3" opacity="0.85"/>
+<line x1="742.0" y1="316.0" x2="812.9" y2="354.8" stroke="#5a3a17" stroke-width="4.2" stroke-dasharray="5,3" opacity="0.85"/>
+<line x1="742.0" y1="837.0" x2="686.6" y2="816.1" stroke="#5a3a17" stroke-width="4.2" stroke-dasharray="5,3" opacity="0.85"/>
+<line x1="742.0" y1="837.0" x2="797.4" y2="816.1" stroke="#5a3a17" stroke-width="4.2" stroke-dasharray="5,3" opacity="0.85"/>
 <line x1="449.1" y1="400.1" x2="1034.9" y2="400.1" stroke="#8b0000" stroke-width="2.8" opacity="0.85"/>
 <circle cx="742.0" cy="400.1" r="8" fill="white" stroke="#8b0000" stroke-width="1.2"/>
 <text x="742.0" y="404.1" text-anchor="middle" font-size="10" font-weight="700" fill="#8b0000">T1</text>
@@ -282,11 +286,15 @@
 <line x1="460.1" y1="1564.7" x2="336.7" y2="1636.0" stroke="#8a4a1a" stroke-width="1.6" opacity="1.0"/>
 <line x1="628.1" y1="1467.7" x2="537.0" y2="1520.3" stroke="#8a4a1a" stroke-width="1.6" opacity="1.0"/>
 <line x1="537.0" y1="1520.3" x2="460.1" y2="1564.7" stroke="#8a4a1a" stroke-width="1.6" opacity="1.0"/>
-<line x1="574.0" y1="1371.8" x2="406.0" y2="1468.8" stroke="#6b4423" stroke-width="2.0" opacity="0.95"/>
+<line x1="614.1" y1="1348.6" x2="366.0" y2="1491.9" stroke="#6b4423" stroke-width="2.0" opacity="0.95"/>
 <line x1="574.0" y1="1371.8" x2="523.6" y2="1323.3" stroke="#6b4423" stroke-width="2.0" opacity="0.95"/>
 <line x1="574.0" y1="1371.8" x2="802.6" y2="1484.4" stroke="#6b4423" stroke-width="2.0" opacity="0.95"/>
 <line x1="406.0" y1="1468.8" x2="386.4" y2="1724.7" stroke="#6b4423" stroke-width="2.0" opacity="0.95"/>
 <line x1="406.0" y1="1468.8" x2="107.4" y2="1563.6" stroke="#6b4423" stroke-width="2.0" opacity="0.95"/>
+<line x1="614.1" y1="1348.6" x2="562.9" y2="1361.0" stroke="#6b4423" stroke-width="1.4" opacity="0.9" stroke-dasharray="5,3"/>
+<line x1="614.1" y1="1348.6" x2="624.7" y2="1396.7" stroke="#6b4423" stroke-width="1.4" opacity="0.9" stroke-dasharray="5,3"/>
+<line x1="366.0" y1="1491.9" x2="402.5" y2="1514.6" stroke="#6b4423" stroke-width="1.4" opacity="0.9" stroke-dasharray="5,3"/>
+<line x1="366.0" y1="1491.9" x2="352.5" y2="1485.8" stroke="#6b4423" stroke-width="1.4" opacity="0.9" stroke-dasharray="5,3"/>
 <line x1="465.9" y1="1374.1" x2="574.0" y2="1374.1" stroke="#8b0000" stroke-width="2.4" opacity="1.0"/>
 <line x1="574.0" y1="1374.1" x2="682.2" y2="1498.9" stroke="#8b0000" stroke-width="2.4" opacity="1.0"/>
 <line x1="465.9" y1="1374.1" x2="682.2" y2="1498.9" stroke="#8b0000" stroke-width="2.4" opacity="1.0"/>
@@ -550,6 +558,13 @@
 <line x1="1568.1" y1="1810.0" x2="1617.8" y2="1810.0" stroke="#8B4513" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
 <text x="1592.9" y="1806.0" text-anchor="middle" font-size="10" fill="#8B4513">S overhang 4' 6"</text>
 <text x="1742.0" y="1584.0" text-anchor="end" font-size="11" fill="#8b0000">3 common (Fink) trusses shown</text>
+<line x1="1108.3" y1="1613.7" x2="1163.9" y2="1613.7" stroke="#5a3a17" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="1397.0" y1="1613.7" x2="1452.6" y2="1613.7" stroke="#5a3a17" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="1108.3" y1="1613.7" x2="1136.4" y2="1635.9" stroke="#5a3a17" stroke-width="1.4" stroke-dasharray="5,3" opacity="0.85"/>
+<line x1="1452.6" y1="1613.7" x2="1436.5" y2="1631.6" stroke="#5a3a17" stroke-width="1.4" stroke-dasharray="5,3" opacity="0.85"/>
+<text x="1136.1" y="1601.7" text-anchor="middle" font-size="10" fill="#0066cc">vent ext = 5'</text>
+<text x="1424.8" y="1601.7" text-anchor="middle" font-size="10" fill="#0066cc">vent ext = 5'</text>
+<text x="1742.0" y="1802.0" text-anchor="end" font-size="11" fill="#5a3a17" font-style="italic">RIDGE-END VENTILATION — ridge cap extends 5' past each hip apex; wedge below is open on E &amp; W faces (mesh-screened)</text>
 <rect x="30" y="1838" width="850" height="620" fill="#ffffff" stroke="#bbb" stroke-width="1"/>
 <rect x="30" y="1838" width="850" height="46" fill="#f2f2f2" stroke="#bbb" stroke-width="1"/>
 <text x="455.0" y="1869" text-anchor="middle" font-size="18" font-weight="600" fill="#222">MAIN SLOPES — W &amp; E (trapezoid, identical pair)</text>
@@ -1438,8 +1453,8 @@
 <text x="70" y="5216.989898989899" font-size="12" fill="#333">Central ridge</text>
 <text x="290" y="5216.989898989899" font-size="12" fill="#333">6"×3"×2mm</text>
 <text x="500" y="5216.989898989899" font-size="12" fill="#333">1</text>
-<text x="650" y="5216.989898989899" font-size="12" fill="#333">21'</text>
-<text x="810" y="5216.989898989899" font-size="12" fill="#333">21'</text>
+<text x="650" y="5216.989898989899" font-size="12" fill="#333">31'</text>
+<text x="810" y="5216.989898989899" font-size="12" fill="#333">31'</text>
 <text x="950" y="5216.989898989899" font-size="12" fill="#333">Top ridge = configured ridge_length</text>
 <text x="70" y="5240.989898989899" font-size="12" fill="#333">Hip ridges (N)</text>
 <text x="290" y="5240.989898989899" font-size="12" fill="#333">6"×3"×2mm</text>
@@ -1525,41 +1540,47 @@
 <text x="650" y="5552.989898989899" font-size="12" fill="#333">135'</text>
 <text x="810" y="5552.989898989899" font-size="12" fill="#333">15' 5"</text>
 <text x="950" y="5552.989898989899" font-size="12" fill="#333">3 per hip end (× 2 ends) — corner truss to N/S wall; extended through 2 ridge-zone bay(s) — continuous N wall → S wall</text>
-<line x1="60" y1="5568.989898989899" x2="1724" y2="5568.989898989899" stroke="#333" stroke-width="1"/>
-<text x="70" y="5588.989898989899" font-size="14" font-weight="600" fill="#222">How the quantities were computed</text>
-<text x="70" y="5610.989898989899" font-size="12" fill="#333" font-weight="600">Inputs (from the config):</text>
-<text x="70" y="5625.989898989899" font-size="12" fill="#333">  • Eave bounding box: 34' 10" × 52' (perimeter 173' 8")</text>
-<text x="70" y="5640.989898989899" font-size="12" fill="#333">  • Main slope pitch: 27.4°   |   Hip-end pitch: 39.1°   |   Ridge height above eave h = 9'</text>
-<text x="70" y="5655.989898989899" font-size="12" fill="#333">  • Rafter spacing: 36"   |   Purlin spacing: 12"</text>
-<text x="70" y="5670.989898989899" font-size="12" fill="#333">  • Slope L (perpendicular height on the slope face): main = 19' 7", hip end = 14' 4"</text>
-<text x="70" y="5685.989898989899" font-size="12" fill="#333"></text>
-<text x="70" y="5700.989898989899" font-size="12" fill="#333">Rafters — per slope, rafter count = floor(eave / spacing) + 1; each rafter's length</text>
-<text x="70" y="5715.989898989899" font-size="12" fill="#333">is the perpendicular distance from its position on the eave up to either the top edge</text>
-<text x="70" y="5730.989898989899" font-size="12" fill="#333">(central ridge, on the trapezoidal main slopes) or to a hip ridge (on the triangular</text>
-<text x="70" y="5745.989898989899" font-size="12" fill="#333">hip ends, and near the corners of the main slopes).</text>
-<text x="70" y="5760.989898989899" font-size="12" fill="#333">   W slope: 18 rafters, total 238'  (longest 19' 7")</text>
-<text x="70" y="5775.989898989899" font-size="12" fill="#333">   E slope: 18 rafters, total 238'  (longest 19' 7")</text>
-<text x="70" y="5790.989898989899" font-size="12" fill="#333">   N slope: 12 rafters, total 83' 1"  (longest 13' 1")</text>
-<text x="70" y="5805.989898989899" font-size="12" fill="#333">   S slope: 12 rafters, total 126' 6"  (longest 19' 11")</text>
-<text x="70" y="5820.989898989899" font-size="12" fill="#333" font-weight="600">   Total: 60 rafters, 685' 7"</text>
-<text x="70" y="5835.989898989899" font-size="12" fill="#333"></text>
-<text x="70" y="5850.989898989899" font-size="12" fill="#333">Purlins — placed every 12" starting 12" above the eave (the y=0 row is the eave-edge</text>
-<text x="70" y="5865.989898989899" font-size="12" fill="#333">pipe, counted separately). At height y, each purlin spans between the two hip ridges:</text>
-<text x="70" y="5880.989898989899" font-size="12" fill="#333">L(y) = eave − 2·d_hip·y/height   (for the triangular hip ends, d_hip = eave/2).</text>
-<text x="70" y="5895.989898989899" font-size="12" fill="#333">   W slope: 19 purlins, total 687' 2"  (longest 50' 5")</text>
-<text x="70" y="5910.989898989899" font-size="12" fill="#333">   E slope: 19 purlins, total 687' 2"  (longest 50' 5")</text>
-<text x="70" y="5925.989898989899" font-size="12" fill="#333">   N slope: 14 purlins, total 232' 4"  (longest 32' 5")</text>
-<text x="70" y="5940.989898989899" font-size="12" fill="#333">   S slope: 21 purlins, total 362' 8"  (longest 33' 3")</text>
-<text x="70" y="5955.989898989899" font-size="12" fill="#333" font-weight="600">   Total: 73 purlins, 1969' 5"</text>
-<text x="70" y="5970.989898989899" font-size="12" fill="#333"></text>
-<text x="70" y="5985.989898989899" font-size="12" fill="#333">Central ridge — 1 piece, length = ridge_length = 21'.</text>
-<text x="70" y="6000.989898989899" font-size="12" fill="#333"></text>
-<text x="70" y="6015.989898989899" font-size="12" fill="#333">Hip ridges — 4 pieces (one per corner). Each is the 3-D diagonal from a ridge</text>
-<text x="70" y="6030.989898989899" font-size="12" fill="#333">endpoint to an eave corner:  L = √((eave_x_east−eave_x_west)/2)² + d_hip² + h²)</text>
-<text x="70" y="6045.989898989899" font-size="12" fill="#333" font-weight="600">   N pair: 2 × 22' 7" = 45' 1"   |   S pair: 2 × 27' 11" = 55' 10"   |   Total: 100' 11"</text>
-<text x="70" y="6060.989898989899" font-size="12" fill="#333"></text>
-<text x="70" y="6075.989898989899" font-size="12" fill="#333">Eave edge — one continuous run around the eave bounding box:</text>
-<text x="70" y="6090.989898989899" font-size="12" fill="#333" font-weight="600">   2 × (34' 10" + 52') = 173' 8"</text>
+<text x="70" y="5576.989898989899" font-size="12" fill="#333">Vent-strut</text>
+<text x="290" y="5576.989898989899" font-size="12" fill="#333">2"×2"×2mm</text>
+<text x="500" y="5576.989898989899" font-size="12" fill="#333">4</text>
+<text x="650" y="5576.989898989899" font-size="12" fill="#333">28' 3"</text>
+<text x="810" y="5576.989898989899" font-size="12" fill="#333">7' 1"</text>
+<text x="950" y="5576.989898989899" font-size="12" fill="#333">2 per end — ties extended ridge back to hip ridges</text>
+<line x1="60" y1="5592.989898989899" x2="1724" y2="5592.989898989899" stroke="#333" stroke-width="1"/>
+<text x="70" y="5612.989898989899" font-size="14" font-weight="600" fill="#222">How the quantities were computed</text>
+<text x="70" y="5634.989898989899" font-size="12" fill="#333" font-weight="600">Inputs (from the config):</text>
+<text x="70" y="5649.989898989899" font-size="12" fill="#333">  • Eave bounding box: 34' 10" × 52' (perimeter 173' 8")</text>
+<text x="70" y="5664.989898989899" font-size="12" fill="#333">  • Main slope pitch: 27.4°   |   Hip-end pitch: 39.1°   |   Ridge height above eave h = 9'</text>
+<text x="70" y="5679.989898989899" font-size="12" fill="#333">  • Rafter spacing: 36"   |   Purlin spacing: 12"</text>
+<text x="70" y="5694.989898989899" font-size="12" fill="#333">  • Slope L (perpendicular height on the slope face): main = 19' 7", hip end = 14' 4"</text>
+<text x="70" y="5709.989898989899" font-size="12" fill="#333"></text>
+<text x="70" y="5724.989898989899" font-size="12" fill="#333">Rafters — per slope, rafter count = floor(eave / spacing) + 1; each rafter's length</text>
+<text x="70" y="5739.989898989899" font-size="12" fill="#333">is the perpendicular distance from its position on the eave up to either the top edge</text>
+<text x="70" y="5754.989898989899" font-size="12" fill="#333">(central ridge, on the trapezoidal main slopes) or to a hip ridge (on the triangular</text>
+<text x="70" y="5769.989898989899" font-size="12" fill="#333">hip ends, and near the corners of the main slopes).</text>
+<text x="70" y="5784.989898989899" font-size="12" fill="#333">   W slope: 18 rafters, total 238'  (longest 19' 7")</text>
+<text x="70" y="5799.989898989899" font-size="12" fill="#333">   E slope: 18 rafters, total 238'  (longest 19' 7")</text>
+<text x="70" y="5814.989898989899" font-size="12" fill="#333">   N slope: 12 rafters, total 83' 1"  (longest 13' 1")</text>
+<text x="70" y="5829.989898989899" font-size="12" fill="#333">   S slope: 12 rafters, total 126' 6"  (longest 19' 11")</text>
+<text x="70" y="5844.989898989899" font-size="12" fill="#333" font-weight="600">   Total: 60 rafters, 685' 7"</text>
+<text x="70" y="5859.989898989899" font-size="12" fill="#333"></text>
+<text x="70" y="5874.989898989899" font-size="12" fill="#333">Purlins — placed every 12" starting 12" above the eave (the y=0 row is the eave-edge</text>
+<text x="70" y="5889.989898989899" font-size="12" fill="#333">pipe, counted separately). At height y, each purlin spans between the two hip ridges:</text>
+<text x="70" y="5904.989898989899" font-size="12" fill="#333">L(y) = eave − 2·d_hip·y/height   (for the triangular hip ends, d_hip = eave/2).</text>
+<text x="70" y="5919.989898989899" font-size="12" fill="#333">   W slope: 19 purlins, total 687' 2"  (longest 50' 5")</text>
+<text x="70" y="5934.989898989899" font-size="12" fill="#333">   E slope: 19 purlins, total 687' 2"  (longest 50' 5")</text>
+<text x="70" y="5949.989898989899" font-size="12" fill="#333">   N slope: 14 purlins, total 232' 4"  (longest 32' 5")</text>
+<text x="70" y="5964.989898989899" font-size="12" fill="#333">   S slope: 21 purlins, total 362' 8"  (longest 33' 3")</text>
+<text x="70" y="5979.989898989899" font-size="12" fill="#333" font-weight="600">   Total: 73 purlins, 1969' 5"</text>
+<text x="70" y="5994.989898989899" font-size="12" fill="#333"></text>
+<text x="70" y="6009.989898989899" font-size="12" fill="#333">Central ridge — 1 piece, length = ridge_length = 31'.</text>
+<text x="70" y="6024.989898989899" font-size="12" fill="#333"></text>
+<text x="70" y="6039.989898989899" font-size="12" fill="#333">Hip ridges — 4 pieces (one per corner). Each is the 3-D diagonal from a ridge</text>
+<text x="70" y="6054.989898989899" font-size="12" fill="#333">endpoint to an eave corner:  L = √((eave_x_east−eave_x_west)/2)² + d_hip² + h²)</text>
+<text x="70" y="6069.989898989899" font-size="12" fill="#333" font-weight="600">   N pair: 2 × 22' 7" = 45' 1"   |   S pair: 2 × 27' 11" = 55' 10"   |   Total: 100' 11"</text>
+<text x="70" y="6084.989898989899" font-size="12" fill="#333"></text>
+<text x="70" y="6099.989898989899" font-size="12" fill="#333">Eave edge — one continuous run around the eave bounding box:</text>
+<text x="70" y="6114.989898989899" font-size="12" fill="#333" font-weight="600">   2 × (34' 10" + 52') = 173' 8"</text>
 <rect x="30" y="6260.989898989899" width="1724" height="460" fill="#ffffff" stroke="#bbb" stroke-width="1"/>
 <rect x="30" y="6260.989898989899" width="1724" height="40" fill="#f2f2f2" stroke="#bbb" stroke-width="1"/>
 <text x="892.0" y="6288.989898989899" text-anchor="middle" font-size="18" font-weight="600" fill="#222">CONSOLIDATED PROCUREMENT LIST — Totals by Material Spec</text>
@@ -1578,9 +1599,9 @@
 <text x="930" y="6390.989898989899" font-size="12" fill="#333">73</text>
 <text x="1080" y="6390.989898989899" font-size="12" font-weight="700" fill="#0a4">1969' 5"</text>
 <text x="70" y="6412.989898989899" font-size="12" font-weight="600" fill="#222">HSS 6"×3"×2 mm</text>
-<text x="380" y="6412.989898989899" font-size="11" fill="#444">Central ridge (1× 21'), Hip ridges (4× 100' 11")</text>
+<text x="380" y="6412.989898989899" font-size="11" fill="#444">Central ridge (1× 31'), Hip ridges (4× 100' 11")</text>
 <text x="930" y="6412.989898989899" font-size="12" fill="#333">5</text>
-<text x="1080" y="6412.989898989899" font-size="12" font-weight="700" fill="#0a4">121' 11"</text>
+<text x="1080" y="6412.989898989899" font-size="12" font-weight="700" fill="#0a4">131' 11"</text>
 <text x="70" y="6434.989898989899" font-size="12" font-weight="600" fill="#222">HSS 4"×2"×3 mm</text>
 <text x="380" y="6434.989898989899" font-size="11" fill="#444">Ring beam (4× 144')</text>
 <text x="930" y="6434.989898989899" font-size="12" fill="#333">4</text>
@@ -1589,14 +1610,14 @@
 <text x="380" y="6456.989898989899" font-size="11" fill="#444">Hip-end beams (12× 135')</text>
 <text x="930" y="6456.989898989899" font-size="12" fill="#333">12</text>
 <text x="1080" y="6456.989898989899" font-size="12" font-weight="700" fill="#0a4">135'</text>
-<text x="70" y="6478.989898989899" font-size="12" font-weight="600" fill="#222">HSS 2"×4"×3 mm</text>
-<text x="380" y="6478.989898989899" font-size="11" fill="#444">Truss top chords (6× 90' 7"), Truss bottom chords (3× 81')</text>
-<text x="930" y="6478.989898989899" font-size="12" fill="#333">9</text>
-<text x="1080" y="6478.989898989899" font-size="12" font-weight="700" fill="#0a4">171' 7"</text>
-<text x="70" y="6500.989898989899" font-size="12" font-weight="600" fill="#222">HSS 2"×2"×2 mm</text>
-<text x="380" y="6500.989898989899" font-size="11" fill="#444">Truss king posts (3× 20' 3"), Truss web diagonals (6× 57' 3"), Truss web verticals (6× 20' 3")</text>
-<text x="930" y="6500.989898989899" font-size="12" fill="#333">15</text>
-<text x="1080" y="6500.989898989899" font-size="12" font-weight="700" fill="#0a4">97' 9"</text>
+<text x="70" y="6478.989898989899" font-size="12" font-weight="600" fill="#222">HSS 2"×2"×2 mm</text>
+<text x="380" y="6478.989898989899" font-size="11" fill="#444">Ridge-vent struts (4× 28' 3"), Truss king posts (3× 20' 3"), Truss web diagonals (6× 57' 3"), Truss web verticals (6× 20' 3")</text>
+<text x="930" y="6478.989898989899" font-size="12" fill="#333">19</text>
+<text x="1080" y="6478.989898989899" font-size="12" font-weight="700" fill="#0a4">126' 1"</text>
+<text x="70" y="6500.989898989899" font-size="12" font-weight="600" fill="#222">HSS 2"×4"×3 mm</text>
+<text x="380" y="6500.989898989899" font-size="11" fill="#444">Truss top chords (6× 90' 7"), Truss bottom chords (3× 81')</text>
+<text x="930" y="6500.989898989899" font-size="12" fill="#333">9</text>
+<text x="1080" y="6500.989898989899" font-size="12" font-weight="700" fill="#0a4">171' 7"</text>
 <text x="70" y="6522.989898989899" font-size="12" font-weight="600" fill="#222">GI strip 6"×1.2 mm</text>
 <text x="380" y="6522.989898989899" font-size="11" fill="#444">Pani Patti (4× 173' 8")</text>
 <text x="930" y="6522.989898989899" font-size="12" fill="#333">4</text>
@@ -1607,7 +1628,7 @@
 <text x="1080" y="6544.989898989899" font-size="12" font-weight="700" fill="#0a4">375' 6"</text>
 <line x1="60" y1="6558.989898989899" x2="1724" y2="6558.989898989899" stroke="#333" stroke-width="1"/>
 <text x="70" y="6590.989898989899" font-size="14" font-weight="600" fill="#222">Grand totals by material family</text>
-<text x="90" y="6610.989898989899" font-size="12" fill="#333">• HSS: <tspan font-weight="700" fill="#0a4">3325' 3"</tspan></text>
+<text x="90" y="6610.989898989899" font-size="12" fill="#333">• HSS: <tspan font-weight="700" fill="#0a4">3363' 7"</tspan></text>
 <text x="90" y="6628.989898989899" font-size="12" fill="#333">• GI strip: <tspan font-weight="700" fill="#0a4">173' 8"</tspan></text>
 <text x="90" y="6646.989898989899" font-size="12" fill="#333">• L-angle: <tspan font-weight="700" fill="#0a4">375' 6"</tspan></text>
 <rect x="30" y="6744.989898989899" width="1724" height="890" fill="#ffffff" stroke="#bbb" stroke-width="1"/>
@@ -1669,11 +1690,11 @@
 <text x="70" y="7334.989898989899" font-size="12" fill="#333"></text>
 <text x="70" y="7349.989898989899" font-size="12" fill="#333">• Indicotto: 2060 sft × 1.33 × 10% waste = 3,014. Ordered 4,150 → +1,136 (+38% margin).</text>
 <text x="70" y="7364.989898989899" font-size="12" fill="#333">• Ceiling: 2060 sft × 1.5 × 10% waste = 3,400. Ordered 4,700 → +1,300 (+38% margin).</text>
-<text x="70" y="7379.989898989899" font-size="12" fill="#333">• Ridge: 21' central + 4 × 27' 11" hips = 122 ft;</text>
-<text x="70" y="7394.989898989899" font-size="12" fill="#b00" font-weight="600">   +10% waste = 134 ft. Ordered 100 ft → -34 (-25% SHORT).</text>
+<text x="70" y="7379.989898989899" font-size="12" fill="#333">• Ridge: 31' central + 4 × 27' 11" hips = 132 ft;</text>
+<text x="70" y="7394.989898989899" font-size="12" fill="#b00" font-weight="600">   +10% waste = 145 ft. Ordered 100 ft → -45 (-31% SHORT).</text>
 <text x="70" y="7409.989898989899" font-size="12" fill="#333"></text>
-<text x="70" y="7424.989898989899" font-size="12" fill="#b00" font-weight="600">ACTION — order 34 additional running feet of ridge cap:</text>
-<text x="70" y="7439.989898989899" font-size="12" fill="#b00" font-weight="600">   34 × ₹70.00 = ₹2,380.00;  with 12% IGST ≈ ₹2,665.60.</text>
+<text x="70" y="7424.989898989899" font-size="12" fill="#b00" font-weight="600">ACTION — order 45 additional running feet of ridge cap:</text>
+<text x="70" y="7439.989898989899" font-size="12" fill="#b00" font-weight="600">   45 × ₹70.00 = ₹3,150.00;  with 12% IGST ≈ ₹3,528.00.</text>
 <text x="70" y="7454.989898989899" font-size="12" fill="#333"></text>
 <text x="70" y="7469.989898989899" font-size="12" fill="#333">• Order was originally sized for the earlier two-face gable design,</text>
 <text x="70" y="7484.989898989899" font-size="12" fill="#333">  which had a longer central ridge but no hip ridges. Moving to hip</text>

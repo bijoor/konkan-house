@@ -28,6 +28,18 @@ from roof_geometry import (
 IN_PER_UNIT = 12.0 / 10.0    # 10 units = 1 ft = 12 in
 
 
+def _project_hip_surface_z_at_y(y, eave_yn, ridge_y_start, eave_z, ridge_z):
+    """Vertical z of the north hip triangle surface at y-coordinate `y`,
+    interpolated linearly along the eave→apex axis. Used to compute the
+    vertical opening height of the ridge-vent wedge at a given y."""
+    span = ridge_y_start - eave_yn
+    if span <= 0:
+        return eave_z
+    frac = (y - eave_yn) / span
+    frac = max(0.0, min(1.0, frac))
+    return eave_z + (ridge_z - eave_z) * frac
+
+
 def compute_frame_members(house_config, global_config):
     hip_roof, floor_num = find_hip_roof(house_config)
     if hip_roof is None:
@@ -109,6 +121,26 @@ def compute_frame_members(house_config, global_config):
     SE = (eave_xe, eave_ys, eave_z)
     SW = (eave_xw, eave_ys, eave_z)
 
+    # ---- Optional ridge-end ventilation ---------------------------------
+    # When enabled the central ridge extends past R1/R2 by `ridge_ext_u`
+    # (staying at ridge_z). The extension creates a wedge-shaped opening
+    # between the extended cap and the hip surface below (one on each of
+    # the E and W sides per end). See docstring at top of file for the
+    # complete geometry.
+    ridge_ext_u = float(d.get('ridge_ext_u', 0.0))
+    has_ridge_vent = bool(d.get('has_ridge_vent', False))
+    R1_ext = (ridge_x, ridge_y_start - ridge_ext_u, ridge_z)
+    R2_ext = (ridge_x, ridge_y_end + ridge_ext_u, ridge_z)
+    vent_cfg = d.get('ridge_vent_cfg') or {}
+    vent_add_end_pani_patti = bool(vent_cfg.get('end_pani_patti', True))
+    vent_add_mesh = bool(vent_cfg.get('mesh_screen', True))
+    # Struts hang off the extended ridge back down to the top chord of
+    # the adjacent Fink truss (T1 for the N end, T_last for the S end).
+    # We reuse the truss's web section so the struts read as a matching
+    # family of members.
+    vent_strut_size = trusses.get('web_size_in', truss_web_size)
+    vent_strut_wall = trusses.get('web_wall_mm', truss_web_wall)
+
     members = []
 
     # ===== RING BEAM (4 edges) =====
@@ -123,9 +155,50 @@ def compute_frame_members(house_config, global_config):
                         'section_in': ring_beam_size, 'wall_mm': ring_beam_wall})
 
     # ===== CENTRAL RIDGE =====
+    # If the ridge-end vent is enabled the ridge terminates at R1_ext /
+    # R2_ext instead of R1 / R2 — same section, same z, just longer.
+    _ridge_p0 = R1_ext if has_ridge_vent else R1
+    _ridge_p1 = R2_ext if has_ridge_vent else R2
     members.append({'kind': 'central_ridge', 'name': 'central_ridge',
-                    'p0': R1, 'p1': R2,
+                    'p0': _ridge_p0, 'p1': _ridge_p1,
                     'section_in': ridge_size_in, 'wall_mm': ridge_wall_mm})
+
+    # ===== RIDGE-VENT SUPPORT STRUTS =====================================
+    # Two diagonal struts per end tie the cantilevered ridge extension
+    # back to the corresponding hip ridge. Each strut runs from the
+    # extended ridge end point (R1_ext / R2_ext) down to a point on the
+    # hip ridge at distance `ridge_ext_u` from the hip apex. That
+    # keeps the strut length in the same order of magnitude as the
+    # extension itself and gives a symmetric, easily-fabricated detail.
+    # Mesh screens and end pani-patti caps are still deferred to the
+    # shell-mesh update (task #94); those are triangular / flat panels
+    # that the box-member frame system can't represent cleanly.
+    if has_ridge_vent:
+        def _point_along(a, b, dist):
+            dx, dy, dz = b[0] - a[0], b[1] - a[1], b[2] - a[2]
+            length = math.sqrt(dx * dx + dy * dy + dz * dz)
+            if length <= 0:
+                return a
+            t = dist / length
+            return (a[0] + t * dx, a[1] + t * dy, a[2] + t * dz)
+
+        support_dist = ridge_ext_u
+        for ext_pt, apex_pt, corner_w, corner_e, tag in [
+            (R1_ext, R1, NW, NE, 'N'),
+            (R2_ext, R2, SW, SE, 'S'),
+        ]:
+            p_w = _point_along(apex_pt, corner_w, support_dist)
+            p_e = _point_along(apex_pt, corner_e, support_dist)
+            members.append({'kind': 'vent_strut',
+                            'name': f'vent_strut_{tag}W',
+                            'p0': ext_pt, 'p1': p_w,
+                            'section_in': vent_strut_size,
+                            'wall_mm': vent_strut_wall})
+            members.append({'kind': 'vent_strut',
+                            'name': f'vent_strut_{tag}E',
+                            'p0': ext_pt, 'p1': p_e,
+                            'section_in': vent_strut_size,
+                            'wall_mm': vent_strut_wall})
 
     # ===== 4 HIP RIDGES =====
     for name, p1 in [('hip_ridge_NW', NW), ('hip_ridge_NE', NE)]:

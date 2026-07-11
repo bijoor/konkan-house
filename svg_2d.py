@@ -5370,7 +5370,21 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
     hip_slant_s_val = hip_slant_s
     hip_slant = max(hip_slant_n_val, hip_slant_s_val)   # legacy alias
     hip_ridges_total = 2 * hip_slant_n_val + 2 * hip_slant_s_val
-    central_ridge_total = ridge_length
+    # If the ridge-end vent is enabled, the central ridge extends past
+    # R1 and R2 by `ridge_ext_u` on each side. Bumps the ridge material
+    # requirement by 2 × ext_u, and adds four short support struts
+    # (one per hip ridge at each end).
+    ridge_ext_u = float(roof.get('ridge_ext_u', 0.0))
+    has_ridge_vent = ridge_ext_u > 0
+    central_ridge_total = ridge_length + 2 * ridge_ext_u
+    # Vent-strut length ≈ diagonal from R1_ext to a point ridge_ext_u
+    # along the hip ridge: sqrt(ext² + (ext × slant_ratio)²).
+    # slant_ratio ≈ hip_slant / d_hip. For a reasonable estimate we use
+    # sqrt(2) × ext_u — close enough for BOM ± 10 %.
+    import math as _m
+    vent_strut_len_each = ridge_ext_u * _m.sqrt(2.0) if has_ridge_vent else 0.0
+    vent_strut_count = 4 if has_ridge_vent else 0
+    vent_strut_total = vent_strut_count * vent_strut_len_each
     # Use the SAME rounded display value as the individual dimensions —
     # ensures that 2·(span_x + span_y) on the sheet adds up when a reader
     # takes the printed 34'2" and 52'2" values and computes by hand.
@@ -6018,6 +6032,17 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
                  f'{dim_text(max(hip_beam_n_len, hip_beam_s_len))}',
                  _hb_note),
             ]
+        # Ridge-vent support struts (only if the vent is enabled).
+        if has_ridge_vent:
+            _strut_sect = truss_cfg.get('web_size_in', [2, 2])
+            _strut_wall = truss_cfg.get('web_wall_mm', 2)
+            rows.append(
+                ('Vent-strut', _sect(_strut_sect, _strut_wall),
+                 f'{vent_strut_count}',
+                 f'{dim_text(vent_strut_total)}',
+                 f'{dim_text(vent_strut_len_each)}',
+                 f'{vent_strut_count // 2} per end — ties extended ridge back to hip ridges')
+            )
         row_y = table_y + row_h + 18
         for row in rows:
             for (val, key) in zip(row, ['member', 'section', 'count', 'total', 'max', 'notes']):
@@ -6160,6 +6185,12 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
             members.append((_hss(hip_beam_size, hip_beam_wall),
                             'Hip-end beams',
                             hip_beam_total_count, hip_beam_total_len))
+        if has_ridge_vent:
+            _strut_sect = truss_cfg.get('web_size_in', [2, 2])
+            _strut_wall = truss_cfg.get('web_wall_mm', 2)
+            members.append((_hss(_strut_sect, _strut_wall),
+                            'Ridge-vent struts',
+                            vent_strut_count, vent_strut_total))
         if truss_count > 0:
             members += [
                 (_hss(tc_sz, tc_wall), 'Truss top chords',
@@ -6734,11 +6765,31 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
         # ---- Ridges: hip diagonals + central ridge (drawn on top) ----
         ridge_stroke = '#5a3a17'
         ridge_w = max(_in_to_px(ridge_size_in[0]), 2.6)   # 6" wide
-        # Central ridge
-        s += (f'<line x1="{NR[0]:.1f}" y1="{NR[1]:.1f}" '
-              f'x2="{SR[0]:.1f}" y2="{SR[1]:.1f}" '
+
+        # Optional ridge-end ventilation — the central ridge is extended
+        # past the hip apex by `ridge_ext_u` on each end. Struts (four
+        # per roof) tie each extension end back to points along the
+        # adjacent hip ridges at distance `ridge_ext_u` from the apex.
+        vent_ext_u = float(roof.get('ridge_ext_u', 0.0))
+        has_vent = vent_ext_u > 0
+
+        # Extension endpoints in svg-space (drop back to NR / SR when the
+        # feature is disabled).
+        if has_vent and ridge_axis == 'y':
+            NR_ext = T(ridge_x_pos, r_y_start - vent_ext_u)
+            SR_ext = T(ridge_x_pos, r_y_end + vent_ext_u)
+        elif has_vent:
+            NR_ext = T(r_x_start - vent_ext_u, ridge_y_pos)
+            SR_ext = T(r_x_end + vent_ext_u, ridge_y_pos)
+        else:
+            NR_ext, SR_ext = NR, SR
+
+        # Central ridge (extended when the vent is on)
+        s += (f'<line x1="{NR_ext[0]:.1f}" y1="{NR_ext[1]:.1f}" '
+              f'x2="{SR_ext[0]:.1f}" y2="{SR_ext[1]:.1f}" '
               f'stroke="{ridge_stroke}" stroke-width="{ridge_w}"/>\n')
-        # Hip ridges from ridge endpoints to eave corners
+        # Hip ridges from the ORIGINAL ridge endpoints (R1 / R2) to eave
+        # corners — the hip apex is unchanged by the vent extension.
         if ridge_axis == 'y':
             hips = [(NR, NW), (NR, NE), (SR, SW), (SR, SE)]
         else:
@@ -6747,6 +6798,41 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
             s += (f'<line x1="{a[0]:.1f}" y1="{a[1]:.1f}" '
                   f'x2="{b[0]:.1f}" y2="{b[1]:.1f}" '
                   f'stroke="{ridge_stroke}" stroke-width="{ridge_w}"/>\n')
+
+        # Ridge-vent support struts (2 per end, from the extension end
+        # down to the strut foot at distance vent_ext_u along each hip
+        # ridge). Drawn thinner and dashed so they read as secondary
+        # structural detail rather than main framing.
+        if has_vent:
+            strut_stroke = '#5a3a17'
+            strut_w = max(ridge_w * 0.5, 1.4)
+
+            def _pt_along_2d(a, b, dist_world):
+                """Point at `dist_world` (world units) along ridge a→b in
+                svg-space. We convert world distance to svg-space by
+                multiplying by s_scale (uniform scale)."""
+                dx_svg = b[0] - a[0]
+                dy_svg = b[1] - a[1]
+                length_svg = (dx_svg ** 2 + dy_svg ** 2) ** 0.5
+                if length_svg <= 0:
+                    return a
+                # dist_world in world units → dist_svg in svg units
+                dist_svg = dist_world * s_scale
+                t = dist_svg / length_svg
+                return (a[0] + t * dx_svg, a[1] + t * dy_svg)
+
+            if ridge_axis == 'y':
+                for ext_pt, apex_pt, corner_a, corner_b in [
+                    (NR_ext, NR, NW, NE),
+                    (SR_ext, SR, SW, SE),
+                ]:
+                    p_a = _pt_along_2d(apex_pt, corner_a, vent_ext_u)
+                    p_b = _pt_along_2d(apex_pt, corner_b, vent_ext_u)
+                    for foot in (p_a, p_b):
+                        s += (f'<line x1="{ext_pt[0]:.1f}" y1="{ext_pt[1]:.1f}" '
+                              f'x2="{foot[0]:.1f}" y2="{foot[1]:.1f}" '
+                              f'stroke="{strut_stroke}" stroke-width="{strut_w:.1f}" '
+                              f'stroke-dasharray="5,3" opacity="0.85"/>\n')
 
         # ---- Fink trusses in the ridge zone ----
         # Each common truss spans the full transverse eave-to-eave line at
@@ -7267,10 +7353,26 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
         # structural family. They sit on top of the dashed roof-shell
         # wireframe.
         hip_ridge_stroke = '#6b4423'
-        # Central ridge (R1 → R2) — the horizontal top line
-        s += draw_line(R1, R2, stroke=hip_ridge_stroke,
+
+        # Optional ridge-end ventilation: extend the ridge past R1 / R2
+        # by ridge_ext_u on each end, add 4 support struts (2 per end)
+        # tying the extension to points on the adjacent hip ridges.
+        vent_ext_u = float(roof.get('ridge_ext_u', 0.0))
+        has_vent = vent_ext_u > 0
+        if has_vent and ridge_axis == 'y':
+            R1_ext = (r_x, r_y1 - vent_ext_u, r_z)
+            R2_ext = (r_x, r_y2 + vent_ext_u, r_z)
+        elif has_vent:
+            R1_ext = (r_x1 - vent_ext_u, r_y, r_z)
+            R2_ext = (r_x2 + vent_ext_u, r_y, r_z)
+        else:
+            R1_ext, R2_ext = R1, R2
+
+        # Central ridge — extended when the vent is on
+        s += draw_line(R1_ext, R2_ext, stroke=hip_ridge_stroke,
                         stroke_w=2.0, opacity=0.95)
-        # Four hip ridges (ridge endpoint → eave corners)
+        # Four hip ridges (ridge endpoint → eave corners). Apex stays at
+        # the ORIGINAL R1 / R2 — the extension floats past on the ridge.
         if ridge_axis == 'y':
             hip_ridge_pairs = [
                 (R1, eave_corners[0]),   # R1 → NW eave corner
@@ -7288,6 +7390,38 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
         for _a, _b in hip_ridge_pairs:
             s += draw_line(_a, _b, stroke=hip_ridge_stroke,
                             stroke_w=2.0, opacity=0.95)
+
+        # ---- Ridge-vent support struts (dashed) ----
+        # Two per end, running from the extension end (R1_ext / R2_ext)
+        # down to a point `vent_ext_u` along each adjacent hip ridge.
+        if has_vent:
+            def _pt3_along(a, b, dist):
+                dx, dy, dz = b[0] - a[0], b[1] - a[1], b[2] - a[2]
+                length = (dx * dx + dy * dy + dz * dz) ** 0.5
+                if length <= 0:
+                    return a
+                t = dist / length
+                return (a[0] + t * dx, a[1] + t * dy, a[2] + t * dz)
+
+            if ridge_axis == 'y':
+                strut_pairs = [
+                    (R1_ext, _pt3_along(R1, eave_corners[0], vent_ext_u)),  # NW foot
+                    (R1_ext, _pt3_along(R1, eave_corners[1], vent_ext_u)),  # NE foot
+                    (R2_ext, _pt3_along(R2, eave_corners[2], vent_ext_u)),  # SE foot
+                    (R2_ext, _pt3_along(R2, eave_corners[3], vent_ext_u)),  # SW foot
+                ]
+            else:
+                strut_pairs = [
+                    (R1_ext, _pt3_along(R1, eave_corners[0], vent_ext_u)),  # NW
+                    (R1_ext, _pt3_along(R1, eave_corners[3], vent_ext_u)),  # SW
+                    (R2_ext, _pt3_along(R2, eave_corners[1], vent_ext_u)),  # NE
+                    (R2_ext, _pt3_along(R2, eave_corners[2], vent_ext_u)),  # SE
+                ]
+            strut_stroke = '#6b4423'
+            for _a, _b in strut_pairs:
+                s += draw_line(_a, _b, stroke=strut_stroke,
+                                stroke_w=1.4, opacity=0.9,
+                                dash='5,3')
 
         # ---- 3 Fink trusses ----
         # Each truss lives in a vertical plane at y = truss_y_positions[i].
@@ -8109,6 +8243,85 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
             s += (f'<text x="{x0 + w_p - 12:.1f}" y="{y0 + 36 + 46:.1f}" '
                   f'text-anchor="end" font-size="11" fill="{long_stroke}">'
                   f'{long_truss_count} longitudinal (⊥) trusses — profile matches this section</text>\n')
+
+        # ---- Ridge-end ventilation (long-axis section shows the extension) ----
+        # The extended ridge appears as two horizontal "wings" sticking
+        # out past the trapezoid's top corners (tl, tr) at ridge height.
+        # Below each wing, the wedge-shaped vent opening is drawn with a
+        # dashed enclosure so the ventilation aperture reads at a glance.
+        vent_ext_u = float(roof.get('ridge_ext_u', 0.0))
+        if vent_ext_u > 0:
+            ext_px = vent_ext_u * s_scale_b
+            ridge_stroke_bb = '#5a3a17'
+            ridge_w_bb = max(2.2, ridge_size_in[0] / IN_PER_UNIT * s_scale_b * 0.4)
+            # Extended ridge segments (north wing to the left of tl_b,
+            # south wing to the right of tr_b) — horizontal at t_y_b.
+            tl_ext = (tl_b[0] - ext_px, t_y_b)
+            tr_ext = (tr_b[0] + ext_px, t_y_b)
+            s += (f'<line x1="{tl_ext[0]:.1f}" y1="{tl_ext[1]:.1f}" '
+                  f'x2="{tl_b[0]:.1f}" y2="{tl_b[1]:.1f}" '
+                  f'stroke="{ridge_stroke_bb}" stroke-width="{ridge_w_bb:.1f}" '
+                  f'stroke-linecap="round"/>\n')
+            s += (f'<line x1="{tr_b[0]:.1f}" y1="{tr_b[1]:.1f}" '
+                  f'x2="{tr_ext[0]:.1f}" y2="{tr_ext[1]:.1f}" '
+                  f'stroke="{ridge_stroke_bb}" stroke-width="{ridge_w_bb:.1f}" '
+                  f'stroke-linecap="round"/>\n')
+
+            # Support struts (as seen in section — foreshortened along
+            # the X axis). The 3-D strut walks `vent_ext_u` units along
+            # the NW (or NE / SW / SE) hip ridge from the apex. The
+            # section only shows the projection onto the Y-Z plane, so
+            # the section-visible distance along the slanted top edge
+            # is SHORTER than `vent_ext_u`. We compute the fraction of
+            # the hip ridge that `vent_ext_u` represents, then walk
+            # that same fraction along the section's slanted side.
+            _strut_w = max(1.4, ridge_w_bb * 0.55)
+            # 3-D hip-ridge length from R1 to NW eave corner. In world
+            # units (not svg): sqrt(dx² + dy² + dz²) where dz is the
+            # eave-to-ridge rise. Fraction along the hip ridge that
+            # equals ridge_ext_u.
+            _hip_dx = ridge_ext_u_hip_xy = 0  # placeholder if you extract
+            # Simpler: distance from R1 to NW along the N hip triangle
+            # slope face (in the Y-Z projection this is d_hip_n_hyp);
+            # the corresponding 3-D length is sqrt(d_hip_n² + (span_x/2)² + h²).
+            _dhip_2d = ((_tol_L ** 2 + h ** 2) ** 0.5)   # section Y-Z hypotenuse
+            _dhip_3d = ((_tol_L ** 2 + (span_x / 2.0) ** 2 + h ** 2) ** 0.5)
+            _dhip_2d_r = ((_tol_R ** 2 + h ** 2) ** 0.5)
+            _dhip_3d_r = ((_tol_R ** 2 + (span_x / 2.0) ** 2 + h ** 2) ** 0.5)
+            frac_L = vent_ext_u / _dhip_3d if _dhip_3d > 0 else 0.0
+            frac_R = vent_ext_u / _dhip_3d_r if _dhip_3d_r > 0 else 0.0
+
+            def _walk_frac(a, b, frac):
+                return (a[0] + frac * (b[0] - a[0]),
+                        a[1] + frac * (b[1] - a[1]))
+            foot_L = _walk_frac(tl_b, bl_b, frac_L)
+            foot_R = _walk_frac(tr_b, br_b, frac_R)
+            s += (f'<line x1="{tl_ext[0]:.1f}" y1="{tl_ext[1]:.1f}" '
+                  f'x2="{foot_L[0]:.1f}" y2="{foot_L[1]:.1f}" '
+                  f'stroke="{ridge_stroke_bb}" stroke-width="{_strut_w:.1f}" '
+                  f'stroke-dasharray="5,3" opacity="0.85"/>\n')
+            s += (f'<line x1="{tr_ext[0]:.1f}" y1="{tr_ext[1]:.1f}" '
+                  f'x2="{foot_R[0]:.1f}" y2="{foot_R[1]:.1f}" '
+                  f'stroke="{ridge_stroke_bb}" stroke-width="{_strut_w:.1f}" '
+                  f'stroke-dasharray="5,3" opacity="0.85"/>\n')
+
+            # Label + dimension callout for the extension length.
+            vent_lbl_color = '#0066cc'
+            _mid_L = ((tl_ext[0] + tl_b[0]) / 2.0, t_y_b - 12)
+            _mid_R = ((tr_b[0] + tr_ext[0]) / 2.0, t_y_b - 12)
+            s += (f'<text x="{_mid_L[0]:.1f}" y="{_mid_L[1]:.1f}" '
+                  f'text-anchor="middle" font-size="10" fill="{vent_lbl_color}">'
+                  f'vent ext = {dim_text(vent_ext_u)}</text>\n')
+            s += (f'<text x="{_mid_R[0]:.1f}" y="{_mid_R[1]:.1f}" '
+                  f'text-anchor="middle" font-size="10" fill="{vent_lbl_color}">'
+                  f'vent ext = {dim_text(vent_ext_u)}</text>\n')
+
+            # Note in bottom-right corner
+            s += (f'<text x="{x0 + w_p - 12:.1f}" y="{y0 + h_p - 12:.1f}" '
+                  f'text-anchor="end" font-size="11" fill="{ridge_stroke_bb}" '
+                  f'font-style="italic">RIDGE-END VENTILATION — '
+                  f'ridge cap extends {dim_text(vent_ext_u)} past each hip apex; '
+                  f'wedge below is open on E &amp; W faces (mesh-screened)</text>\n')
 
         return s
 

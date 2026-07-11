@@ -128,6 +128,26 @@ def derive_hip_roof_geometry(hip_roof, wall_top_z, house_trans_u, house_long_u,
     O_n = min_ov * ridge_y_start / d_crit
     O_s = min_ov * (house_long_u - ridge_y_end) / d_crit
 
+    # --- Optional ridge-end ventilation ----------------------------------
+    # If `ridge_ventilation.extension_ft` is present and > 0, the ridge
+    # extends past R1 (northward) and R2 (southward) by that amount at the
+    # same `ridge_z`. The extension creates a wedge-shaped opening between
+    # the extended ridge and the sloping hip surface below — one on the
+    # east side, one on the west side, per end — used as an attic vent.
+    # Absent/zero → feature is disabled, downstream code sees ext_u = 0
+    # and treats the geometry exactly as before.
+    _vent_cfg = hip_roof.get('ridge_ventilation') or {}
+    ridge_ext_u = max(0.0, float(_vent_cfg.get('extension_ft', 0.0))) * 10.0
+    # Clamp so the extension can't push R1' past the north eave or R2'
+    # past the south eave — that would put the ridge out over open air
+    # with no hip surface below it.
+    _max_ext_u = min(ridge_y_start - 1.0, (house_long_u - ridge_y_end) - 1.0)
+    if ridge_ext_u > _max_ext_u > 0:
+        ridge_ext_u = _max_ext_u
+    has_ridge_vent = ridge_ext_u > 1e-6
+    ridge_y_start_ext = ridge_y_start - ridge_ext_u
+    ridge_y_end_ext = ridge_y_end + ridge_ext_u
+
     return {
         # Explicit coordinates the downstream code (SVG + Blender) expects.
         'eave_x_west':      0 - O_ew,
@@ -152,6 +172,13 @@ def derive_hip_roof_geometry(hip_roof, wall_top_z, house_trans_u, house_long_u,
         'overhang_n_ft':    O_n / 10.0,
         'overhang_s_ft':    O_s / 10.0,
         'd_crit':           d_crit,
+        # --- Ridge-vent geometry (0 when disabled) ---
+        'ridge_ext_u':          ridge_ext_u,
+        'ridge_ext_ft':         ridge_ext_u / 10.0,
+        'has_ridge_vent':       has_ridge_vent,
+        'ridge_y_start_ext':    ridge_y_start_ext,
+        'ridge_y_end_ext':      ridge_y_end_ext,
+        'ridge_vent_cfg':       dict(_vent_cfg),
     }
 
 

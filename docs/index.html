@@ -1810,15 +1810,18 @@
             }, 100);
         }
 
-        // Lightbox functions for perspective images
+        // Lightbox functions for perspective images. Filenames + order
+        // MUST match the openLightbox(index) calls in the perspective
+        // gallery below (front-left = 0, aerial = 4, etc.) and the
+        // actual files on disk in docs/realistic_perspectives/.
         const perspectiveImages = [
-            { src: 'perspective_front_left_corner.png', caption: 'Front Left Corner View (Northwest)' },
-            { src: 'perspective_front_right_corner.png', caption: 'Front Right Corner View (Northeast)' },
-            { src: 'perspective_back_left_corner.png', caption: 'Back Left Corner View (Southwest)' },
-            { src: 'perspective_back_right_corner.png', caption: 'Back Right Corner View (Southeast)' },
-            { src: 'perspective_aerial.png', caption: 'Aerial View' },
-            { src: 'perspective_eye_level_back.png', caption: 'Eye Level Back View (South)' },
-            { src: 'perspective_eye_level_front.png', caption: 'Eye Level Front View (North)' }
+            { src: 'realistic_perspectives/front_left_corner.png',  caption: 'Front Left Corner View (Northwest)' },
+            { src: 'realistic_perspectives/front_right_corner.png', caption: 'Front Right Corner View (Northeast)' },
+            { src: 'realistic_perspectives/back_left_corner.png',   caption: 'Back Left Corner View (Southwest)' },
+            { src: 'realistic_perspectives/back_right_corner.png',  caption: 'Back Right Corner View (Southeast)' },
+            { src: 'realistic_perspectives/aerial.png',             caption: 'Aerial View' },
+            { src: 'realistic_perspectives/eye_level_back.png',     caption: 'Eye Level Back View (South)' },
+            { src: 'realistic_perspectives/eye_level_front.png',    caption: 'Eye Level Front View (North)' }
         ];
         let currentPerspectiveIndex = 0;
 
