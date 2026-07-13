@@ -13,7 +13,7 @@ From one file (`house_config.json`) the pipeline produces:
 
 - **Per-floor plans** with room labels, wall thicknesses, openings, staircase, pillars, beams, dimensions
 - **Elevations** (front / back / left / right) with pillars, walls, openings, roof profile
-- **Roof drawings** — top view, hip cross-sections, per-slope roll-outs, framing detail, truss elevation, material takeoff, BOM
+- **Roof plan** — one 145 KB master `roof_plan.svg` that lays out **13 panels** on a single canvas (top view, isometric perspective, two cross-sections, three slope roll-outs, framing detail, eave cross-section, truss elevation, materials takeoff, consolidated BOM, tile roofing). Each panel is *also* saved as its own cropped SVG, and a `roof_panels.json` manifest lets the web viewer and PDF stitcher iterate them without hard-coding the list
 - **Pillar / slab structural sections** for each column and row
 - **Interactive 3D model** (GLB) with per-layer visibility, orbit / dolly controls, and a split "exploded" variant
 - **Photoreal perspective renders** from 7 angles (Cycles + PBR materials)
@@ -91,7 +91,11 @@ blender/                       (repo root)
 │   │   ├── elevations/        per-side + combined
 │   │   ├── pillar_elevations/ 4 structural elevations
 │   │   ├── pillar_sections/   per-column and per-row sections
-│   │   └── roof/              top view, sections, framing, BOM, roll-outs
+│   │   └── roof/              roof_plan.svg (master, 13 panels stitched)
+│   │                          + 13 per-panel SVGs cropped from the master
+│   │                          + roof_panels.json (manifest)
+│   │                          + roof-cross-section.svg, roof-trusses.svg
+│   │                            (hand-drawn refs the pipeline embeds as-is)
 │   ├── 3d/                    GLB + perspective PNGs + layers.json
 │   │   ├── konkan_house.glb
 │   │   ├── konkan_house_exploded.glb
@@ -155,6 +159,8 @@ python3 scripts/generate_pillar_elevations.py     # 4 structural elevations
 ```
 
 Outputs land in `docs/2d/{floor_plans,elevations,pillar_elevations,pillar_sections,roof}/`.
+
+The single call `generate_roof_sections_svg()` (invoked as step 3 of `regenerate_combined_svgs.py`) produces the full roof package in one shot: the master `roof_plan.svg`, all 13 per-panel SVGs cropped from it, and the `roof_panels.json` manifest.
 
 ### 3D outputs (require Blender)
 
