@@ -9,10 +9,12 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "smoke-validate": "tsx scripts/smoke-validate.ts",
+    "dump-svgs": "tsx scripts/dump-svgs.mjs",
     "parity-primitives": "tsx scripts/parity-primitives.mjs",
     "parity-floorplans": "tsx scripts/parity-floorplans.mjs",
     "parity-elevations": "tsx scripts/parity-elevations.mjs",
-    "parity-all": "npm run parity-primitives && npm run parity-floorplans && npm run parity-elevations"
+    "parity-roof": "tsx scripts/parity-roof.mjs",
+    "parity-all": "npm run parity-primitives && npm run parity-floorplans && npm run parity-elevations && npm run parity-roof"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
