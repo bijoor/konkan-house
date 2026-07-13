@@ -1,0 +1,574 @@
+// TypeScript port of svg_2d.py::generate_floor_plan_svg. Byte-identical
+// to the Python output for the target 8 SVGs. Every numeric formatting
+// decision here mirrors Python's `f"{v}"` semantics via `f`/`fFloat`
+// from ./format.
+//
+// Callers should pass a floor already run through expandRoomWalls so
+// nested-form rooms are flattened.
+
+import { DEFAULT_GLOBAL_CONFIG } from "./config";
+import { formatDimension, f, fFloat } from "./format";
+import {
+  svgDrawWall, svgDrawRoom, svgDrawDoor, svgDrawWindow, svgDrawFloorSlab,
+  svgDrawPillar, svgDrawBeam, svgDrawStaircase,
+} from "./shapes";
+import {
+  extractFloorEdges, classifyPerimeterEdges, detectWallConnections,
+  assignDimensionOffsetLevels, normalizeEdgeKey,
+} from "./edges";
+import {
+  assignOpeningOffsetLevels, svgDrawDimensionLine, svgDrawOpeningDimensions,
+} from "./dimensions";
+
+interface FloorConfig {
+  floor_number?: number;
+  name?: string;
+  objects?: Array<Record<string, unknown>>;
+}
+
+// Guard the "min still ∞" case with Number.POSITIVE_INFINITY, which
+// stringifies the same way Python's float('inf') does not — but we
+// never emit inf into SVG, so this is only for the empty-floor check.
+const INF = Number.POSITIVE_INFINITY;
+
+export function generateFloorPlanSvg(
+  floorConfig: FloorConfig,
+  scale = 2.0,
+): string {
+  const floorNum = floorConfig.floor_number ?? 0;
+  const floorName = floorConfig.name ?? `Floor ${floorNum}`;
+  const wallThickness = DEFAULT_GLOBAL_CONFIG.wall_thickness;
+  const dim = DEFAULT_GLOBAL_CONFIG.dimensions;
+
+  // -----------------------------------------------------------------
+  // Bounds
+  // -----------------------------------------------------------------
+  let minX = INF, minY = INF;
+  let maxX = -INF, maxY = -INF;
+
+  const objects = floorConfig.objects ?? [];
+  for (const obj of objects) {
+    const t = obj.type as string;
+    if (t === "floor_slab" || t === "beam" || t === "room") {
+      const x = obj.x as number, y = obj.y as number;
+      const w = obj.width as number, l = obj.length as number;
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x + w > maxX) maxX = x + w;
+      if (y + l > maxY) maxY = y + l;
+    } else if (t === "wall") {
+      const sx = obj.start_x as number, sy = obj.start_y as number;
+      const ex = obj.end_x as number, ey = obj.end_y as number;
+      if (Math.min(sx, ex) < minX) minX = Math.min(sx, ex);
+      if (Math.max(sx, ex) > maxX) maxX = Math.max(sx, ex);
+      if (Math.min(sy, ey) < minY) minY = Math.min(sy, ey);
+      if (Math.max(sy, ey) > maxY) maxY = Math.max(sy, ey);
+    }
+  }
+  if (minX === INF || maxX === -INF) return "";
+
+  // -----------------------------------------------------------------
+  // Margins / viewBox
+  // -----------------------------------------------------------------
+  const baseMargin = 20;
+  let dimMargin = 0;
+  const offsetIncrement = dim.dimension_offset_increment;
+  if (dim.show_outer_dimensions) {
+    const maxOffset =
+      dim.dimension_offset + 3 * offsetIncrement + offsetIncrement * 1.5 + 10;
+    dimMargin = (maxOffset + 20) * scale;
+  }
+  const margin = baseMargin + dimMargin;
+  const topMargin = 50 + dimMargin;
+
+  const width = (maxX - minX) * scale + 2 * margin;
+  const height = (maxY - minY) * scale + margin + topMargin;
+
+  // Python's `f'{margin - min_x * scale}'` — with margin (float) and
+  // min_x * scale (float), result is float. Reproduce via fFloat.
+  const translateX = margin - minX * scale;
+  const translateY = topMargin - minY * scale;
+
+  // Python's f-string for a whole-number float like `2.0`: `f'{2.0}'` → "2.0"
+  const scaleStr = fFloat(scale);
+
+  let svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${fFloat(width)}" height="${fFloat(height)}" viewBox="0 0 ${fFloat(width)} ${fFloat(height)}">
+<title>${floorName} - Floor Plan</title>
+<defs>
+    <style>
+        text { font-family: Arial, sans-serif; }
+    </style>
+</defs>
+<g transform="translate(${fFloat(translateX)}, ${fFloat(translateY)}) scale(${scaleStr}, ${scaleStr})">
+
+`;
+
+  // -----------------------------------------------------------------
+  // Draw ordering matches Python EXACTLY: floor_slabs, beams,
+  // staircases, walls/rooms/pillars-collected, doors/windows, dims,
+  // room labels, slab dims, pillars.
+  // -----------------------------------------------------------------
+  for (const obj of objects) {
+    if (obj.type === "floor_slab") {
+      svg += svgDrawFloorSlab(
+        obj.x as number, obj.y as number,
+        obj.width as number, obj.length as number,
+      );
+    }
+  }
+  for (const obj of objects) {
+    if (obj.type === "beam") {
+      svg += svgDrawBeam(
+        obj.x as number, obj.y as number,
+        obj.width as number, obj.length as number,
+      );
+    }
+  }
+  // Python's `generate_floor_plan_svg` has a variable-shadowing quirk:
+  // the local `width` used for the SVG canvas dimensions gets rebound
+  // inside the staircase branch (line 946+ in svg_2d.py) to the
+  // staircase's width. That rebound value is what the final
+  // `<text x="{width/2}"...>` title uses. Track the shadowed width the
+  // same way so the title footer stays byte-identical.
+  let titleWidthVar: number = width;
+  let titleWidthIsFloat = true;
+
+  for (const obj of objects) {
+    if (obj.type === "staircase") {
+      let x: number, y: number, w: number, l: number;
+      let arrowDir: string;
+      let numSteps: number | undefined;
+
+      if ("start_x" in obj) {
+        const startX = obj.start_x as number;
+        const startY = obj.start_y as number;
+        const stepWidth = (obj.step_width as number | undefined) ?? 30;
+        const stepTread = (obj.step_tread as number | undefined) ?? 10;
+        numSteps = (obj.num_steps as number | undefined) ?? 10;
+        const compass = (obj.direction as string | undefined) ?? "north";
+
+        if (compass === "north") {
+          x = startX; y = startY - numSteps * stepTread;
+          w = stepWidth; l = numSteps * stepTread;
+          arrowDir = "up";
+        } else if (compass === "south") {
+          x = startX; y = startY;
+          w = stepWidth; l = numSteps * stepTread;
+          arrowDir = "down";
+        } else if (compass === "east") {
+          x = startX; y = startY;
+          w = numSteps * stepTread; l = stepWidth;
+          arrowDir = "up";
+        } else {
+          // west
+          x = startX - numSteps * stepTread; y = startY;
+          w = numSteps * stepTread; l = stepWidth;
+          arrowDir = "down";
+        }
+      } else {
+        x = obj.x as number; y = obj.y as number;
+        w = obj.width as number; l = obj.length as number;
+        arrowDir = (obj.direction as string | undefined) ?? "up";
+        numSteps = obj.num_steps as number | undefined;
+      }
+      svg += svgDrawStaircase(x, y, w, l, arrowDir, numSteps);
+      // Reproduce Python's variable-shadowing quirk: after this line
+      // Python's `width` local == staircase width, and that stale value
+      // is what the final title footer uses.
+      titleWidthVar = w;
+      titleWidthIsFloat = false; // step_width is int in the source config
+    }
+  }
+
+  const pillarsToDraw: Array<{ x: number; y: number; size?: number; width?: number; length?: number }> = [];
+
+  for (const obj of objects) {
+    const t = obj.type as string;
+    if (t === "room") {
+      const walls = obj.walls as string[] | Record<string, unknown> | undefined;
+      const wallsList: string[] | undefined = walls
+        ? Array.isArray(walls) ? walls : Object.keys(walls)
+        : undefined;
+      svg += svgDrawRoom(
+        obj.x as number, obj.y as number,
+        obj.width as number, obj.length as number,
+        ((obj.wall_thickness as number | undefined) ?? wallThickness),
+        wallsList ?? ["north", "south", "east", "west"],
+      );
+    } else if (t === "wall") {
+      const thickness = (obj.thickness as number | undefined) ?? wallThickness;
+      svg += svgDrawWall(
+        obj.start_x as number, obj.start_y as number,
+        obj.end_x as number, obj.end_y as number,
+        thickness,
+      );
+    } else if (t === "pillar") {
+      pillarsToDraw.push({
+        x: obj.x as number, y: obj.y as number,
+        size: obj.size as number | undefined,
+        width: obj.width as number | undefined,
+        length: obj.length as number | undefined,
+      });
+    }
+  }
+
+  for (const obj of objects) {
+    const t = obj.type as string;
+    if (t === "door") {
+      svg += svgDrawDoor(
+        obj.x as number, obj.y as number,
+        obj.width as number,
+        (obj.direction as string | undefined) ?? "north",
+      );
+    } else if (t === "window") {
+      svg += svgDrawWindow(
+        obj.x as number, obj.y as number,
+        obj.width as number,
+        (obj.direction as string | undefined) ?? "north",
+      );
+    }
+  }
+
+  // -----------------------------------------------------------------
+  // Opening dimensions
+  // -----------------------------------------------------------------
+  if (dim.show_opening_dimensions) {
+    interface WallBound {
+      start: number;
+      end: number;
+      coord: number;
+      direction: string;
+    }
+    const wallBounds: Record<string, WallBound> = {};
+
+    for (const obj of objects) {
+      if (obj.type === "room") {
+        const roomName = obj.name as string;
+        const x = obj.x as number, y = obj.y as number;
+        const w = obj.width as number, h = obj.length as number;
+        wallBounds[`${roomName}_North`] = { start: x, end: x + w, coord: y, direction: "north" };
+        wallBounds[`${roomName}_South`] = { start: x, end: x + w, coord: y + h, direction: "south" };
+        wallBounds[`${roomName}_East`]  = { start: y, end: y + h, coord: x + w, direction: "east" };
+        wallBounds[`${roomName}_West`]  = { start: y, end: y + h, coord: x, direction: "west" };
+      } else if (obj.type === "wall") {
+        const wallName = (obj.name as string | undefined) ?? "Wall";
+        const x1 = obj.start_x as number, y1 = obj.start_y as number;
+        const x2 = obj.end_x as number, y2 = obj.end_y as number;
+        if (Math.abs(y2 - y1) < 0.01) {
+          const direction = y1 < (minY + maxY) / 2 ? "north" : "south";
+          wallBounds[wallName] = {
+            start: Math.min(x1, x2), end: Math.max(x1, x2),
+            coord: y1, direction,
+          };
+        } else if (Math.abs(x2 - x1) < 0.01) {
+          const direction = x1 < (minX + maxX) / 2 ? "west" : "east";
+          wallBounds[wallName] = {
+            start: Math.min(y1, y2), end: Math.max(y1, y2),
+            coord: x1, direction,
+          };
+        }
+      }
+    }
+
+    // Group + sort openings by wall
+    const openingsByWall: Record<string, Array<Record<string, unknown>>> = {};
+    for (const obj of objects) {
+      const t = obj.type as string;
+      if (t === "door" || t === "window") {
+        const direction = ((obj.direction as string | undefined) ?? "north").toLowerCase();
+        const room = obj.room as string | undefined;
+        let wallName = obj.wall as string | undefined;
+        if (room && !wallName) {
+          wallName = `${room}_${direction.charAt(0).toUpperCase() + direction.slice(1)}`;
+        }
+        if (wallName && wallName in wallBounds) {
+          if (!(wallName in openingsByWall)) openingsByWall[wallName] = [];
+          openingsByWall[wallName].push(obj);
+        }
+      }
+    }
+    for (const [wallName, ops] of Object.entries(openingsByWall)) {
+      const dir = wallBounds[wallName].direction;
+      if (dir === "north" || dir === "south") {
+        ops.sort((a, b) => (a.x as number) - (b.x as number));
+      } else {
+        ops.sort((a, b) => (a.y as number) - (b.y as number));
+      }
+    }
+
+    // Assign offset levels
+    const openingsForLevels: Record<string, Array<{ x: number; y: number; width: number; direction: string }>> = {};
+    for (const [wallName, ops] of Object.entries(openingsByWall)) {
+      openingsForLevels[wallName] = ops.map((o) => ({
+        x: o.x as number, y: o.y as number, width: o.width as number,
+        direction: ((o.direction as string | undefined) ?? "north").toLowerCase(),
+      }));
+    }
+    const openingLevels = assignOpeningOffsetLevels(openingsForLevels);
+
+    const openingOffset = dim.opening_dimension_offset;
+    const openingTextSize = dim.opening_text_size;
+
+    for (const [wallName, ops] of Object.entries(openingsByWall)) {
+      const wallInfo = wallBounds[wallName];
+      const direction = wallInfo.direction;
+      let referencePoint = wallInfo.start + wallThickness;
+
+      for (let wallIndex = 0; wallIndex < ops.length; wallIndex++) {
+        const obj = ops[wallIndex];
+        const offsetLevel = openingLevels[`${wallName}|${wallIndex}`] ?? 0;
+        svg += svgDrawOpeningDimensions(
+          obj.x as number, obj.y as number,
+          obj.width as number, direction,
+          wallInfo.start, wallInfo.end,
+          offsetLevel, referencePoint,
+        );
+        referencePoint =
+          direction === "north" || direction === "south"
+            ? (obj.x as number) + (obj.width as number)
+            : (obj.y as number) + (obj.width as number);
+      }
+
+      // Final span dimension from last opening to inside end of wall
+      if (ops.length > 0) {
+        const lastOpening = ops[ops.length - 1];
+        const wallInsideEnd = wallInfo.end - wallThickness;
+
+        if (direction === "north" || direction === "south") {
+          const finalStart = (lastOpening.x as number) + (lastOpening.width as number);
+          const finalLength = wallInsideEnd - finalStart;
+          if (finalLength > 5) {
+            const positionOffset = direction === "north" ? -openingOffset : openingOffset;
+            const posDimY = (lastOpening.y as number) + positionOffset;
+            const finalDimText = formatDimension(finalLength);
+
+            svg += '<g class="opening-dimension">\n';
+            svg += `  <line x1="${f(finalStart)}" y1="${f(posDimY)}" x2="${f(wallInsideEnd)}" y2="${f(posDimY)}" stroke="#666" stroke-width="0.3"/>\n`;
+            svg += `  <line x1="${f(finalStart)}" y1="${f(lastOpening.y as number)}" x2="${f(finalStart)}" y2="${f(posDimY)}" stroke="#666" stroke-width="0.2" stroke-dasharray="1,1"/>\n`;
+            svg += `  <line x1="${f(wallInsideEnd)}" y1="${f(lastOpening.y as number)}" x2="${f(wallInsideEnd)}" y2="${f(posDimY)}" stroke="#666" stroke-width="0.2" stroke-dasharray="1,1"/>\n`;
+            const arrow = 2;
+            svg += `  <polygon points="${f(finalStart)},${f(posDimY)} ${f(finalStart + arrow)},${fFloat(posDimY - arrow / 2)} ${f(finalStart + arrow)},${fFloat(posDimY + arrow / 2)}" fill="#666"/>\n`;
+            svg += `  <polygon points="${f(wallInsideEnd)},${f(posDimY)} ${f(wallInsideEnd - arrow)},${fFloat(posDimY - arrow / 2)} ${f(wallInsideEnd - arrow)},${fFloat(posDimY + arrow / 2)}" fill="#666"/>\n`;
+            const textY = direction === "north" ? posDimY - 3 : posDimY + openingTextSize + 1;
+            svg += `  <text x="${fFloat((finalStart + wallInsideEnd) / 2)}" y="${f(textY)}" text-anchor="middle" font-size="${openingTextSize}" fill="#666">${finalDimText}</text>\n`;
+            svg += "</g>\n";
+          }
+        } else {
+          const finalStart = (lastOpening.y as number) + (lastOpening.width as number);
+          const finalLength = wallInsideEnd - finalStart;
+          if (finalLength > 5) {
+            const positionOffset = direction === "west" ? -openingOffset : openingOffset;
+            const posDimX = (lastOpening.x as number) + positionOffset;
+            const finalDimText = formatDimension(finalLength);
+
+            svg += '<g class="opening-dimension">\n';
+            svg += `  <line x1="${f(posDimX)}" y1="${f(finalStart)}" x2="${f(posDimX)}" y2="${f(wallInsideEnd)}" stroke="#666" stroke-width="0.3"/>\n`;
+            svg += `  <line x1="${f(lastOpening.x as number)}" y1="${f(finalStart)}" x2="${f(posDimX)}" y2="${f(finalStart)}" stroke="#666" stroke-width="0.2" stroke-dasharray="1,1"/>\n`;
+            svg += `  <line x1="${f(lastOpening.x as number)}" y1="${f(wallInsideEnd)}" x2="${f(posDimX)}" y2="${f(wallInsideEnd)}" stroke="#666" stroke-width="0.2" stroke-dasharray="1,1"/>\n`;
+            const arrow = 2;
+            svg += `  <polygon points="${f(posDimX)},${f(finalStart)} ${fFloat(posDimX - arrow / 2)},${f(finalStart + arrow)} ${fFloat(posDimX + arrow / 2)},${f(finalStart + arrow)}" fill="#666"/>\n`;
+            svg += `  <polygon points="${f(posDimX)},${f(wallInsideEnd)} ${fFloat(posDimX - arrow / 2)},${f(wallInsideEnd - arrow)} ${fFloat(posDimX + arrow / 2)},${f(wallInsideEnd - arrow)}" fill="#666"/>\n`;
+            const textX = direction === "west" ? posDimX - openingTextSize - 2 : posDimX + openingTextSize + 2;
+            svg += `  <text x="${f(textX)}" y="${fFloat((finalStart + wallInsideEnd) / 2)}" text-anchor="middle" font-size="${openingTextSize}" fill="#666" transform="rotate(-90 ${f(textX)} ${fFloat((finalStart + wallInsideEnd) / 2)})">${finalDimText}</text>\n`;
+            svg += "</g>\n";
+          }
+        }
+      }
+    }
+  }
+
+  // -----------------------------------------------------------------
+  // Perimeter + interior dimensions
+  // -----------------------------------------------------------------
+  let northLevels: Record<string, number> = {};
+  let southLevels: Record<string, number> = {};
+  let westLevels: Record<string, number> = {};
+  let eastLevels: Record<string, number> = {};
+
+  if (dim.show_outer_dimensions || dim.show_inner_dimensions) {
+    const edges = extractFloorEdges(floorConfig);
+    // detectWallConnections is called for side effects on debug/analysis
+    // in the Python original — we call it for parity (harmless) even
+    // though the return isn't used further down.
+    detectWallConnections(edges);
+    const bounds = { min_x: minX, max_x: maxX, min_y: minY, max_y: maxY };
+    const perimeter = classifyPerimeterEdges(edges, bounds);
+
+    if (dim.show_outer_dimensions) {
+      const baseOffset = dim.dimension_offset;
+      northLevels = assignDimensionOffsetLevels(perimeter.north, true);
+      southLevels = assignDimensionOffsetLevels(perimeter.south, true);
+      westLevels  = assignDimensionOffsetLevels(perimeter.west, false);
+      eastLevels  = assignDimensionOffsetLevels(perimeter.east, false);
+
+      for (const edge of perimeter.north) {
+        const key = normalizeEdgeKey(edge.x1, edge.y1, edge.x2, edge.y2);
+        const level = northLevels[key] ?? 0;
+        const offset = baseOffset + level * offsetIncrement;
+        svg += svgDrawDimensionLine(edge.x1, edge.y1, edge.x2, edge.y2, -offset, true, true, true);
+      }
+      for (const edge of perimeter.south) {
+        const key = normalizeEdgeKey(edge.x1, edge.y1, edge.x2, edge.y2);
+        const level = southLevels[key] ?? 0;
+        const offset = baseOffset + level * offsetIncrement;
+        svg += svgDrawDimensionLine(edge.x1, edge.y1, edge.x2, edge.y2, offset, true, true, true);
+      }
+      for (const edge of perimeter.west) {
+        const key = normalizeEdgeKey(edge.x1, edge.y1, edge.x2, edge.y2);
+        const level = westLevels[key] ?? 0;
+        const offset = baseOffset + level * offsetIncrement;
+        svg += svgDrawDimensionLine(edge.x1, edge.y1, edge.x2, edge.y2, -offset, false, true, true);
+      }
+      for (const edge of perimeter.east) {
+        const key = normalizeEdgeKey(edge.x1, edge.y1, edge.x2, edge.y2);
+        const level = eastLevels[key] ?? 0;
+        const offset = baseOffset + level * offsetIncrement;
+        svg += svgDrawDimensionLine(edge.x1, edge.y1, edge.x2, edge.y2, offset, false, true, true);
+      }
+
+      const maxNorth = maxValue(northLevels);
+      const maxSouth = maxValue(southLevels);
+      const maxWest  = maxValue(westLevels);
+      const maxEast  = maxValue(eastLevels);
+      const floorExtentOffsetIncrement = offsetIncrement * 1.5;
+
+      // Floor-extent offsets include floorExtentOffsetIncrement (float
+      // from `* 1.5`), so downstream dim coords must render as float.
+      const oN = baseOffset + (maxNorth + 1) * offsetIncrement + floorExtentOffsetIncrement;
+      svg += svgDrawDimensionLine(minX, minY, maxX, minY, -oN, true, false, false, true);
+      const oS = baseOffset + (maxSouth + 1) * offsetIncrement + floorExtentOffsetIncrement;
+      svg += svgDrawDimensionLine(minX, maxY, maxX, maxY, oS, true, false, false, true);
+      const oW = baseOffset + (maxWest + 1) * offsetIncrement + floorExtentOffsetIncrement;
+      svg += svgDrawDimensionLine(minX, minY, minX, maxY, -oW, false, false, false, true);
+      const oE = baseOffset + (maxEast + 1) * offsetIncrement + floorExtentOffsetIncrement;
+      svg += svgDrawDimensionLine(maxX, minY, maxX, maxY, oE, false, false, false, true);
+    }
+
+    if (dim.show_inner_dimensions) {
+      const innerOffset = dim.inner_dimension_offset;
+      const perimN_S_keys = new Set(
+        perimeter.north.concat(perimeter.south).map((e) => normalizeEdgeKey(e.x1, e.y1, e.x2, e.y2)),
+      );
+      const perimW_E_keys = new Set(
+        perimeter.west.concat(perimeter.east).map((e) => normalizeEdgeKey(e.x1, e.y1, e.x2, e.y2)),
+      );
+      for (const edge of Object.values(edges.horizontal)) {
+        const key = normalizeEdgeKey(edge.x1, edge.y1, edge.x2, edge.y2);
+        if (!perimN_S_keys.has(key)) {
+          svg += svgDrawDimensionLine(edge.x1, edge.y1, edge.x2, edge.y2, innerOffset, true, true, true);
+        }
+      }
+      for (const edge of Object.values(edges.vertical)) {
+        const key = normalizeEdgeKey(edge.x1, edge.y1, edge.x2, edge.y2);
+        if (!perimW_E_keys.has(key)) {
+          svg += svgDrawDimensionLine(edge.x1, edge.y1, edge.x2, edge.y2, innerOffset, false, true, true);
+        }
+      }
+    }
+  }
+
+  // -----------------------------------------------------------------
+  // Room labels
+  // -----------------------------------------------------------------
+  if (dim.show_room_dimensions) {
+    const roomTextSize = dim.room_text_size;
+    for (const obj of objects) {
+      if (obj.type === "room") {
+        const centerX = (obj.x as number) + (obj.width as number) / 2;
+        const centerY = (obj.y as number) + (obj.length as number) / 2;
+        const t = (obj.wall_thickness as number | undefined) ?? wallThickness;
+        const carpetWidth = (obj.width as number) - 2 * t;
+        const carpetLength = (obj.length as number) - 2 * t;
+        const widthDim = formatDimension(carpetWidth);
+        const lengthDim = formatDimension(carpetLength);
+        const roomName = (obj.name as string | undefined) ?? "Room";
+
+        // centerX and centerY are both Python-float (from `/ 2`), and
+        // centerY ± 8 inherits float-ness.
+        svg += `<text x="${fFloat(centerX)}" y="${fFloat(centerY - 8)}" text-anchor="middle" font-size="${roomTextSize}" font-weight="bold" fill="#333">${roomName}</text>\n`;
+        svg += `<text x="${fFloat(centerX)}" y="${fFloat(centerY + 8)}" text-anchor="middle" font-size="${roomTextSize - 2}" fill="#666">${widthDim} × ${lengthDim}</text>\n`;
+      }
+    }
+  }
+
+  // -----------------------------------------------------------------
+  // Floor slab dimensions (when the slab differs from the overall
+  // floor bounding box).
+  // -----------------------------------------------------------------
+  if (dim.show_outer_dimensions) {
+    const overallWidth = maxX - minX;
+    const overallLength = maxY - minY;
+    const baseOffset = dim.dimension_offset;
+    const maxNorth = maxValue(northLevels);
+    const maxSouth = maxValue(southLevels);
+    const maxWest  = maxValue(westLevels);
+    const maxEast  = maxValue(eastLevels);
+    const floorExtentOffsetIncrement = offsetIncrement * 1.5;
+
+    const slabOffsetNorth = baseOffset + (maxNorth + 1) * offsetIncrement + floorExtentOffsetIncrement * 0.5;
+    const slabOffsetSouth = baseOffset + (maxSouth + 1) * offsetIncrement + floorExtentOffsetIncrement * 0.5;
+    const slabOffsetWest  = baseOffset + (maxWest + 1) * offsetIncrement + floorExtentOffsetIncrement * 0.5;
+    const slabOffsetEast  = baseOffset + (maxEast + 1) * offsetIncrement + floorExtentOffsetIncrement * 0.5;
+
+    for (const obj of objects) {
+      if (obj.type === "floor_slab") {
+        const slabX = obj.x as number;
+        const slabY = obj.y as number;
+        const slabWidth = obj.width as number;
+        const slabLength = obj.length as number;
+        const tolerance = 1.0;
+        const widthDiffers = Math.abs(slabWidth - overallWidth) > tolerance || Math.abs(slabX - minX) > tolerance;
+        const lengthDiffers = Math.abs(slabLength - overallLength) > tolerance || Math.abs(slabY - minY) > tolerance;
+
+        if (widthDiffers || lengthDiffers) {
+          svg += '<g class="floor-slab-dimension">\n';
+          // Slab-dimension offsets include `* 0.5` (float in Python).
+          if (widthDiffers) {
+            svg += svgDrawDimensionLine(slabX, slabY, slabX + slabWidth, slabY, -slabOffsetNorth, true, false, false, true);
+            svg += svgDrawDimensionLine(slabX, slabY + slabLength, slabX + slabWidth, slabY + slabLength, slabOffsetSouth, true, false, false, true);
+          }
+          if (lengthDiffers) {
+            svg += svgDrawDimensionLine(slabX, slabY, slabX, slabY + slabLength, -slabOffsetWest, false, false, false, true);
+            svg += svgDrawDimensionLine(slabX + slabWidth, slabY, slabX + slabWidth, slabY + slabLength, slabOffsetEast, false, false, false, true);
+          }
+          svg += "</g>\n";
+        }
+      }
+    }
+  }
+
+  // -----------------------------------------------------------------
+  // Pillars drawn last so they sit on top.
+  // -----------------------------------------------------------------
+  for (const p of pillarsToDraw) {
+    svg += svgDrawPillar(p.x, p.y, p.size, p.width, p.length);
+  }
+
+  // -----------------------------------------------------------------
+  // Title footer
+  // -----------------------------------------------------------------
+  // Python: `f'<text x="{width/2}" ...` — `width` is the shadowed local
+  // variable (canvas width by default, or last staircase width if any).
+  // Division always yields float in Python 3.
+  const titleXStr = titleWidthIsFloat ? fFloat(titleWidthVar / 2) : fFloat(titleWidthVar / 2);
+  // (Both branches use fFloat here because Py3's `/` always returns
+  // float; the isFloat distinction only matters when we know the value
+  // stays purely integer through addition without division — retained
+  // for future edits.)
+  void titleWidthIsFloat;
+  svg += `</g>
+<text x="${titleXStr}" y="30" text-anchor="middle" font-size="16" font-weight="bold">${floorName}</text>
+</svg>`;
+
+  return svg;
+}
+
+function maxValue(m: Record<string, number>): number {
+  let max = 0;
+  let first = true;
+  for (const v of Object.values(m)) {
+    if (first || v > max) { max = v; first = false; }
+  }
+  return first ? 0 : max;
+}

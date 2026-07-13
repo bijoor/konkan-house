@@ -1,0 +1,415 @@
+// TypeScript port of house_expand.py — rewrites nested `room.walls[side]`
+// and `wall.openings` into the flat schema that the SVG generators
+// consume. Idempotent (marks the config with `_walls_expanded: true`).
+// Non-destructive: input is deep-cloned before rewrite.
+//
+// Numeric-type preservation matters: the Python port keeps int in → int
+// out so downstream SVG formatting emits "110" not "110.0". JavaScript
+// only has one number type so this is a non-issue in TS.
+
+import { DEFAULT_GLOBAL_CONFIG } from "./config";
+
+type Side = "north" | "south" | "east" | "west";
+const SIDES: readonly Side[] = ["north", "south", "east", "west"];
+
+type Opening = {
+  kind: "door" | "window";
+  name?: string;
+  offset: number;
+  width: number;
+  height: number;
+  sill_height?: number;
+  direction?: Side;
+  facing?: Side;
+};
+
+type RoomWallSide = {
+  height?: number;
+  height_end?: number;
+  openings?: Opening[];
+};
+
+type RoomWalls =
+  | Side[]
+  | {
+      north?: RoomWallSide;
+      south?: RoomWallSide;
+      east?: RoomWallSide;
+      west?: RoomWallSide;
+    };
+
+type Room = {
+  type: "room";
+  name: string;
+  x: number;
+  y: number;
+  width: number;
+  length: number;
+  walls?: RoomWalls;
+  wall_heights?: Record<string, unknown>;
+  [key: string]: unknown;
+};
+
+type Wall = {
+  type: "wall";
+  name: string;
+  start_x: number;
+  start_y: number;
+  end_x: number;
+  end_y: number;
+  facing?: Side;
+  openings?: Opening[];
+  [key: string]: unknown;
+};
+
+// Loose typing for the SVG stage — the editor's Zod schema enforces
+// stricter shapes upstream; here we operate on the same JSON blob the
+// Python side does, without imposing extra constraints.
+type Obj = { type: string; [key: string]: unknown };
+type Floor = { objects: Obj[]; [key: string]: unknown };
+export type HouseConfig = {
+  floors: Floor[];
+  _walls_expanded?: boolean;
+  [key: string]: unknown;
+};
+
+export function expandRoomWalls(
+  houseConfig: HouseConfig,
+  wallThickness?: number,
+): HouseConfig {
+  if (houseConfig._walls_expanded) return houseConfig;
+  const t = wallThickness ?? DEFAULT_GLOBAL_CONFIG.wall_thickness;
+
+  const hc = structuredClone(houseConfig);
+  for (const floor of hc.floors ?? []) {
+    const objs = floor.objects ?? [];
+    const head: Obj[] = [];
+    const deferredDoors: Obj[] = [];
+    const deferredWindows: Obj[] = [];
+    for (const obj of objs) {
+      const [first, extras] = expandObject(obj, t);
+      head.push(first);
+      for (const e of extras) {
+        (e.type === "door" ? deferredDoors : deferredWindows).push(e);
+      }
+    }
+    floor.objects = [...head, ...deferredDoors, ...deferredWindows];
+  }
+  hc._walls_expanded = true;
+  return hc;
+}
+
+function expandObject(obj: Obj, wallThickness: number): [Obj, Obj[]] {
+  if (obj.type === "room") return expandRoom(obj as Room, wallThickness);
+  if (obj.type === "wall") return expandWall(obj as Wall);
+  return [obj, []];
+}
+
+function expandRoom(room: Room, wallThickness: number): [Obj, Obj[]] {
+  const walls = room.walls;
+  // Old list-form or absent → nothing to expand.
+  if (walls === undefined || Array.isArray(walls)) return [room, []];
+  if (typeof walls !== "object") {
+    throw new Error(
+      `Room '${room.name}': walls must be a list, dict, or omitted.`,
+    );
+  }
+
+  const rname = room.name;
+  for (const side of Object.keys(walls)) {
+    if (!SIDES.includes(side as Side)) {
+      throw new Error(
+        `Room '${rname}': unknown wall side '${side}' — expected one of ${SIDES.join(",")}.`,
+      );
+    }
+  }
+
+  // Rebuild the room object without the nested walls dict.
+  const { walls: _dropWalls, ...rest } = room;
+  const newRoom: Room = {
+    ...(rest as Room),
+    walls: Object.keys(walls) as Side[],
+  };
+
+  // Merge per-wall heights into wall_heights (nested overrides win).
+  const mergedHeights: Record<string, unknown> = { ...(room.wall_heights ?? {}) };
+  for (const side of Object.keys(walls) as Side[]) {
+    const wc = walls[side];
+    const h: { height?: number; height_end?: number } = {};
+    if (wc?.height !== undefined) h.height = wc.height;
+    if (wc?.height_end !== undefined) h.height_end = wc.height_end;
+    if (Object.keys(h).length > 0) {
+      const existing = { ...((mergedHeights[side] as object) ?? {}) } as {
+        height?: number;
+        height_end?: number;
+      };
+      if (h.height !== undefined && existing.height === undefined) {
+        existing.height = h.height;
+      }
+      if (h.height_end !== undefined && existing.height_end === undefined) {
+        existing.height_end = h.height_end;
+      }
+      mergedHeights[side] = existing;
+    }
+  }
+  if (Object.keys(mergedHeights).length > 0) {
+    newRoom.wall_heights = mergedHeights;
+  }
+
+  // Emit doors first, then windows — matches the original hand-written
+  // flat-schema ordering that groups by kind.
+  const rx = room.x,
+    ry = room.y,
+    rw = room.width,
+    rl = room.length;
+  const doorExtras: Obj[] = [];
+  const windowExtras: Obj[] = [];
+  const t = ((room as { wall_thickness?: number }).wall_thickness ??
+    wallThickness) as number;
+
+  for (const side of Object.keys(walls) as Side[]) {
+    const wc = walls[side];
+    const openings = wc?.openings ?? [];
+    if (openings.length === 0) continue;
+    const wallLength = side === "north" || side === "south" ? rw : rl;
+    validateOpenings(openings, `Room '${rname}' ${side} wall`, wallLength);
+    for (let i = 0; i < openings.length; i++) {
+      const flat = roomOpeningToFlat(rname, side, t, rx, ry, rw, rl, openings[i], i);
+      (flat.type === "door" ? doorExtras : windowExtras).push(flat);
+    }
+  }
+
+  return [newRoom, [...doorExtras, ...windowExtras]];
+}
+
+function roomOpeningToFlat(
+  rname: string,
+  side: Side,
+  t: number,
+  rx: number,
+  ry: number,
+  rw: number,
+  rl: number,
+  op: Opening,
+  index: number,
+): Obj {
+  const kind = op.kind;
+  if (kind !== "door" && kind !== "window") {
+    throw new Error(
+      `Room '${rname}' ${side} opening #${index}: kind must be 'door' or 'window'.`,
+    );
+  }
+  const { offset, width, height } = op;
+  let x: number, y: number, direction: Side;
+  if (side === "north") {
+    x = rx + offset;
+    y = ry;
+    direction = "north";
+  } else if (side === "south") {
+    x = rx + offset;
+    y = ry + rl - t;
+    direction = "south";
+  } else if (side === "west") {
+    x = rx;
+    y = ry + offset;
+    direction = "west";
+  } else {
+    x = rx + rw - t;
+    y = ry + offset;
+    direction = "east";
+  }
+  if (op.direction) direction = op.direction;
+
+  const name =
+    op.name ??
+    `${rname}_${side.charAt(0).toUpperCase() + side.slice(1)}_${
+      kind.charAt(0).toUpperCase() + kind.slice(1)
+    }_${index + 1}`;
+
+  const flat: Obj = {
+    type: kind,
+    name,
+    x,
+    y,
+    width,
+    height,
+    direction,
+    room: rname,
+  };
+  if (kind === "window") flat.sill_height = op.sill_height ?? 0;
+  for (const [k, v] of Object.entries(op)) {
+    if (["kind", "name", "offset", "width", "height", "sill_height", "direction"].includes(k)) {
+      continue;
+    }
+    if (!(k in flat)) flat[k] = v;
+  }
+  return flat;
+}
+
+function expandWall(wall: Wall): [Obj, Obj[]] {
+  const openings = wall.openings;
+  if (!openings || openings.length === 0) {
+    if ("openings" in wall) {
+      const { openings: _drop, ...rest } = wall;
+      return [rest as Obj, []];
+    }
+    return [wall, []];
+  }
+
+  // Preserve numeric types (input is JSON, all numbers).
+  const sx = wall.start_x,
+    sy = wall.start_y,
+    ex = wall.end_x,
+    ey = wall.end_y;
+  const dx = ex - sx,
+    dy = ey - sy;
+  const length = Math.sqrt(dx * dx + dy * dy);
+  const wallName = wall.name ?? "Wall";
+  if (length <= 0) throw new Error(`Wall '${wallName}' has zero length.`);
+  const ux = dx / length,
+    uy = dy / length;
+
+  const defaultFacing = inferDefaultFacing(dx, dy, wallName, wall.facing);
+  validateOpenings(openings, `Wall '${wallName}'`, length);
+
+  const wallT = ((wall as { thickness?: number }).thickness ??
+    DEFAULT_GLOBAL_CONFIG.wall_thickness) as number;
+
+  const { openings: _drop, ...rest } = wall;
+  const newWall: Obj = rest as Obj;
+  const doorExtras: Obj[] = [];
+  const windowExtras: Obj[] = [];
+  for (let i = 0; i < openings.length; i++) {
+    const flat = wallOpeningToFlat(
+      wallName,
+      sx,
+      sy,
+      ux,
+      uy,
+      wallT,
+      openings[i].facing ?? defaultFacing,
+      openings[i],
+      i,
+    );
+    (flat.type === "door" ? doorExtras : windowExtras).push(flat);
+  }
+  return [newWall, [...doorExtras, ...windowExtras]];
+}
+
+function inferDefaultFacing(
+  dx: number,
+  dy: number,
+  wallName: string,
+  explicit: Side | undefined,
+): Side {
+  if (explicit !== undefined) {
+    if (!SIDES.includes(explicit)) {
+      throw new Error(
+        `Wall '${wallName}': facing must be one of ${SIDES.join(",")}.`,
+      );
+    }
+    return explicit;
+  }
+  const axisRatio = Math.abs(dx) / Math.max(Math.abs(dy), 1e-9);
+  if (axisRatio > 10) return "north";
+  if (axisRatio < 0.1) return "east";
+  throw new Error(
+    `Wall '${wallName}' is diagonal (dx=${dx}, dy=${dy}); openings need explicit facing.`,
+  );
+}
+
+function wallOpeningToFlat(
+  wallName: string,
+  sx: number,
+  sy: number,
+  ux: number,
+  uy: number,
+  wallThickness: number,
+  direction: Side,
+  op: Opening,
+  index: number,
+): Obj {
+  const kind = op.kind;
+  if (kind !== "door" && kind !== "window") {
+    throw new Error(
+      `Wall '${wallName}' opening #${index}: kind must be 'door' or 'window'.`,
+    );
+  }
+  const { offset, width, height } = op;
+  const halfT = wallThickness / 2;
+  let x: number, y: number;
+  if (Math.abs(uy) > Math.abs(ux)) {
+    const step = uy > 0 ? 1 : -1;
+    x = sx - halfT;
+    y = sy + offset * step;
+  } else if (Math.abs(ux) > Math.abs(uy)) {
+    const step = ux > 0 ? 1 : -1;
+    x = sx + offset * step;
+    y = sy - halfT;
+  } else {
+    x = sx + offset * ux;
+    y = sy + offset * uy;
+  }
+
+  const name =
+    op.name ??
+    `${wallName}_${kind.charAt(0).toUpperCase() + kind.slice(1)}_${index + 1}`;
+
+  const flat: Obj = {
+    type: kind,
+    name,
+    x,
+    y,
+    width,
+    height,
+    direction,
+    wall: wallName,
+  };
+  if (kind === "window") flat.sill_height = op.sill_height ?? 0;
+  for (const [k, v] of Object.entries(op)) {
+    if (["kind", "name", "offset", "width", "height", "sill_height", "facing"].includes(k)) {
+      continue;
+    }
+    if (!(k in flat)) flat[k] = v;
+  }
+  return flat;
+}
+
+function validateOpenings(
+  openings: Opening[],
+  ctx: string,
+  wallLength: number,
+): void {
+  const seen: [number, number, string][] = [];
+  for (let i = 0; i < openings.length; i++) {
+    const op = openings[i];
+    if (typeof op !== "object" || op === null) {
+      throw new Error(`${ctx}: opening #${i} must be an object.`);
+    }
+    const start = Number(op.offset);
+    const width = Number(op.width);
+    if (!Number.isFinite(start) || !Number.isFinite(width)) {
+      throw new Error(`${ctx}: opening #${i} needs numeric offset and width.`);
+    }
+    const end = start + width;
+    const name = op.name ?? `#${i}`;
+    if (start < -0.001) {
+      throw new Error(`${ctx}: opening '${name}' has negative offset ${start}.`);
+    }
+    if (end > wallLength + 0.001) {
+      throw new Error(
+        `${ctx}: opening '${name}' ends at ${end.toFixed(2)} but the wall is only ${wallLength.toFixed(2)} units long.`,
+      );
+    }
+    for (const [otherStart, otherEnd, otherName] of seen) {
+      if (
+        !(end <= otherStart + 0.001 || start >= otherEnd - 0.001)
+      ) {
+        throw new Error(
+          `${ctx}: openings '${name}' (${start.toFixed(2)}-${end.toFixed(2)}) and '${otherName}' (${otherStart.toFixed(2)}-${otherEnd.toFixed(2)}) overlap.`,
+        );
+      }
+    }
+    seen.push([start, end, name]);
+  }
+}

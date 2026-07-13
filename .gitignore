@@ -27,6 +27,9 @@ docs/*.bin
 *objects_debug*.json
 *.log
 
+# Claude Code per-project state
+.claude/
+
 # Local-only resources (textures, BlenderKit plugin install, big render zips)
 textures
 *.zip

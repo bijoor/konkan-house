@@ -4,6 +4,7 @@ Regenerate combined SVGs without requiring Blender
 Run this after making changes to individual floor plans or elevations
 """
 import sys
+import pathlib
 sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender')
 
 from config import GLOBAL_CONFIG
@@ -18,8 +19,13 @@ config_code = config_code.replace(
     '# GLOBAL_CONFIG imported separately'
 )
 
-# Execute config in a namespace
-namespace = {'GLOBAL_CONFIG': GLOBAL_CONFIG}
+# Execute config in a namespace. `__file__` is injected so house_config.py's
+# JSON loader (`pathlib.Path(__file__).with_name('house_config.json')`) can
+# resolve the config path even under exec.
+namespace = {
+    'GLOBAL_CONFIG': GLOBAL_CONFIG,
+    '__file__': str(pathlib.Path('house_config.py').resolve()),
+}
 exec(config_code, namespace)
 
 # Import SVG functions (no Blender dependency)

@@ -1907,7 +1907,11 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                 # Extract each wall of the room as a separate entity
                 for direction in walls_list:
                     wall_key = f"{room_name}_{direction}"
-                    wall_height = wall_heights.get(direction, obj.get('height', floor_height))
+                    wh_entry = wall_heights.get(direction, obj.get('height', floor_height))
+                    # After the nested-walls refactor, wall_heights entries can be
+                    # dicts (`{'height': N, 'height_end': N}`) — unwrap so
+                    # downstream code that expects a scalar wall_height still works.
+                    wall_height = wh_entry.get('height', floor_height) if isinstance(wh_entry, dict) else wh_entry
 
                     # Calculate wall depth and position based on view type
                     # Show ALL walls in each view and let depth sorting handle visibility

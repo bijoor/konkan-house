@@ -1,0 +1,326 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bijoor/konkan-house/schema/house_config.schema.json",
+  "title": "House Config",
+  "description": "Procedural house configuration read by the Blender pipeline and the browser editor. Coordinates use the Inkscape convention (origin top-left, X→right, Y→down); units are ambiguous by design — see CLAUDE.md 'Coordinate system & units'.",
+  "type": "object",
+  "required": ["site", "plinth", "floors"],
+  "additionalProperties": false,
+  "properties": {
+    "site": { "$ref": "#/$defs/site" },
+    "plinth": { "$ref": "#/$defs/plinth" },
+    "floors": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/floor" },
+      "minItems": 1
+    },
+    "_walls_expanded": {
+      "type": "boolean",
+      "description": "Internal marker set by house_expand.py after room walls have been flattened. Absent in the canonical source config."
+    }
+  },
+  "$defs": {
+    "side": { "enum": ["north", "south", "east", "west"] },
+
+    "site": {
+      "type": "object",
+      "required": ["reference_x", "reference_y", "plot_length", "plot_width"],
+      "additionalProperties": false,
+      "properties": {
+        "reference_x": { "type": "number" },
+        "reference_y": { "type": "number" },
+        "plot_length": { "type": "number", "exclusiveMinimum": 0 },
+        "plot_width": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+
+    "plinth": {
+      "type": "object",
+      "required": ["x", "y", "length", "width", "height"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "length": { "type": "number", "exclusiveMinimum": 0 },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+
+    "floor": {
+      "type": "object",
+      "required": ["floor_number", "name", "objects"],
+      "additionalProperties": false,
+      "properties": {
+        "floor_number": { "type": "integer", "minimum": 0 },
+        "name": { "type": "string" },
+        "objects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/object" }
+        }
+      }
+    },
+
+    "object": {
+      "oneOf": [
+        { "$ref": "#/$defs/floor_slab" },
+        { "$ref": "#/$defs/pillar" },
+        { "$ref": "#/$defs/beam" },
+        { "$ref": "#/$defs/room" },
+        { "$ref": "#/$defs/wall" },
+        { "$ref": "#/$defs/staircase" },
+        { "$ref": "#/$defs/door" },
+        { "$ref": "#/$defs/window" },
+        { "$ref": "#/$defs/hip_roof" },
+        { "$ref": "#/$defs/gable_roof" }
+      ]
+    },
+
+    "floor_slab": {
+      "type": "object",
+      "required": ["type", "x", "y", "width", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "floor_slab" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "length": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+
+    "pillar": {
+      "type": "object",
+      "required": ["type", "x", "y", "height", "name"],
+      "additionalProperties": false,
+      "description": "Pillars can specify `width` (X extent), `length` (Y extent), or both; the missing dimension defaults to a square pillar (see create_pillar in blender_3d.py).",
+      "properties": {
+        "type": { "const": "pillar" },
+        "name": { "type": "string" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "length": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+
+    "beam": {
+      "type": "object",
+      "required": ["type", "x", "y", "width", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "beam" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "length": { "type": "number", "exclusiveMinimum": 0 },
+        "z_offset_ft": { "type": "number" }
+      }
+    },
+
+    "room": {
+      "type": "object",
+      "required": ["type", "name", "x", "y", "width", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "room" },
+        "name": { "type": "string" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "length": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "material": { "type": "string" },
+        "walls": {
+          "oneOf": [
+            {
+              "description": "Legacy list form: list of side names that get exterior walls.",
+              "type": "array",
+              "items": { "$ref": "#/$defs/side" },
+              "uniqueItems": true
+            },
+            {
+              "description": "Nested form: per-side height overrides + opening lists.",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "north": { "$ref": "#/$defs/room_wall_side" },
+                "south": { "$ref": "#/$defs/room_wall_side" },
+                "east":  { "$ref": "#/$defs/room_wall_side" },
+                "west":  { "$ref": "#/$defs/room_wall_side" }
+              }
+            }
+          ]
+        },
+        "wall_heights": {
+          "description": "Legacy per-side height overrides (paired with the list form of `walls`). Prefer the nested `walls` form.",
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "number" },
+              {
+                "type": "object",
+                "properties": {
+                  "height": { "type": "number" },
+                  "height_end": { "type": "number" }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+
+    "room_wall_side": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "height": { "type": "number" },
+        "height_end": { "type": "number" },
+        "openings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/opening" }
+        }
+      }
+    },
+
+    "opening": {
+      "type": "object",
+      "required": ["kind", "offset", "width", "height"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["door", "window"] },
+        "name": { "type": "string" },
+        "offset": { "type": "number", "minimum": 0 },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "sill_height": {
+          "type": "number",
+          "description": "Windows only — height of sill above floor. Ignored for doors."
+        },
+        "direction": {
+          "$ref": "#/$defs/side",
+          "description": "Override the auto-derived facing (defaults to the wall side). Used e.g. when a door on room A's south wall opens into an adjacent room to the south (direction='north')."
+        },
+        "facing": {
+          "$ref": "#/$defs/side",
+          "description": "Standalone-wall opening only — overrides the wall's own `facing`."
+        }
+      }
+    },
+
+    "wall": {
+      "type": "object",
+      "required": ["type", "name", "start_x", "start_y", "end_x", "end_y"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "wall" },
+        "name": { "type": "string" },
+        "start_x": { "type": "number" },
+        "start_y": { "type": "number" },
+        "end_x": { "type": "number" },
+        "end_y": { "type": "number" },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "height_end": {
+          "type": "number",
+          "description": "Optional sloping-wall end height; if set, wall linearly tapers from `height` at start to `height_end` at end."
+        },
+        "material": { "type": "string" },
+        "facing": {
+          "$ref": "#/$defs/side",
+          "description": "Cardinal direction the wall faces. Required for E-W walls with south-facing openings (auto-infers 'north') and for any wall with a facing different from its dominant axis."
+        },
+        "openings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/opening" }
+        }
+      }
+    },
+
+    "staircase": {
+      "type": "object",
+      "required": ["type", "start_x", "start_y", "num_steps", "step_rise", "step_tread", "step_width", "direction"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "staircase" },
+        "start_x": { "type": "number" },
+        "start_y": { "type": "number" },
+        "num_steps": { "type": "integer", "minimum": 1 },
+        "step_rise": { "type": "number", "exclusiveMinimum": 0 },
+        "step_tread": { "type": "number", "exclusiveMinimum": 0 },
+        "step_width": { "type": "number", "exclusiveMinimum": 0 },
+        "direction": { "enum": ["north", "south", "east", "west"] },
+        "material": { "type": "string" }
+      }
+    },
+
+    "door": {
+      "type": "object",
+      "required": ["type", "name", "x", "y", "width", "height", "direction"],
+      "additionalProperties": false,
+      "description": "Flat-schema door (legacy). New configs should nest doors inside room.walls[side].openings or wall.openings.",
+      "properties": {
+        "type": { "const": "door" },
+        "name": { "type": "string" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "direction": { "$ref": "#/$defs/side" },
+        "room": { "type": "string" },
+        "wall": { "type": "string" }
+      }
+    },
+
+    "window": {
+      "type": "object",
+      "required": ["type", "name", "x", "y", "width", "height", "direction"],
+      "additionalProperties": false,
+      "description": "Flat-schema window (legacy). New configs should nest windows inside room.walls[side].openings or wall.openings.",
+      "properties": {
+        "type": { "const": "window" },
+        "name": { "type": "string" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "sill_height": { "type": "number", "minimum": 0 },
+        "direction": { "$ref": "#/$defs/side" },
+        "room": { "type": "string" },
+        "wall": { "type": "string" }
+      }
+    },
+
+    "hip_roof": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": true,
+      "properties": {
+        "type": { "const": "hip_roof" },
+        "material": { "type": "string" },
+        "ridge_axis": { "enum": ["x", "y"] },
+        "ridge_h_ft": { "type": "number" },
+        "min_overhang_ft": { "type": "number" },
+        "ridge_ventilation": { "type": "object" },
+        "framing": { "type": "object" },
+        "trusses": {
+          "description": "Fink-truss layout config; opaque to the schema — validated by create_hip_roof.",
+          "type": "object"
+        },
+        "show_frame_3d": { "type": "boolean" },
+        "explosion_offset": { "type": "number" },
+        "frame_explosion_offset": { "type": "number" }
+      }
+    },
+
+    "gable_roof": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": true,
+      "properties": {
+        "type": { "const": "gable_roof" }
+      }
+    }
+  }
+}
