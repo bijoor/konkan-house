@@ -34,6 +34,10 @@ import {
 
 const here = path.dirname(url.fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "../..");
+// Since the reorg the Python library lives in <repoRoot>/python/.
+// house_config.json stays at repoRoot (it's the single source of
+// truth shared with the TS editor).
+const pythonDir = path.join(repoRoot, "python");
 
 // Each case: [label, python-call-source, ts-value]
 // python-call-source is a snippet run inside svg_2d's namespace.
@@ -90,11 +94,11 @@ const pyCallList = cases.map((c) => c[1]).join(`, print("${SENTINEL}"), `);
 // pre-provided by our direct import of `config`.
 const pyProgram = `
 import sys, pathlib
-sys.path.insert(0, str(pathlib.Path("${repoRoot.replace(/"/g, '\\"')}")))
+sys.path.insert(0, str(pathlib.Path("${pythonDir.replace(/"/g, '\\"')}")))
 from config import GLOBAL_CONFIG
-config_code = (pathlib.Path("${repoRoot.replace(/"/g, '\\"')}") / "house_config.py").read_text()
+config_code = (pathlib.Path("${pythonDir.replace(/"/g, '\\"')}") / "house_config.py").read_text()
 config_code = config_code.replace("from konkan_house_lib import GLOBAL_CONFIG", "")
-exec(config_code, {"GLOBAL_CONFIG": GLOBAL_CONFIG, "__file__": str(pathlib.Path("${repoRoot.replace(/"/g, '\\"')}") / "house_config.py")})
+exec(config_code, {"GLOBAL_CONFIG": GLOBAL_CONFIG, "__file__": str(pathlib.Path("${pythonDir.replace(/"/g, '\\"')}") / "house_config.py")})
 from svg_2d import (svg_draw_wall, svg_draw_room, svg_draw_door, svg_draw_window,
                     svg_draw_floor_slab, svg_draw_pillar, svg_draw_beam,
                     svg_draw_staircase, format_dimension,
@@ -154,11 +158,11 @@ const cfg = JSON.parse(
 const tsExpanded = expandRoomWalls(cfg);
 const pyExpandProgram = `
 import sys, json, pathlib
-sys.path.insert(0, str(pathlib.Path("${repoRoot.replace(/"/g, '\\"')}")))
+sys.path.insert(0, str(pathlib.Path("${pythonDir.replace(/"/g, '\\"')}")))
 from config import GLOBAL_CONFIG
-config_code = (pathlib.Path("${repoRoot.replace(/"/g, '\\"')}") / "house_config.py").read_text()
+config_code = (pathlib.Path("${pythonDir.replace(/"/g, '\\"')}") / "house_config.py").read_text()
 config_code = config_code.replace("from konkan_house_lib import GLOBAL_CONFIG", "")
-ns = {"GLOBAL_CONFIG": GLOBAL_CONFIG, "__file__": str(pathlib.Path("${repoRoot.replace(/"/g, '\\"')}") / "house_config.py")}
+ns = {"GLOBAL_CONFIG": GLOBAL_CONFIG, "__file__": str(pathlib.Path("${pythonDir.replace(/"/g, '\\"')}") / "house_config.py")}
 exec(config_code, ns)
 from house_expand import expand_room_walls
 print(json.dumps(expand_room_walls(ns["HOUSE_CONFIG"]), sort_keys=True))
@@ -226,11 +230,11 @@ const tsDimWest = assignDimensionOffsetLevels(tsPerim.west, false);
 
 const pyStructProgram = `
 import sys, json, pathlib
-sys.path.insert(0, str(pathlib.Path("${repoRoot.replace(/"/g, '\\"')}")))
+sys.path.insert(0, str(pathlib.Path("${pythonDir.replace(/"/g, '\\"')}")))
 from config import GLOBAL_CONFIG
-config_code = (pathlib.Path("${repoRoot.replace(/"/g, '\\"')}") / "house_config.py").read_text()
+config_code = (pathlib.Path("${pythonDir.replace(/"/g, '\\"')}") / "house_config.py").read_text()
 config_code = config_code.replace("from konkan_house_lib import GLOBAL_CONFIG", "")
-ns = {"GLOBAL_CONFIG": GLOBAL_CONFIG, "__file__": str(pathlib.Path("${repoRoot.replace(/"/g, '\\"')}") / "house_config.py")}
+ns = {"GLOBAL_CONFIG": GLOBAL_CONFIG, "__file__": str(pathlib.Path("${pythonDir.replace(/"/g, '\\"')}") / "house_config.py")}
 exec(config_code, ns)
 from svg_2d import (extract_floor_edges, classify_perimeter_edges,
                      detect_wall_connections, assign_dimension_offset_levels)

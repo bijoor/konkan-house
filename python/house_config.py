@@ -112,5 +112,8 @@ GLOBAL_CONFIG.update({
 import json
 import pathlib
 
-_CONFIG_JSON = pathlib.Path(__file__).with_name('house_config.json')
+# house_config.json lives at repo root (one level above this file's
+# `python/` folder) so it's a single source of truth shared with the
+# TypeScript editor.
+_CONFIG_JSON = pathlib.Path(__file__).parent.parent / 'house_config.json'
 HOUSE_CONFIG = json.loads(_CONFIG_JSON.read_text())

@@ -9,9 +9,10 @@ import os
 import math
 import mathutils
 
-sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender')
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(_PROJECT_ROOT, 'python'))
 
-TEXTURES_DIR = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender/textures"
+TEXTURES_DIR = os.path.join(_PROJECT_ROOT, "textures")
 
 def find_texture_file(base_path):
     base_name = os.path.splitext(base_path)[0]
@@ -34,7 +35,7 @@ print()
 
 # Build house
 print("Building house...")
-exec(open('/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender/konkan_house_config.py').read())
+exec(open(os.path.join(_PROJECT_ROOT, 'python', 'konkan_house_config.py')).read())
 build_house(use_explosion=False)
 print("✓ House built\n")
 

@@ -8,7 +8,7 @@ set -e
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PORT="${1:-8000}"
 
-cd "$SCRIPT_DIR/docs"
+cd "$SCRIPT_DIR/../docs"
 
 echo "Serving docs/ at http://localhost:$PORT"
 echo "Open http://localhost:$PORT in your browser. Ctrl+C to stop."

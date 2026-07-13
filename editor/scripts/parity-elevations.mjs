@@ -11,7 +11,8 @@ import { generateCombinedElevations } from "../src/svg2d/elevationsCombined.ts";
 
 const here = path.dirname(url.fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "../..");
-const docsDir = path.join(repoRoot, "docs");
+// R3 moved elevations into docs/2d/elevations/.
+const docsDir = path.join(repoRoot, "docs", "2d", "elevations");
 const target = process.argv[2] ?? "all";
 
 const cfg = JSON.parse(

@@ -6,7 +6,11 @@
 set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$SCRIPT_DIR"
+# Run generator scripts from repo root so relative `open('house_config.py')`
+# resolves. Each `python3 script.py` below is invoked with $SCRIPT_DIR-relative
+# path so we don't rely on cwd for locating the script itself.
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
+cd "$PROJECT_ROOT"
 
 echo "=========================================="
 echo "Regenerating all 2D outputs"
@@ -14,15 +18,15 @@ echo "=========================================="
 
 echo ""
 echo "[1/3] Individual floor plans..."
-python3 generate_floor_plans.py
+python3 "$SCRIPT_DIR/generate_floor_plans.py"
 
 echo ""
 echo "[2/3] Individual elevations..."
-python3 generate_elevations_debug.py
+python3 "$SCRIPT_DIR/generate_elevations_debug.py"
 
 echo ""
 echo "[3/3] Combined floor plans + elevations..."
-python3 regenerate_combined_svgs.py
+python3 "$SCRIPT_DIR/regenerate_combined_svgs.py"
 
 echo ""
 echo "=========================================="

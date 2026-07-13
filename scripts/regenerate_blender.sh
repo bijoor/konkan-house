@@ -6,10 +6,11 @@
 set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$SCRIPT_DIR"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
+cd "$PROJECT_ROOT"
 
 BLENDER="/Applications/Blender.app/Contents/MacOS/Blender"
-BLEND_FILE="$SCRIPT_DIR/house-model.blend"
+BLEND_FILE="$PROJECT_ROOT/house-model.blend"
 
 if [ ! -f "$BLENDER" ]; then
     echo "Error: Blender not found at $BLENDER"

@@ -10,12 +10,14 @@
 //   --in   ../house_config.json  (repo root)
 //   --out  ../docs               (repo's GH Pages folder)
 //
-// Writes:
-//   <out>/floor_plan_0_Ground_Floor.svg
-//   <out>/floor_plan_1_First_Floor.svg
-//   <out>/floor_plans_combined.svg
-//   <out>/elevation_{front,back,left,right}.svg
-//   <out>/elevations_combined.svg
+// Writes under <out>/:
+//   2d/floor_plans/floor_plan_0_Ground_Floor.svg
+//   2d/floor_plans/floor_plan_1_First_Floor.svg
+//   2d/floor_plans/floor_plans_combined.svg
+//   2d/elevations/elevation_{front,back,left,right}.svg
+//   2d/elevations/elevations_combined.svg
+//   2d/roof/roof_*.svg  (14 files)
+//   2d/roof/roof_panels.json
 //
 // Prints a one-line summary per file plus a total. Exits non-zero if
 // the input JSON fails Zod validation.
@@ -41,10 +43,18 @@ if (!fs.existsSync(inputPath)) {
   console.error(`✗ input not found: ${inputPath}`);
   process.exit(2);
 }
-fs.mkdirSync(outDir, { recursive: true });
+
+// Per-type subdirs. Created up-front so the generators can write into
+// them. Existing dirs are left alone.
+const floorPlansDir = path.join(outDir, "2d", "floor_plans");
+const elevationsDir = path.join(outDir, "2d", "elevations");
+const roofDir = path.join(outDir, "2d", "roof");
+fs.mkdirSync(floorPlansDir, { recursive: true });
+fs.mkdirSync(elevationsDir, { recursive: true });
+fs.mkdirSync(roofDir, { recursive: true });
 
 const raw = JSON.parse(fs.readFileSync(inputPath, "utf8"));
-// Validate the shape (fail loudly on schema errors) but pass the RAW
+// Validate for shape (fail loudly on schema errors) but pass the RAW
 // JSON to the generator. Zod's parsed result reshapes optional/undef
 // fields in ways that can shift SVG element ordering vs. Python's
 // dict-iteration order, so keeping the untouched object matches the
@@ -63,35 +73,34 @@ console.log(`↳ input:  ${path.relative(process.cwd(), inputPath)}`);
 console.log(`↳ output: ${path.relative(process.cwd(), outDir)}\n`);
 
 let written = 0;
-const write = (name, content) => {
+const write = (dir, name, content) => {
   if (!content) return;
-  const filepath = path.join(outDir, name);
+  const filepath = path.join(dir, name);
   fs.writeFileSync(filepath, content, "utf8");
-  console.log(`  ✓ ${name.padEnd(40)} ${(content.length / 1024).toFixed(1).padStart(6)} KB`);
+  const rel = path.relative(outDir, filepath);
+  console.log(`  ✓ ${rel.padEnd(50)} ${(content.length / 1024).toFixed(1).padStart(6)} KB`);
   written++;
 };
 
-// Per-floor plans
+// Per-floor plans → 2d/floor_plans/
 for (const { filename, content } of generateAllFloorPlans(cfg)) {
-  write(filename, content);
+  write(floorPlansDir, filename, content);
 }
-// Combined plan
-write("floor_plans_combined.svg", generateCombinedFloorPlans(cfg));
-// Per-view elevations
+// Combined plan → 2d/floor_plans/
+write(floorPlansDir, "floor_plans_combined.svg", generateCombinedFloorPlans(cfg));
+// Per-view elevations → 2d/elevations/
 for (const { view, content } of generateAllElevations(cfg)) {
-  write(`elevation_${view}.svg`, content);
+  write(elevationsDir, `elevation_${view}.svg`, content);
 }
-// Combined elevations
-write("elevations_combined.svg", generateCombinedElevations(cfg));
+// Combined elevations → 2d/elevations/
+write(elevationsDir, "elevations_combined.svg", generateCombinedElevations(cfg));
 
 // Roof panels — writes 14 SVGs + roof_panels.json manifest directly to
 // disk (the port writes files itself rather than returning strings, to
 // keep memory low for the ~144 KB master roof_plan.svg).
-generateRoofSectionsSvg(cfg, outDir);
-// Roof files are enumerated explicitly so the summary line lists them
-// whether or not they existed before this run. If a symmetric-hip
-// config is used, roof_slope_hip_s.svg won't be produced — quietly
-// skip if missing.
+generateRoofSectionsSvg(cfg, roofDir);
+// Enumerate expected roof files so the summary line lists them
+// regardless of whether they existed before this run.
 const ROOF_FILES = [
   "roof_plan.svg",
   "roof_top_view.svg",
@@ -110,10 +119,11 @@ const ROOF_FILES = [
   "roof_panels.json",
 ];
 for (const f of ROOF_FILES) {
-  const p = path.join(outDir, f);
+  const p = path.join(roofDir, f);
   if (!fs.existsSync(p)) continue;
+  const rel = path.relative(outDir, p);
   const size = fs.statSync(p).size;
-  console.log(`  ✓ ${f.padEnd(40)} ${(size / 1024).toFixed(1).padStart(6)} KB`);
+  console.log(`  ✓ ${rel.padEnd(50)} ${(size / 1024).toFixed(1).padStart(6)} KB`);
   written++;
 }
 

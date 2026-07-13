@@ -7,7 +7,7 @@
 set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$SCRIPT_DIR"
+cd "$SCRIPT_DIR/.."
 
 if [ -z "$1" ]; then
     echo "Usage: $0 \"commit message\""

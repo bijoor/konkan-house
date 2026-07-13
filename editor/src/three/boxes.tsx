@@ -80,7 +80,7 @@ export function FloorSlabBox({
   );
 }
 
-// Beam — same shape as slab but with wood color.
+// Beam — concrete/RCC beam, rendered as neutral grey.
 export function BeamBox({
   cx, cz, width, length, z, height,
 }: {
@@ -91,7 +91,7 @@ export function BeamBox({
     <Box
       position={{ x: cx, y: z + height / 2, z: cz }}
       size={{ x: width, y: height, z: length }}
-      color="#6b4423"
+      color="#8a8a8a"
     />
   );
 }

@@ -14,7 +14,8 @@ import subprocess
 import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DOCS_DIR = os.path.join(SCRIPT_DIR, "docs")
+PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
+DOCS_DIR = os.path.join(PROJECT_ROOT, "docs")
 RENDER_DIR = os.path.join(DOCS_DIR, "realistic_perspectives")
 HTML_PATH = os.path.join(DOCS_DIR, "_pdf_source.html")
 PDF_PATH = os.path.join(DOCS_DIR, "konkan_house_ew.pdf")

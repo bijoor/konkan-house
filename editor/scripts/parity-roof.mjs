@@ -14,7 +14,8 @@ import { generateRoofSectionsSvg } from "../src/svg2d/roof/index.ts";
 
 const here = path.dirname(url.fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "../..");
-const docsDir = path.join(repoRoot, "docs");
+// R3 moved roof outputs into docs/2d/roof/.
+const docsDir = path.join(repoRoot, "docs", "2d", "roof");
 
 const EXPECTED_SVGS = [
   "roof_plan.svg",

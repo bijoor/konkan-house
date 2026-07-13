@@ -27,6 +27,7 @@ import {
   PlinthBox,
 } from "./boxes";
 import { HipRoofMesh, type HipRoofGeom } from "./roof";
+import { RoofFrameMesh, computeShellLift, type RoofFraming, type RoofFrameGeom } from "./roofFrame";
 import { StaircaseMesh } from "./staircase";
 import { OpeningPane, WallWithOpenings, type WallOpening } from "./wallCSG";
 import { DEFAULT_LAYERS, useLayerStore } from "./layers";
@@ -85,7 +86,27 @@ export function House3D({ config }: { config: HouseConfig }) {
             (hipConfig?.ridge_axis as "y" | "x" | undefined) ??
             (derived.ridge_axis as "y" | "x"),
           ridge_ext_u: derived.ridge_ext_u as number | undefined,
+          // Needed by HipRoofMesh: Python's `ridge_h` is measured from
+          // wall_top_z, not eave_z. Shell ridge Z = eave_z +
+          // wall_top_above_eave + ridge_h; omitting this makes the
+          // shell peak 20+ units too low.
+          wall_top_above_eave: derived.wall_top_above_eave as number | undefined,
         };
+        // Frame geom extends the shell geom with the ring-beam anchor
+        // coords (the actual wall edges, i.e. the plinth footprint).
+        const p = hc.plinth as { x: number; y: number; width: number; length: number } | undefined;
+        const frameGeomMerged: RoofFrameGeom = {
+          ...merged,
+          ring_beam_x_west: p ? p.x : merged.eave_x_west,
+          ring_beam_x_east: p ? p.x + p.width : merged.eave_x_east,
+          ring_beam_y_north: p ? p.y : merged.eave_y_north,
+          ring_beam_y_south: p ? p.y + p.length : merged.eave_y_south,
+        };
+        const framing = (hipConfig?.framing as RoofFraming | undefined) ?? {};
+        // shellLift lifts the roof surface above the ring beam + rafter
+        // + purlin stack so the shell isn't embedded in the frame at
+        // the wall crossing. See roofFrame.ts::computeShellLift.
+        const shellLift = computeShellLift(framing);
         push(
           "loft",
           <HipRoofMesh
@@ -93,6 +114,51 @@ export function House3D({ config }: { config: HouseConfig }) {
             geom={merged}
             plotWidth={plot.width}
             plotLength={plot.length}
+            shellLift={shellLift}
+          />,
+        );
+
+        // Structural frame — rendered separately so the layer panel
+        // can hide the shell and inspect the truss / rafter grid.
+        // Frame internally tags each member as `spine` or `surface`;
+        // we push the whole component under `frame_spine` and let the
+        // per-mesh material colour differentiate. When the user hides
+        // `frame_spine` the whole group vanishes.
+        const trusses = hipConfig?.trusses as
+          | {
+              positions?: number[];
+              chord_size_in?: [number, number];
+              web_size_in?: [number, number];
+            }
+          | undefined;
+        const trussPositions = trusses?.positions ?? [];
+        const frameGeom: RoofFrameGeom = frameGeomMerged;
+        push(
+          "frame_spine",
+          <RoofFrameMesh
+            key="hip-roof-frame-spine"
+            geom={frameGeom}
+            framing={framing}
+            trusses={trusses}
+            trussPositions={trussPositions}
+            plotWidth={plot.width}
+            plotLength={plot.length}
+            bucket="spine"
+            shellLift={shellLift}
+          />,
+        );
+        push(
+          "frame_surface",
+          <RoofFrameMesh
+            key="hip-roof-frame-surface"
+            geom={frameGeom}
+            framing={framing}
+            trusses={trusses}
+            trussPositions={trussPositions}
+            plotWidth={plot.width}
+            plotLength={plot.length}
+            bucket="surface"
+            shellLift={shellLift}
           />,
         );
       }
@@ -152,6 +218,12 @@ export function House3D({ config }: { config: HouseConfig }) {
           const x = obj.x as number, y = obj.y as number;
           const w = obj.width as number, l = obj.length as number;
           const h = (obj.height as number | undefined) ?? globals.beamSize;
+          // z_offset_ft (feet) lifts the beam above the floor slab —
+          // used e.g. for top-of-wall beams which sit at slab + wall
+                    // height (config uses 9.8 ft = 98 world units on the
+          // first floor's perimeter beams).
+          const zOffsetFt = (obj.z_offset_ft as number | undefined) ?? 0;
+          const zOffsetU = zOffsetFt * 10;
           const c = toThreePos(x + w / 2, y + l / 2, 0, plot.width, plot.length);
           push(
             "f1_beam",
@@ -161,7 +233,7 @@ export function House3D({ config }: { config: HouseConfig }) {
               cz={c.z}
               width={w}
               length={l}
-              z={band.slabZ}
+              z={band.slabZ + zOffsetU}
               height={h}
             />,
           );
@@ -179,7 +251,10 @@ export function House3D({ config }: { config: HouseConfig }) {
               cz={c.z}
               width={w}
               length={l}
-              z={globals.plinthHeight}
+              // Pillars sit ON TOP of the ground-floor slab (matches
+              // Python's create_pillar which adds slab_thickness to
+              // the floor's Z base).
+              z={globals.plinthHeight + globals.slabThickness}
               height={h}
             />,
           );

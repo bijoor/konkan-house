@@ -9,9 +9,11 @@ import sys
 import os
 import importlib
 
-# Add the directory containing this script to the path
-# This allows importing konkan_house_lib.py from the same folder
-sys.path.insert(0, '/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender')
+# Add the folder containing this script to sys.path so sibling modules
+# (konkan_house_lib, blender_3d, svg_2d…) are importable regardless of
+# where Blender was launched from. Using __file__ makes this robust to
+# repo moves or re-clones.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Force reload all modules to ensure we're using the latest code
 # Order matters: reload dependencies first

@@ -19,9 +19,9 @@ Thumbs.db
 *.bak
 
 # Generated 3D model (exclude from git, regenerate locally)
-docs/*.glb
-docs/*.gltf
-docs/*.bin
+docs/3d/*.glb
+docs/3d/*.gltf
+docs/3d/*.bin
 
 # Debug files
 *objects_debug*.json
@@ -36,3 +36,5 @@ textures
 sample-3d-view.png
 docs/realistic_perspectives/*_test.png
 docs/realistic_perspectives/test_*.png
+docs/3d/perspectives/*_test.png
+docs/3d/perspectives/test_*.png

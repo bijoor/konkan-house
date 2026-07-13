@@ -12,7 +12,11 @@ import { generateCombinedFloorPlans } from "../src/svg2d/floorPlansCombined.ts";
 
 const here = path.dirname(url.fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "../..");
-const docsDir = path.join(repoRoot, "docs");
+// R3 moved floor plans into docs/2d/floor_plans/. Everything else in
+// this harness stays the same because the TS generators return
+// filenames only (no path); we just diff against the reference in the
+// new subfolder.
+const docsDir = path.join(repoRoot, "docs", "2d", "floor_plans");
 
 const cfg = JSON.parse(
   fs.readFileSync(path.join(repoRoot, "house_config.json"), "utf8"),

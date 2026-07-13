@@ -19,17 +19,22 @@ import pathlib
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO))
+sys.path.insert(0, str(REPO / "python"))
 
 from config import GLOBAL_CONFIG  # noqa: E402
 
 # Run house_config.py under exec so we don't need Blender for the import.
-config_code = (REPO / 'house_config.py').read_text()
+config_code = (REPO / 'python' / 'house_config.py').read_text()
 config_code = config_code.replace(
     'from konkan_house_lib import GLOBAL_CONFIG',
     '# GLOBAL_CONFIG imported by the extractor',
 )
-namespace: dict = {'GLOBAL_CONFIG': GLOBAL_CONFIG}
+namespace: dict = {
+    'GLOBAL_CONFIG': GLOBAL_CONFIG,
+    # inject __file__ so house_config.py's JSON loader resolves the
+    # json path relative to python/, not to this extractor script.
+    '__file__': str(REPO / 'python' / 'house_config.py'),
+}
 exec(config_code, namespace)
 HOUSE_CONFIG = namespace['HOUSE_CONFIG']
 

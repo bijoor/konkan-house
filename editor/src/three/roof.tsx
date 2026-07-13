@@ -32,6 +32,12 @@ export interface HipRoofGeom {
   ridge_h: number;
   ridge_axis: "y" | "x";
   ridge_ext_u?: number;
+  // eave_drop = wall_top_z - eave_z. Python's ridge_h is measured
+  // from wall_top_z, not from eave_z, so the true ridge Z is
+  // eave_z + wall_top_above_eave + ridge_h. When absent we fall back
+  // to eave_z + ridge_h (old behaviour — puts the ridge 20 units too
+  // low for the current config).
+  wall_top_above_eave?: number;
 }
 
 interface Props {
@@ -41,6 +47,13 @@ interface Props {
   plotLength: number;
   color?: string;
   ridgeThickness?: number;
+  // Vertical lift applied to the shell so it sits above the frame
+  // stack (rafters + purlins). In real construction the shell/tile
+  // sits ON TOP of the purlins which sit on top of the rafters, so a
+  // small offset (~ rafter depth + purlin depth) makes the render
+  // structurally correct and lets the frame remain visible when the
+  // shell layer is hidden.
+  shellLift?: number;
 }
 
 export function HipRoofMesh({
@@ -48,12 +61,20 @@ export function HipRoofMesh({
   plotWidth,
   plotLength,
   color = "#c8582f",
-  ridgeThickness = 3,
+  ridgeThickness: _ridgeThickness = 3,
+  shellLift = 5,
 }: Props) {
-  const { geometry, ridgePoints, ventPoints } = useMemo(() => {
-    return buildHipRoof(geom, plotWidth, plotLength);
-  }, [geom, plotWidth, plotLength]);
+  void _ridgeThickness;
+  const { geometry } = useMemo(() => {
+    return buildHipRoof(geom, plotWidth, plotLength, shellLift);
+  }, [geom, plotWidth, plotLength, shellLift]);
 
+  // Ridge line / cap was a decorative dark bar drawn on top of the
+  // shell. Now that the structural ridge beam is drawn as part of the
+  // frame layer (RoofFrameMesh) sitting under the shell peak, that
+  // decorative bar was appearing as a duplicate ridge above the shell.
+  // Removed — the shell is a clean surface and the ridge beam comes
+  // from the frame.
   return (
     <group>
       <mesh geometry={geometry} castShadow receiveShadow>
@@ -64,55 +85,7 @@ export function HipRoofMesh({
           metalness={0.05}
         />
       </mesh>
-      {/* Ridge cap — a thin dark line along the ridge for visual clarity. */}
-      <RidgeLine
-        p1={ridgePoints[0]}
-        p2={ridgePoints[1]}
-        thickness={ridgeThickness}
-        color="#5a2a15"
-      />
-      {ventPoints && (
-        <>
-          <RidgeLine
-            p1={ventPoints[0]}
-            p2={ridgePoints[0]}
-            thickness={ridgeThickness}
-            color="#5a2a15"
-          />
-          <RidgeLine
-            p1={ridgePoints[1]}
-            p2={ventPoints[1]}
-            thickness={ridgeThickness}
-            color="#5a2a15"
-          />
-        </>
-      )}
     </group>
-  );
-}
-
-function RidgeLine({
-  p1, p2, thickness, color,
-}: {
-  p1: Vec3; p2: Vec3; thickness: number; color: string;
-}) {
-  const { position, quaternion, length } = useMemo(() => {
-    const v1 = new THREE.Vector3(p1.x, p1.y, p1.z);
-    const v2 = new THREE.Vector3(p2.x, p2.y, p2.z);
-    const mid = new THREE.Vector3().addVectors(v1, v2).multiplyScalar(0.5);
-    const dir = new THREE.Vector3().subVectors(v2, v1);
-    const len = dir.length();
-    const q = new THREE.Quaternion().setFromUnitVectors(
-      new THREE.Vector3(1, 0, 0),
-      dir.clone().normalize(),
-    );
-    return { position: mid, quaternion: q, length: len };
-  }, [p1, p2]);
-  return (
-    <mesh position={position} quaternion={quaternion}>
-      <boxGeometry args={[length, thickness, thickness]} />
-      <meshStandardMaterial color={color} />
-    </mesh>
   );
 }
 
@@ -120,7 +93,12 @@ function RidgeLine({
 // ends + two trapezoidal main slopes. Winding is CCW when viewed from
 // outside (so `side: DoubleSide` isn't strictly needed, but we still
 // set it to be forgiving).
-function buildHipRoof(g: HipRoofGeom, plotWidth: number, plotLength: number) {
+function buildHipRoof(
+  g: HipRoofGeom,
+  plotWidth: number,
+  plotLength: number,
+  shellLift = 0,
+) {
   // World → three: (x, y, z) → (x - plotW/2, worldZ, y - plotL/2)
   const t = (wx: number, wy: number, wz: number): Vec3 => ({
     x: wx - plotWidth / 2,
@@ -128,8 +106,16 @@ function buildHipRoof(g: HipRoofGeom, plotWidth: number, plotLength: number) {
     z: wy - plotLength / 2,
   });
 
-  const eaveZ = g.eave_z;
-  const ridgeZ = eaveZ + g.ridge_h;
+  // Shell surface sits `shellLift` units above the geometric roof
+  // plane so the frame stack (rafters + purlins) rendered at that
+  // plane stays visible under it.
+  //
+  // Python's ridge_h is the rise from wall_top_z to the ridge (not
+  // from eave_z). So ridge_z = wall_top_z + ridge_h
+  //             = eave_z + wall_top_above_eave + ridge_h.
+  const wallTopAboveEave = g.wall_top_above_eave ?? 0;
+  const eaveZ = g.eave_z + shellLift;
+  const ridgeZ = eaveZ + wallTopAboveEave + g.ridge_h;
 
   let corners: {
     nw: Vec3; ne: Vec3; se: Vec3; sw: Vec3;
@@ -210,9 +196,6 @@ function buildHipRoof(g: HipRoofGeom, plotWidth: number, plotLength: number) {
   geometry.setIndex(idx);
   geometry.computeVertexNormals();
 
-  return {
-    geometry,
-    ridgePoints: [r1, r2] as [Vec3, Vec3],
-    ventPoints: vent,
-  };
+  void vent; // ridge-vent extension is now drawn by the frame layer
+  return { geometry };
 }

@@ -1,7 +1,8 @@
-// Staircase — one box per step, each rising `step_rise` above the last.
-// The whole stack sits on the floor slab (its bottom at wall_z) so each
-// step reads as a stair "block" filled up to that height, giving the
-// familiar silhouette in section view.
+// Staircase — one small cube per step. Each step is a box exactly
+// `stepRise` tall, sitting at height `i * stepRise` above the floor
+// slab (so the top face of step i is at `wallZ + (i + 1) * stepRise`).
+// The result is an open-underneath stair silhouette — the treads read
+// as individual blocks stacked in a diagonal, with hollow air beneath.
 //
 // Compass direction convention (matches Python's elevation code):
 //   start_x, start_y = plan-view position of the BOTTOM step's near edge
@@ -35,8 +36,9 @@ export function StaircaseMesh({
   const isNS = direction === "north" || direction === "south";
 
   for (let i = 0; i < numSteps; i++) {
-    const stepTopZ = wallZ + (i + 1) * stepRise;
-    const stepHeight = (i + 1) * stepRise;
+    // Each step is a cube of exactly `stepRise` height, sitting at
+    // Z = wallZ + i*stepRise (bottom) → wallZ + (i+1)*stepRise (top).
+    const stepBottomZ = wallZ + i * stepRise;
 
     // Compute the plan-view corner of step i.
     let x: number, y: number;
@@ -61,15 +63,14 @@ export function StaircaseMesh({
     steps.push(
       <mesh
         key={i}
-        position={[c.x, wallZ + stepHeight / 2, c.z]}
+        position={[c.x, stepBottomZ + stepRise / 2, c.z]}
         castShadow
         receiveShadow
       >
-        <boxGeometry args={[w, stepHeight, l]} />
+        <boxGeometry args={[w, stepRise, l]} />
         <meshStandardMaterial color={color} roughness={0.75} />
       </mesh>,
     );
-    void stepTopZ;
   }
 
   return <group>{steps}</group>;

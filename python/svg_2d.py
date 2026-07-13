@@ -2129,15 +2129,18 @@ def generate_elevation_view(house_config: dict, view_type: str, output_path: str
                 })
             debug_data['objects'].append(obj_copy)
 
-        # Save to docs folder
-        try:
-            import os
-            debug_file = os.path.join(os.path.dirname(output_path) if output_path else '.', f'objects_debug_{view_type}_floor{floor_num}.json')
-            with open(debug_file, 'w') as f:
-                json.dump(debug_data, f, indent=2)
-            print(f"  DEBUG: Saved objects data to {debug_file}")
-        except Exception as e:
-            print(f"  DEBUG: Could not save debug file: {e}")
+        # Save to the same folder as the SVG. When output_path is None
+        # (elevation being composed into a combined view) skip — otherwise
+        # every combined-elevation run scatters ~12 debug JSONs into cwd.
+        if output_path:
+            try:
+                import os
+                debug_file = os.path.join(os.path.dirname(output_path), f'objects_debug_{view_type}_floor{floor_num}.json')
+                with open(debug_file, 'w') as f:
+                    json.dump(debug_data, f, indent=2)
+                print(f"  DEBUG: Saved objects data to {debug_file}")
+            except Exception as e:
+                print(f"  DEBUG: Could not save debug file: {e}")
 
         # Step 3: Add objects from this floor to the global collection
         all_objects_to_draw.extend(objects_to_draw)
@@ -4334,11 +4337,14 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
     row_gap = 24
     framing_panel_h = 240
     # The eave close-up cross section is a hand-maintained standalone file
-    # at docs/roof-cross-section.svg (297 × 210 mm A4 landscape). We embed
+    # at docs/2d/roof/roof-cross-section.svg (297 × 210 mm A4 landscape). We embed
     # it verbatim as a panel here; height keeps the 297:210 aspect ratio.
+    # svg_2d.py lives under <repo>/python/, so docs/ is one level up.
+    # Under exec (regenerate_combined_svgs.py) globals()['__file__']
+    # points at svg_2d.py so dirname/.. still lands at repo root.
+    _svg2d_dir = os.path.dirname(__file__) if '__file__' in globals() else '.'
     external_eave_svg_path = os.path.join(
-        os.path.dirname(__file__) if '__file__' in globals() else '.',
-        'docs', 'roof-cross-section.svg')
+        _svg2d_dir, '..', 'docs', '2d', 'roof', 'roof-cross-section.svg')
     external_eave_panel_w = None                # set once panel_w known
     external_eave_panel_h = None                # set once panel_w known
     materials_panel_h = 1180  # includes Pani Patti/L-ch/barge/angles/5 Fink + 6 long-truss rows
@@ -8455,7 +8461,7 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
                    framing_detail_panel(outer_pad, framing_y0))
 
     # ---- Embed hand-maintained eave cross-section ----
-    # docs/roof-cross-section.svg is A4-landscape (viewBox 297 × 210 mm).
+    # docs/2d/roof/roof-cross-section.svg is A4-landscape (viewBox 297 × 210 mm).
     # Read it at generation time and drop the inner content into a nested
     # <svg> element sized to our panel, preserving the aspect ratio.
     eave_y0 = framing_y0 + framing_panel_h + row_gap
@@ -8469,7 +8475,7 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
     _eave_frag += (f'<text x="{outer_pad + external_eave_panel_w / 2}" y="{eave_y0 + 27}" '
                    f'text-anchor="middle" font-size="18" font-weight="600" fill="#222">'
                    f'EAVE CROSS SECTION — hand-drawn detail '
-                   f'(docs/roof-cross-section.svg)</text>\n')
+                   f'(docs/2d/roof/roof-cross-section.svg)</text>\n')
     try:
         with open(external_eave_svg_path, 'r', encoding='utf-8') as _ef:
             _external = _ef.read()
@@ -8490,7 +8496,7 @@ def generate_roof_sections_svg(house_config: dict, output_dir: str = None) -> st
         _eave_frag += (f'<text x="{outer_pad + external_eave_panel_w / 2}" '
                        f'y="{eave_y0 + external_eave_panel_h / 2}" '
                        f'text-anchor="middle" font-size="14" fill="#b00">'
-                       f'(docs/roof-cross-section.svg not found — panel skipped)</text>\n')
+                       f'(docs/2d/roof/roof-cross-section.svg not found — panel skipped)</text>\n')
     svg += _record('eave_cross_section', 'Eave cross section — hand-drawn detail',
                    outer_pad, eave_y0, external_eave_panel_w, external_eave_panel_h,
                    _eave_frag)

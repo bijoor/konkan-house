@@ -8,12 +8,13 @@ import os
 import sys
 import subprocess
 
-# Get the directory of this script
+# Project root is the parent of scripts/. All artifacts live there.
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DOCS_DIR = os.path.join(SCRIPT_DIR, "docs")
+PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
+DOCS_DIR = os.path.join(PROJECT_ROOT, "docs")
 
 # Blender file path
-BLEND_FILE = os.path.join(SCRIPT_DIR, "house-model.blend")
+BLEND_FILE = os.path.join(PROJECT_ROOT, "house-model.blend")
 
 # Python script to run inside Blender
 BLENDER_SCRIPT_NORMAL = """
@@ -119,7 +120,7 @@ def main():
 
     # Generate normal model
     normal_script = BLENDER_SCRIPT_NORMAL.format(
-        script_dir=SCRIPT_DIR,
+        script_dir=os.path.join(PROJECT_ROOT, "python"),
         docs_dir=DOCS_DIR
     )
 
@@ -129,7 +130,7 @@ def main():
 
     # Generate exploded model
     exploded_script = BLENDER_SCRIPT_EXPLODED.format(
-        script_dir=SCRIPT_DIR,
+        script_dir=os.path.join(PROJECT_ROOT, "python"),
         docs_dir=DOCS_DIR
     )
 

@@ -809,7 +809,7 @@
 
         <model-viewer
             id="model"
-            src="konkan_house.glb"
+            src="3d/konkan_house.glb"
             alt="Konkan House 3D Model"
             camera-controls
             enable-pan
@@ -897,7 +897,7 @@
 
         <model-viewer
             id="model-exploded"
-            src="konkan_house_exploded.glb"
+            src="3d/konkan_house_exploded.glb"
             alt="Konkan House 3D Model - Exploded View"
             camera-controls
             enable-pan
@@ -983,31 +983,31 @@
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 2rem; max-width: 1400px; margin: 0 auto;">
                     <div class="perspective-card">
                         <h3>Front Left Corner (Northwest)</h3>
-                        <img src="realistic_perspectives/front_left_corner.png" alt="Front Left Corner View" onclick="openLightbox(0)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
+                        <img src="3d/perspectives/front_left_corner.png" alt="Front Left Corner View" onclick="openLightbox(0)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
                         <h3>Front Right Corner (Northeast)</h3>
-                        <img src="realistic_perspectives/front_right_corner.png" alt="Front Right Corner View" onclick="openLightbox(1)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
+                        <img src="3d/perspectives/front_right_corner.png" alt="Front Right Corner View" onclick="openLightbox(1)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
                         <h3>Back Left Corner (Southwest)</h3>
-                        <img src="realistic_perspectives/back_left_corner.png" alt="Back Left Corner View" onclick="openLightbox(2)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
+                        <img src="3d/perspectives/back_left_corner.png" alt="Back Left Corner View" onclick="openLightbox(2)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
                         <h3>Back Right Corner (Southeast)</h3>
-                        <img src="realistic_perspectives/back_right_corner.png" alt="Back Right Corner View" onclick="openLightbox(3)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
+                        <img src="3d/perspectives/back_right_corner.png" alt="Back Right Corner View" onclick="openLightbox(3)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
                         <h3>Aerial View</h3>
-                        <img src="realistic_perspectives/aerial.png" alt="Aerial View" onclick="openLightbox(4)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
+                        <img src="3d/perspectives/aerial.png" alt="Aerial View" onclick="openLightbox(4)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
                         <h3>Eye Level Back View (South)</h3>
-                        <img src="realistic_perspectives/eye_level_back.png" alt="Eye Level Back View" onclick="openLightbox(5)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
+                        <img src="3d/perspectives/eye_level_back.png" alt="Eye Level Back View" onclick="openLightbox(5)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                     <div class="perspective-card">
                         <h3>Eye Level Front View (North)</h3>
-                        <img src="realistic_perspectives/eye_level_front.png" alt="Eye Level Front View" onclick="openLightbox(6)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
+                        <img src="3d/perspectives/eye_level_front.png" alt="Eye Level Front View" onclick="openLightbox(6)" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
                     </div>
                 </div>
             </div>
@@ -1322,7 +1322,7 @@
 
             let loadedAny = false;
             for (const floor of floorPlanFiles) {
-                const filename = `floor_plan_${floor.num}_${floor.name}.svg`;
+                const filename = `2d/floor_plans/floor_plan_${floor.num}_${floor.name}.svg`;
 
                 try {
                     // Add cache-busting parameter to always fetch fresh SVGs
@@ -1387,7 +1387,7 @@
 
             let loadedAny = false;
             for (const elevation of elevationFiles) {
-                const filename = `elevation_${elevation.name}.svg`;
+                const filename = `2d/elevations/elevation_${elevation.name}.svg`;
 
                 try {
                     // Add cache-busting parameter to always fetch fresh SVGs
@@ -1444,7 +1444,7 @@
             grid.innerHTML = '<p style="text-align: center; color: #666;">Loading roof panels…</p>';
             let manifest = [];
             try {
-                const r = await fetch('roof_panels.json?t=' + Date.now());
+                const r = await fetch('2d/roof/roof_panels.json?t=' + Date.now());
                 if (!r.ok) throw new Error('roof_panels.json HTTP ' + r.status);
                 manifest = await r.json();
             } catch (e) {
@@ -1458,8 +1458,10 @@
             }
             grid.innerHTML = '';
             for (const p of manifest) {
+                // Manifest stores bare filenames; prepend the roof dir.
+                const fileUrl = '2d/roof/' + p.file;
                 try {
-                    const r = await fetch(p.file + '?t=' + Date.now());
+                    const r = await fetch(fileUrl + '?t=' + Date.now());
                     if (!r.ok) continue;
                     const svg = await r.text();
                     const item = document.createElement('div');
@@ -1468,7 +1470,7 @@
                     grid.appendChild(item);
                     const svgEl = item.querySelector('svg');
                     if (svgEl) {
-                        svgEl.addEventListener('click', () => openSvgLightbox(p.file, p.title));
+                        svgEl.addEventListener('click', () => openSvgLightbox(fileUrl, p.title));
                     }
                 } catch (e) {
                     console.warn('[roof panels]', p.id, e);
@@ -1816,15 +1818,15 @@
         // Lightbox functions for perspective images. Filenames + order
         // MUST match the openLightbox(index) calls in the perspective
         // gallery below (front-left = 0, aerial = 4, etc.) and the
-        // actual files on disk in docs/realistic_perspectives/.
+        // actual files on disk in docs/3d/perspectives/.
         const perspectiveImages = [
-            { src: 'realistic_perspectives/front_left_corner.png',  caption: 'Front Left Corner View (Northwest)' },
-            { src: 'realistic_perspectives/front_right_corner.png', caption: 'Front Right Corner View (Northeast)' },
-            { src: 'realistic_perspectives/back_left_corner.png',   caption: 'Back Left Corner View (Southwest)' },
-            { src: 'realistic_perspectives/back_right_corner.png',  caption: 'Back Right Corner View (Southeast)' },
-            { src: 'realistic_perspectives/aerial.png',             caption: 'Aerial View' },
-            { src: 'realistic_perspectives/eye_level_back.png',     caption: 'Eye Level Back View (South)' },
-            { src: 'realistic_perspectives/eye_level_front.png',    caption: 'Eye Level Front View (North)' }
+            { src: '3d/perspectives/front_left_corner.png',  caption: 'Front Left Corner View (Northwest)' },
+            { src: '3d/perspectives/front_right_corner.png', caption: 'Front Right Corner View (Northeast)' },
+            { src: '3d/perspectives/back_left_corner.png',   caption: 'Back Left Corner View (Southwest)' },
+            { src: '3d/perspectives/back_right_corner.png',  caption: 'Back Right Corner View (Southeast)' },
+            { src: '3d/perspectives/aerial.png',             caption: 'Aerial View' },
+            { src: '3d/perspectives/eye_level_back.png',     caption: 'Eye Level Back View (South)' },
+            { src: '3d/perspectives/eye_level_front.png',    caption: 'Eye Level Front View (North)' }
         ];
         let currentPerspectiveIndex = 0;
 
@@ -2131,7 +2133,7 @@
                 setupLayerToggles(modelViewer, 'layers-panel');
                 setupLayerToggles(modelViewerExploded, 'layers-panel-exploded');
             };
-            fetch('layers.json')
+            fetch('3d/layers.json')
                 .then(r => r.ok ? r.json() : Promise.reject(r.status))
                 .then(m => { window._LAYER_MANIFEST = m; wire(); })
                 .catch(err => {

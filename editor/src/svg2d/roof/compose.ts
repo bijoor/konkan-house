@@ -199,12 +199,12 @@ export function compose(computed: RoofComputed, layout: Layout): {
   let _eave_frag = "";
   _eave_frag += `<rect x="${f(outer_pad)}" y="${f(eave_y0)}" width="${f(external_eave_panel_w)}" height="${f1(external_eave_panel_h)}" fill="#ffffff" stroke="#bbb" stroke-width="1"/>\n`;
   _eave_frag += `<rect x="${f(outer_pad)}" y="${f(eave_y0)}" width="${f(external_eave_panel_w)}" height="40" fill="#f2f2f2" stroke="#bbb" stroke-width="1"/>\n`;
-  _eave_frag += `<text x="${fFloat(outer_pad + external_eave_panel_w / 2)}" y="${f(eave_y0 + 27)}" text-anchor="middle" font-size="18" font-weight="600" fill="#222">EAVE CROSS SECTION — hand-drawn detail (docs/roof-cross-section.svg)</text>\n`;
+  _eave_frag += `<text x="${fFloat(outer_pad + external_eave_panel_w / 2)}" y="${f(eave_y0 + 27)}" text-anchor="middle" font-size="18" font-weight="600" fill="#222">EAVE CROSS SECTION — hand-drawn detail (docs/2d/roof/roof-cross-section.svg)</text>\n`;
 
-  // Try to embed docs/roof-cross-section.svg
+  // Try to embed docs/2d/roof/roof-cross-section.svg
   const _here = path.dirname(fileURLToPath(import.meta.url));
-  // .../editor/src/svg2d/roof → .../blender/docs
-  const externalPath = path.resolve(_here, "..", "..", "..", "..", "docs", "roof-cross-section.svg");
+  // .../editor/src/svg2d/roof → .../blender/docs/2d/roof
+  const externalPath = path.resolve(_here, "..", "..", "..", "..", "docs", "2d", "roof", "roof-cross-section.svg");
   try {
     const external = fs.readFileSync(externalPath, "utf8");
     const m = /<svg\b[^>]*>([\s\S]*)<\/svg>/.exec(external);
@@ -216,7 +216,7 @@ export function compose(computed: RoofComputed, layout: Layout): {
     _eave_frag += inner;
     _eave_frag += `</svg>\n`;
   } catch {
-    _eave_frag += `<text x="${fFloat(outer_pad + external_eave_panel_w / 2)}" y="${fFloat(eave_y0 + external_eave_panel_h / 2)}" text-anchor="middle" font-size="14" fill="#b00">(docs/roof-cross-section.svg not found — panel skipped)</text>\n`;
+    _eave_frag += `<text x="${fFloat(outer_pad + external_eave_panel_w / 2)}" y="${fFloat(eave_y0 + external_eave_panel_h / 2)}" text-anchor="middle" font-size="14" fill="#b00">(docs/2d/roof/roof-cross-section.svg not found — panel skipped)</text>\n`;
   }
   svg += record(
     "eave_cross_section",

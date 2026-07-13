@@ -12,20 +12,33 @@ Two very different execution environments share the same library code — this s
 
 - **Inside Blender**: `konkan_house_config.py` is loaded into Blender's Text Editor and run with Alt+P. It imports `blender_3d.py` (which requires `bpy`) and drives the full pipeline: clear scene → build geometry → generate SVGs → `export_to_web()` writing `docs/konkan_house.glb`.
 - **Standalone (no Blender)**: SVG-only helpers like `generate_floor_plans.py` and `regenerate_combined_svgs.py` import only `config.py` + `svg_2d.py` and `exec()` the `HOUSE_CONFIG` dict out of `house_config.py` while stripping the `konkan_house_lib` import. This avoids pulling in `bpy`. If you add bpy usage, keep it in `blender_3d.py` — never in `svg_2d.py` or `config.py`.
-- **Blender CLI** (headless): `./apply_materials.sh` runs `Blender <file> --python <script>`. Scripts like `build_and_render_realistic.py`, `render_*.py`, `apply_realistic_materials.py` expect to be launched this way. They `exec(open('konkan_house_config.py').read())` to build the model, then mutate the scene.
+- **Blender CLI** (headless): `Blender <file> --python <script>` — the pattern used by earlier material/texture experiments now archived under `archive/`. If you resurrect one, note it will `exec(open('konkan_house_config.py').read())` to build the model, then mutate the scene.
 - **Browser editor** (`editor/`, published to `docs/editor/`): a React + Three.js SPA that reads and writes `house_config.json`, ports `svg_2d.py` / `house_expand.py` / `roof_geometry.py` to TypeScript for byte-identical live SVG previews, and renders a live 3D preview with CSG openings. `house_config.py` is now a thin loader that reads `house_config.json` — JSON is the source of truth for both Python and the browser. See `editor/README.md` for the workflow.
 
 Because scripts are typically pasted into Blender's editor across sessions, `konkan_house_config.py` and `konkan_house_lib.py` aggressively `importlib.reload()` their dependencies. When editing library modules, preserve the reload order (`config` → `svg_2d` → `blender_3d` → `konkan_house_lib` → `house_config`) or stale code will run.
 
 ## Architecture
 
+Repo layout (only the top level shown):
+```
+python/     — core library (all *.py the pipeline imports)
+scripts/    — thin helper scripts + shell wrappers (regenerate_*, generate_*, serve.sh…)
+editor/     — React + Three.js browser editor (TS port + parity harness)
+docs/       — GitHub Pages output (2d/, 3d/, editor/, GLBs)
+archive/    — legacy render/material experiments; do NOT import from here
+plans/      — planning docs (retained for history)
+schema/, assets/, textures/  — support data
+house_config.json           — single source of truth (Python + editor both read this)
+```
+
+Inside `python/` the module graph is:
 ```
 config.py  ──────────────┐  (GLOBAL_CONFIG defaults; no bpy)
                          ├──▶ konkan_house_lib.py  (facade that re-exports everything)
 blender_3d.py  (bpy) ────┤           ▲
 svg_2d.py  (no bpy) ─────┘           │
                                      │
-house_config.py  ────────────────────┤  (HOUSE_CONFIG data + GLOBAL_CONFIG overrides)
+house_config.py  ────────────────────┤  (loads HOUSE_CONFIG from ../house_config.json)
                                      │
 konkan_house_config.py  ─────────────┘  (entry point: build_house, generate_*, export_to_web)
 ```
@@ -45,15 +58,15 @@ konkan_house_config.py  ─────────────┘  (entry point
 ## Common commands
 
 ```bash
-# Regenerate combined SVGs without Blender (fast iteration on 2D output)
-python regenerate_combined_svgs.py
-python generate_floor_plans.py
+# Regenerate combined SVGs without Blender (fast iteration on 2D output).
+# All helper scripts live under scripts/ but must be invoked from repo root
+# so their internal chdir/sys.path setup resolves — the wrappers already
+# handle both.
+python scripts/regenerate_combined_svgs.py
+python scripts/generate_floor_plans.py
 
-# Run a Blender script headlessly (builds model + applies materials + renders)
-./apply_materials.sh
-
-# Generic Blender CLI invocation pattern used by render_*.py
-/Applications/Blender.app/Contents/MacOS/Blender house-model.blend --python <script>.py
+# Generic Blender CLI invocation pattern (headless)
+/Applications/Blender.app/Contents/MacOS/Blender house-model.blend --python scripts/<script>.py
 ```
 
 For the full 3D build + GLB export, open `konkan_house_config.py` in Blender's Text Editor and press Alt+P. The bottom of that file toggles which outputs are produced (`generate_all_floor_plans`, `generate_all_elevations`, `generate_combined_*`, `export_to_web`) — comment lines to skip stages.
@@ -65,6 +78,6 @@ For the full 3D build + GLB export, open `konkan_house_config.py` in Blender's T
 ## Gotchas
 
 - `house-model.blend` is gitignored; the source of truth is the Python config, not the .blend file. Material edits done in the Blender UI are lost when the script rebuilds the scene (`init_scene()` → `clear_scene()`).
-- `konkan_house_lib_old.py` is a legacy monolith kept for reference only — do not edit or import it.
+- Anything under `archive/` (including the legacy `konkan_house_lib_old.py` monolith and the material/texture render experiments) is kept for reference only — do not import from there.
 - `build_floor()` still has a backward-compat branch for an older schema with `floor_slab`/`rooms`/`walls` keys. New configs should always use the unified `objects: [...]` list.
 - The `sys.path.insert(0, '/Users/ashutoshbijoor/…/blender')` lines in several scripts are absolute paths for this machine. If the repo is moved, update those paths or replace with `os.path.dirname(__file__)`.
