@@ -225,6 +225,20 @@
             background: rgba(102, 126, 234, 0.15);
             border-bottom-color: #667eea;
         }
+        /* Tab icons — inline SVGs styled to match the emoji sizing
+           they replaced. Icons themselves inherit `currentColor` for
+           outlines and use the laterite accent (#B85028) for fills. */
+        .tab-icon {
+            width: 20px;
+            height: 20px;
+            vertical-align: -4px;
+            margin-right: 4px;
+        }
+        .tab-icon path,
+        .tab-icon rect,
+        .tab-icon line {
+            fill-rule: evenodd;
+        }
         .view-container {
             display: none;
             position: absolute;
@@ -736,12 +750,48 @@
             <a href="editor/" style="color: #667eea; text-decoration: none;">✏️ Open editor</a>
         </div>
         <div class="tabs" style="margin-top: 1rem;">
-            <button class="tab active" onclick="switchView('3d')" title="3D Model">🏗️<span class="tab-label"> 3D Model</span></button>
-            <button class="tab" onclick="switchView('plans')" title="Floor Plans">📐<span class="tab-label"> Floor Plans</span></button>
-            <button class="tab" onclick="switchView('all-plans')" title="All Floor Plans">📊<span class="tab-label"> All Floor Plans</span></button>
-            <button class="tab" onclick="switchView('elevations')" title="Elevations">📏<span class="tab-label"> Elevations</span></button>
-            <button class="tab" onclick="switchView('roof')" title="Roof Details">🧱<span class="tab-label"> Roof Details</span></button>
-            <button class="tab" onclick="switchView('all-elevations')" title="All Elevations">🏛️<span class="tab-label"> All Elevations</span></button>
+            <button class="tab active" onclick="switchView('3d')" title="3D Model">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <!-- isometric cube: laterite top face + outlined side faces -->
+                    <path d="M12 3 L21 8 L12 13 L3 8 Z" fill="#B85028"/>
+                    <path d="M3 8 L3 17 L12 22 L12 13 Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <path d="M21 8 L21 17 L12 22 L12 13 Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <path d="M12 3 L21 8 L12 13 L3 8 Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                </svg><span class="tab-label"> 3D Model</span>
+            </button>
+            <button class="tab" onclick="switchView('plans')" title="Floor Plans">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <!-- top-down plan: 2x2 rooms, one shaded laterite -->
+                    <rect x="3" y="3" width="9" height="9" fill="#B85028"/>
+                    <rect x="3" y="3" width="18" height="18" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <line x1="12" y1="3" x2="12" y2="21" stroke="currentColor" stroke-width="1.5"/>
+                    <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.5"/>
+                </svg><span class="tab-label"> Floor Plans</span>
+            </button>
+            <button class="tab" onclick="switchView('elevations')" title="Elevations">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <!-- house facade: laterite roof, walls + door + windows outlined -->
+                    <path d="M2 12 L12 4 L22 12 Z" fill="#B85028"/>
+                    <path d="M2 12 L12 4 L22 12 Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <path d="M4 12 L4 21 L20 21 L20 12" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <rect x="10" y="15" width="4" height="6" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <rect x="5.5" y="14" width="3" height="3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <rect x="15.5" y="14" width="3" height="3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                </svg><span class="tab-label"> Elevations</span>
+            </button>
+            <button class="tab" onclick="switchView('roof')" title="Roof Details">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <!-- pitched roof with a Fink-style truss silhouette -->
+                    <path d="M2 18 L12 5 L22 18 Z" fill="#B85028"/>
+                    <path d="M2 18 L12 5 L22 18 Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <line x1="2" y1="18" x2="22" y2="18" stroke="currentColor" stroke-width="1.5"/>
+                    <!-- king post + Fink diagonals sit inside the laterite fill;
+                         semi-transparent black reads against the warm background. -->
+                    <line x1="12" y1="5" x2="12" y2="18" stroke="rgba(0,0,0,0.55)" stroke-width="1.2"/>
+                    <line x1="7" y1="11.5" x2="12" y2="18" stroke="rgba(0,0,0,0.55)" stroke-width="1.2"/>
+                    <line x1="17" y1="11.5" x2="12" y2="18" stroke="rgba(0,0,0,0.55)" stroke-width="1.2"/>
+                </svg><span class="tab-label"> Roof Details</span>
+            </button>
         </div>
     </header>
 
@@ -801,16 +851,6 @@
         </div>
         <!-- End Roof Details View -->
 
-        <!-- All Floor Plans Combined View -->
-        <div id="view-all-plans" class="view-container">
-        </div>
-        <!-- End All Floor Plans View -->
-
-        <!-- All Elevations Combined View -->
-        <div id="view-all-elevations" class="view-container">
-        </div>
-        <!-- End All Elevations View -->
-
         <!-- Shared SVG Container with zoom controls -->
         <div class="svg-full-width" id="svg-container" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
             <div class="zoom-controls">
@@ -863,12 +903,6 @@
                 document.getElementById('view-roof').classList.add('active');
                 svgContainer.style.display = 'none';
                 loadRoofPanels();
-            } else if (view === 'all-plans') {
-                document.getElementById('view-all-plans').classList.add('active');
-                loadCombinedFloorPlans();
-            } else if (view === 'all-elevations') {
-                document.getElementById('view-all-elevations').classList.add('active');
-                loadCombinedElevations();
             }
         }
 
@@ -888,40 +922,40 @@
             grid.innerHTML = '<p style="text-align: center; color: #666;">Loading floor plans...</p>';
 
             let loadedAny = false;
-            for (const floor of floorPlanFiles) {
-                const filename = `2d/floor_plans/floor_plan_${floor.num}_${floor.name}.svg`;
-
+            // Per-floor cards first, then an "All Floor Plans" card at the
+            // end pointing at the combined SVG so users can drill into the
+            // full layout from the same tab.
+            const perFloor = floorPlanFiles.map((f) => ({
+                filename: `2d/floor_plans/floor_plan_${f.num}_${f.name}.svg`,
+                displayName: f.displayName,
+            }));
+            const cards = [
+                ...perFloor,
+                {
+                    filename: '2d/floor_plans/floor_plans_combined.svg',
+                    displayName: 'All Floor Plans',
+                },
+            ];
+            for (const c of cards) {
                 try {
-                    // Add cache-busting parameter to always fetch fresh SVGs
                     const cacheBuster = `?t=${Date.now()}`;
-                    const response = await fetch(filename + cacheBuster);
-                    if (response.ok) {
-                        const svgContent = await response.text();
+                    const response = await fetch(c.filename + cacheBuster);
+                    if (!response.ok) continue;
+                    const svgContent = await response.text();
 
-                        const item = document.createElement('div');
-                        item.className = 'svg-item';
-                        item.innerHTML = `
-                            <h3>${floor.displayName}</h3>
-                            ${svgContent}
-                        `;
+                    const item = document.createElement('div');
+                    item.className = 'svg-item';
+                    item.innerHTML = `<h3>${c.displayName}</h3>${svgContent}`;
+                    if (!loadedAny) { grid.innerHTML = ''; loadedAny = true; }
+                    grid.appendChild(item);
 
-                        if (!loadedAny) {
-                            grid.innerHTML = '';
-                            loadedAny = true;
-                        }
-                        grid.appendChild(item);
-
-                        // Add click handler to SVG
-                        const svg = item.querySelector('svg');
-                        if (svg) {
-                            svg.addEventListener('click', () => {
-                                console.log('Opening lightbox for', filename);
-                                openSvgLightbox(filename, floor.displayName);
-                            });
-                        }
+                    const svg = item.querySelector('svg');
+                    if (svg) {
+                        svg.addEventListener('click', () =>
+                            openSvgLightbox(c.filename, c.displayName));
                     }
                 } catch (error) {
-                    console.log(`Floor plan ${filename} not found:`, error);
+                    console.log(`Floor plan ${c.filename} not found:`, error);
                 }
             }
 
@@ -953,39 +987,39 @@
             grid.innerHTML = '<p style="text-align: center; color: #666;">Loading elevations...</p>';
 
             let loadedAny = false;
-            for (const elevation of elevationFiles) {
-                const filename = `2d/elevations/elevation_${elevation.name}.svg`;
-
+            // Per-view cards first, then a combined "All Elevations" card
+            // that pans/zooms in the same lightbox on click.
+            const perView = elevationFiles.map((e) => ({
+                filename: `2d/elevations/elevation_${e.name}.svg`,
+                displayName: e.displayName,
+            }));
+            const cards = [
+                ...perView,
+                {
+                    filename: '2d/elevations/elevations_combined.svg',
+                    displayName: 'All Elevations',
+                },
+            ];
+            for (const c of cards) {
                 try {
-                    // Add cache-busting parameter to always fetch fresh SVGs
                     const cacheBuster = `?t=${Date.now()}`;
-                    const response = await fetch(filename + cacheBuster);
-                    if (response.ok) {
-                        const svgContent = await response.text();
+                    const response = await fetch(c.filename + cacheBuster);
+                    if (!response.ok) continue;
+                    const svgContent = await response.text();
 
-                        const item = document.createElement('div');
-                        item.className = 'svg-item';
-                        item.innerHTML = `
-                            <h3>${elevation.displayName}</h3>
-                            ${svgContent}
-                        `;
+                    const item = document.createElement('div');
+                    item.className = 'svg-item';
+                    item.innerHTML = `<h3>${c.displayName}</h3>${svgContent}`;
+                    if (!loadedAny) { grid.innerHTML = ''; loadedAny = true; }
+                    grid.appendChild(item);
 
-                        if (!loadedAny) {
-                            grid.innerHTML = '';
-                            loadedAny = true;
-                        }
-                        grid.appendChild(item);
-
-                        // Add click handler to SVG
-                        const svg = item.querySelector('svg');
-                        if (svg) {
-                            svg.addEventListener('click', () => {
-                                openSvgLightbox(filename, elevation.displayName);
-                            });
-                        }
+                    const svg = item.querySelector('svg');
+                    if (svg) {
+                        svg.addEventListener('click', () =>
+                            openSvgLightbox(c.filename, c.displayName));
                     }
                 } catch (error) {
-                    console.log(`Elevation ${filename} not found:`, error);
+                    console.log(`Elevation ${c.filename} not found:`, error);
                 }
             }
 
@@ -1049,32 +1083,6 @@
         // Zoom and Pan state for combined views
         // Single state for the shared SVG container
         const svgState = { scale: 1, translateX: 0, translateY: 0, isDragging: false, startX: 0, startY: 0 };
-
-        // Load combined floor plans
-        let combinedFloorPlansLoaded = false;
-        async function loadCombinedFloorPlans() {
-            if (combinedFloorPlansLoaded) return;
-
-            // Show svg-container
-            const svgContainer = document.getElementById('svg-container');
-            svgContainer.style.display = 'block';
-
-            await setupPanZoom('2d/floor_plans/floor_plans_combined.svg');
-            combinedFloorPlansLoaded = true;
-        }
-
-        // Load combined elevations
-        let combinedElevationsLoaded = false;
-        async function loadCombinedElevations() {
-            if (combinedElevationsLoaded) return;
-
-            // Show svg-container
-            const svgContainer = document.getElementById('svg-container');
-            svgContainer.style.display = 'block';
-
-            await setupPanZoom('2d/elevations/elevations_combined.svg');
-            combinedElevationsLoaded = true;
-        }
 
         // Fit SVG to view and center it
         function fitToView() {
