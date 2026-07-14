@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Konkan House - 3D Model Viewer</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+    <link rel="apple-touch-icon" href="favicon.svg"/>
+    <meta name="theme-color" content="#B85028"/>
     <style>
         /* Universal box-sizing everywhere (safe), but keep the margin/
            padding reset OFF the mounted editor panels — the React
@@ -42,6 +45,14 @@
             color: #333;
             font-size: 1.5rem;
             font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .hdr-logo {
+            display: inline-block;
+            vertical-align: middle;
+            flex-shrink: 0;
         }
         .subtitle {
             color: #666;
@@ -400,6 +411,23 @@
             justify-content: center;
             font-size: 1.2rem;
         }
+        /* When edit mode is on the 3D viewport shrinks (sidebar +
+           property panel eat width). Collapse the layers list into the
+           same 📚 popup we use on mobile so it doesn't crowd the scene. */
+        body[data-edit-mode="on"] .layers-panel {
+            display: none;
+            top: 72px;       /* just below the toggle */
+            left: 20px;
+            max-width: 240px;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+        body[data-edit-mode="on"] .layers-panel.active {
+            display: block;
+        }
+        body[data-edit-mode="on"] .layers-toggle {
+            display: flex;
+        }
         .setting-item {
             margin-bottom: 1rem;
         }
@@ -724,7 +752,7 @@
                 padding: 0;
             }
 
-            header, .tabs, .zoom-controls {
+            header, .tabs, .zoom-controls, .html-lightbox-controls {
                 display: none !important;
             }
 
@@ -745,6 +773,72 @@
             .view-container {
                 display: none !important;
             }
+
+            /* When the HTML lightbox is up, print only its content so the
+               BOM table lands cleanly on a page without the dark overlay
+               or any other viewer chrome. */
+            #html-lightbox {
+                position: static !important;
+                display: block !important;
+                background: white !important;
+                padding: 0 !important;
+                overflow: visible !important;
+            }
+            #html-lightbox-content {
+                max-width: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                background: white !important;
+                border-radius: 0 !important;
+            }
+        }
+        /* ---- HTML lightbox --------------------------------------------
+           Full-screen overlay for expanding the BOM cards. Reuses the
+           same close/print buttons pattern as the SVG lightbox but
+           doesn't need pan/zoom — HTML tables reflow on their own. */
+        .html-lightbox {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            overflow: auto;
+            padding: 3rem 1.5rem;
+        }
+        .html-lightbox-content {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+        }
+        .html-lightbox-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1001;
+            display: flex;
+            gap: 0.5rem;
+        }
+        .html-lightbox-controls button {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            padding: 0.55rem 0.75rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+        .html-lightbox-controls button:hover {
+            background: #fff;
+        }
+        /* Cursor + subtle hover so users know the BOM cards are clickable. */
+        .roof-bom-item {
+            cursor: zoom-in;
+            transition: box-shadow 0.15s ease;
+        }
+        .roof-bom-item:hover {
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
         }
 
         /* ---- Desktop layout (wide viewports) ---------------------------- */
@@ -1007,7 +1101,10 @@
     <header>
         <div class="header-row">
             <div>
-                <h1>🏠 Konkan House</h1>
+                <h1>
+                    <img src="favicon.svg" alt="" class="hdr-logo" width="28" height="28"/>
+                    Konkan House
+                </h1>
                 <div class="subtitle">3D Interactive Model Viewer</div>
             </div>
             <div class="header-actions">
@@ -1145,6 +1242,16 @@
             </div>
         </div>
         <!-- End Roof Details View -->
+
+        <!-- HTML lightbox — expands any BOM card to full-screen with
+             an Export-to-PDF (print) button. Populated by openHtmlLightbox(). -->
+        <div id="html-lightbox" class="html-lightbox" style="display: none;">
+            <div class="html-lightbox-controls">
+                <button onclick="printHtmlLightbox()" title="Export to PDF">📄 PDF</button>
+                <button onclick="closeHtmlLightbox()" title="Close (Esc)" aria-label="Close">✕</button>
+            </div>
+            <div class="html-lightbox-content" id="html-lightbox-content"></div>
+        </div>
 
         <!-- Shared SVG Container with zoom controls -->
         <div class="svg-full-width" id="svg-container" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
@@ -1396,9 +1503,10 @@
                     console.warn('[roof panels]', p.id, e);
                 }
             }
-            // HTML BOM cards: frame + roof material. Published by the TS
-            // bootstrap on window.roofBomManifest. They render an inline
-            // HTML table (no lightbox — the data is right there).
+            // HTML BOM cards: frame + metal + roof material. Published by
+            // the TS bootstrap on window.roofBomManifest. Cards are
+            // clickable — click opens the HTML lightbox for a full-screen
+            // view with PDF export.
             const bomCards = window.roofBomManifest || [];
             for (const c of bomCards) {
                 try {
@@ -1408,6 +1516,7 @@
                     const item = document.createElement('div');
                     item.className = 'svg-item roof-bom-item';
                     item.innerHTML = html;
+                    item.addEventListener('click', () => openHtmlLightbox(html, c.displayName));
                     grid.appendChild(item);
                 } catch (e) {
                     console.warn('[roof BOM]', c.filename, e);
@@ -1757,11 +1866,36 @@
             svgLightboxReturnTab = null;
         }
 
-        // Keyboard navigation — Esc closes the shared SVG lightbox.
+        // HTML lightbox — used by the BOM cards. Simpler than the SVG
+        // lightbox because HTML tables reflow naturally (no pan/zoom).
+        function openHtmlLightbox(html, caption) {
+            const box = document.getElementById('html-lightbox');
+            const content = document.getElementById('html-lightbox-content');
+            // Prepend the caption so the printed page has a title.
+            content.innerHTML = html;
+            box.style.display = 'block';
+            box.dataset.caption = caption || '';
+        }
+
+        function closeHtmlLightbox() {
+            document.getElementById('html-lightbox').style.display = 'none';
+        }
+
+        // Print → user picks "Save as PDF" in the browser's print dialog.
+        // The @media print block in <style> hides everything except the
+        // lightbox content so the PDF is just the table.
+        function printHtmlLightbox() {
+            window.print();
+        }
+
+        // Keyboard navigation — Esc closes whichever lightbox is open.
         document.addEventListener('keydown', function(e) {
+            if (e.key !== 'Escape') return;
             const svgContainer = document.getElementById('svg-container');
-            if (svgContainer && svgContainer.style.display !== 'none'
-                && e.key === 'Escape') {
+            const htmlBox = document.getElementById('html-lightbox');
+            if (htmlBox && htmlBox.style.display !== 'none') {
+                closeHtmlLightbox();
+            } else if (svgContainer && svgContainer.style.display !== 'none') {
                 closeSvgLightbox();
             }
         });
