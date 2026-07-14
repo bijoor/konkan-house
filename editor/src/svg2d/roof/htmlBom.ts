@@ -1,18 +1,26 @@
 // HTML bill-of-materials tables that replace the old
-// `consolidated_bom` and `tile_roofing` SVG panels in the viewer's
-// Roof Details tab. The tables are computed from the same
-// RoofComputed / HouseConfig data the SVG panels used, so the
-// counts stay in sync with any config edit.
+// `consolidated_bom` / `tile_roofing` / `materials_takeoff` SVG panels
+// in the viewer's Roof Details tab. All tables re-compute from the
+// same RoofComputed + HouseConfig the SVG panels used, so they update
+// live on any config edit.
 //
-// Both functions return standalone HTML fragments (a wrapper <div>
-// with an <h3> and <table>). They're inlined into the viewer's
-// roof grid cards — no external stylesheet needed.
+// Three tables are produced:
+//   1. Frame BOM         — one row per structural member (rafter, purlin,
+//                          truss chord, truss web, ring beam, hip beam,
+//                          vent strut, Pani Patti, eave L-channel,
+//                          corner double angle).
+//   2. Metal BOM by spec — same members aggregated by material section
+//                          (e.g. "2×4 in × 2 mm MS"), summed total length,
+//                          plus pieces-to-order at the configured stock
+//                          length.
+//   3. Roof material BOM — Mangalore tiles, ceiling tiles, ridge tiles,
+//                          from configured tiles/sft × roof area × waste.
 
 import type { RoofComputed } from "./geometry";
 import type { HouseConfig } from "../expand";
 
 // ---------------------------------------------------------------
-// Public entry points
+// Public types + config readers
 // ---------------------------------------------------------------
 
 export interface TileDensities {
@@ -21,137 +29,225 @@ export interface TileDensities {
   wastePct: number;               // 0..1, default 0.10
 }
 
+export interface MetalStockConfig {
+  defaultLengthFt: number;                     // e.g. 20 ft mill length
+  cuttingWastePct: number;                     // 0..1, applied on top of total length
+  bySpec: Record<string, number>;              // matSpec → stock length ft (override)
+}
+
 // Reads tile densities from roof.tile_density on the first hip_roof
-// object in the config, falling back to industry defaults. Kept
-// permissive so users can wire them into house_config.json without a
-// schema change.
+// object in the config, falling back to industry defaults.
 export function readTileDensities(cfg: HouseConfig): TileDensities {
   const defaults: TileDensities = {
     mangaloreTilesPerSft: 1.33,
     ceilingTilesPerSft: 1.5,
     wastePct: 0.10,
   };
-  for (const floor of cfg.floors ?? []) {
-    for (const obj of floor.objects ?? []) {
-      if ((obj as { type?: string }).type !== "hip_roof") continue;
-      const td = (obj as { tile_density?: Record<string, number> }).tile_density;
-      if (!td) return defaults;
-      return {
-        mangaloreTilesPerSft: td.mangalore_per_sft ?? defaults.mangaloreTilesPerSft,
-        ceilingTilesPerSft: td.ceiling_per_sft ?? defaults.ceilingTilesPerSft,
-        wastePct: td.waste_pct ?? defaults.wastePct,
-      };
-    }
-  }
-  return defaults;
+  const roof = findHipRoof(cfg);
+  const td = (roof as { tile_density?: Record<string, number> } | undefined)?.tile_density;
+  if (!td) return defaults;
+  return {
+    mangaloreTilesPerSft: td.mangalore_per_sft ?? defaults.mangaloreTilesPerSft,
+    ceilingTilesPerSft: td.ceiling_per_sft ?? defaults.ceilingTilesPerSft,
+    wastePct: td.waste_pct ?? defaults.wastePct,
+  };
 }
 
-// Bill of materials for the roof FRAME — trusses, rafters, purlins,
-// central ridge, hip ridges, ring beam, hip beams, vent struts. Counts
-// / lengths are pulled straight out of RoofComputed (already resolved
-// from the config).
-export function frameBomHtml(computed: RoofComputed): string {
-  const uToFt = (u: number) => u / 10.0; // 10 units = 1 foot in this project
+// Reads metal-stock config from roof.metal_stock. Defaults to 20 ft
+// stock length and 0 % cutting waste; per-spec overrides let the user
+// specify a different length for e.g. thinner sections that come in
+// 12 ft or 6 m bars.
+export function readMetalStock(cfg: HouseConfig): MetalStockConfig {
+  const defaults: MetalStockConfig = {
+    defaultLengthFt: 20,
+    cuttingWastePct: 0,
+    bySpec: {},
+  };
+  const roof = findHipRoof(cfg);
+  const ms = (roof as { metal_stock?: Record<string, unknown> } | undefined)?.metal_stock;
+  if (!ms) return defaults;
+  return {
+    defaultLengthFt: Number(ms.default_length_ft ?? defaults.defaultLengthFt),
+    cuttingWastePct: Number(ms.cutting_waste_pct ?? defaults.cuttingWastePct),
+    bySpec: (ms.by_spec as Record<string, number> | undefined) ?? {},
+  };
+}
 
-  interface Row {
-    item: string;
-    spec: string;
-    qty: string;
-    lenEach: string;
-    total: string;
+function findHipRoof(cfg: HouseConfig): Record<string, unknown> | undefined {
+  for (const floor of cfg.floors ?? []) {
+    for (const obj of floor.objects ?? []) {
+      if ((obj as { type?: string }).type === "hip_roof") {
+        return obj as unknown as Record<string, unknown>;
+      }
+    }
   }
-  const rows: Row[] = [];
+  return undefined;
+}
 
-  // Rafter/purlin counts + total lengths live on computed.totals (sum
-  // across all slopes) — the per-slope numbers are in computed.slope_qty
-  // and not on the Slope object itself.
+// ---------------------------------------------------------------
+// Frame member data model (shared between Frame BOM + Metal BOM)
+// ---------------------------------------------------------------
+
+export interface FrameMember {
+  item: string;          // display name, e.g. "Rafters", "Truss top chord"
+  matSpec: string;       // canonical material spec, grouping key for Metal BOM
+  extraNote: string;     // optional suffix for Frame BOM (spacing, description)
+  count: number;         // pieces
+  maxLenFt: number;      // longest single piece
+  totalLenFt: number;    // sum across all pieces
+}
+
+// Canonicalise a size + wall into a comparable material spec string
+// (used as the group key in Metal BOM). Format: "H×W in × T mm MS".
+function matSpec(size: [number, number], wallMm: number, material: string = "MS"): string {
+  return `${size[0]}×${size[1]} in × ${wallMm} mm ${material}`;
+}
+
+// Build the canonical list of frame members. Each member represents
+// one line-item on the Frame BOM AND contributes to a group on the
+// Metal BOM (via matSpec).
+export function collectFrameMembers(computed: RoofComputed): FrameMember[] {
+  const uToFt = (u: number) => u / 10.0;
+  const members: FrameMember[] = [];
   const t = computed.totals;
-  const rafterSize = `${computed.rafter_size_in[0]}×${computed.rafter_size_in[1]} in`;
-  rows.push({
+  const framing = computed.framing;
+
+  members.push({
     item: "Rafters",
-    spec: `${rafterSize} MS (${computed.rafter_wall_mm} mm wall) · ${computed.rafter_spacing_in}″ o.c.`,
-    qty: String(t.rafter_count),
-    lenEach: `up to ${fmt(uToFt(t.rafter_max))} ft`,
-    total: `${fmt(uToFt(t.rafter_total))} ft`,
+    matSpec: matSpec(computed.rafter_size_in, computed.rafter_wall_mm),
+    extraNote: `${computed.rafter_spacing_in}″ o.c.`,
+    count: t.rafter_count,
+    maxLenFt: uToFt(t.rafter_max),
+    totalLenFt: uToFt(t.rafter_total),
   });
-
-  rows.push({
+  members.push({
     item: "Purlins",
-    spec: `${computed.purlin_size_in[0]}×${computed.purlin_size_in[1]} in MS (${computed.purlin_wall_mm} mm wall) · ${computed.purlin_spacing_in}″ o.c.`,
-    qty: String(t.purlin_count),
-    lenEach: `up to ${fmt(uToFt(t.purlin_max))} ft`,
-    total: `${fmt(uToFt(t.purlin_total))} ft`,
+    matSpec: matSpec(computed.purlin_size_in, computed.purlin_wall_mm),
+    extraNote: `${computed.purlin_spacing_in}″ o.c.`,
+    count: t.purlin_count,
+    maxLenFt: uToFt(t.purlin_max),
+    totalLenFt: uToFt(t.purlin_total),
   });
-
-  const centralRidgeFt = uToFt(computed.central_ridge_total);
-  const hipRidgesFt = uToFt(computed.hip_ridges_total);
-  rows.push({
+  members.push({
     item: "Central ridge",
-    spec: `${computed.ridge_size_in[0]}×${computed.ridge_size_in[1]} in MS (${computed.ridge_wall_mm} mm wall)`,
-    qty: "1",
-    lenEach: `${fmt(centralRidgeFt)} ft`,
-    total: `${fmt(centralRidgeFt)} ft`,
+    matSpec: matSpec(computed.ridge_size_in, computed.ridge_wall_mm),
+    extraNote: "top ridge",
+    count: 1,
+    maxLenFt: uToFt(computed.central_ridge_total),
+    totalLenFt: uToFt(computed.central_ridge_total),
   });
-  rows.push({
+  members.push({
     item: "Hip ridges",
-    spec: `${computed.ridge_size_in[0]}×${computed.ridge_size_in[1]} in MS`,
-    qty: "4",
-    lenEach: `${fmt(hipRidgesFt / 4)} ft`,
-    total: `${fmt(hipRidgesFt)} ft`,
+    matSpec: matSpec(computed.ridge_size_in, computed.ridge_wall_mm),
+    extraNote: "4 diagonals",
+    count: 4,
+    maxLenFt: uToFt(computed.hip_ridges_total / 4),
+    totalLenFt: uToFt(computed.hip_ridges_total),
   });
 
+  // Trusses — break into their steel pieces so the Metal BOM can group.
   if (computed.truss_count > 0) {
-    rows.push({
-      item: "Fink trusses (transverse)",
-      spec: "chord + web bars — see roof section drawings",
-      qty: String(computed.truss_count),
-      lenEach: `chord ${fmt(uToFt(computed.truss_chord_total_each))} ft + web ${fmt(uToFt(computed.truss_web_total_each))} ft`,
-      total: `${fmt(uToFt(computed.truss_count * (computed.truss_chord_total_each + computed.truss_web_total_each)))} ft`,
+    const trussCfg = computed.truss_cfg as Record<string, unknown>;
+    const tcSz = (trussCfg.chord_size_in as [number, number]) ?? [2, 4];
+    const tcWall = Number(trussCfg.chord_wall_mm ?? 3);
+    const twSz = (trussCfg.web_size_in as [number, number]) ?? [2, 2];
+    const twWall = Number(trussCfg.web_wall_mm ?? 2);
+    const N = computed.truss_count;
+    members.push({
+      item: "Truss top chord",
+      matSpec: matSpec(tcSz, tcWall),
+      extraNote: `2 per truss × ${N}`,
+      count: N * 2,
+      maxLenFt: uToFt(computed.truss_top_chord_len),
+      totalLenFt: uToFt(N * 2 * computed.truss_top_chord_len),
+    });
+    members.push({
+      item: "Truss bottom chord",
+      matSpec: matSpec(tcSz, tcWall),
+      extraNote: `1 per truss × ${N}`,
+      count: N,
+      maxLenFt: uToFt(computed.truss_bottom_chord_len),
+      totalLenFt: uToFt(N * computed.truss_bottom_chord_len),
+    });
+    members.push({
+      item: "Truss king post",
+      matSpec: matSpec(twSz, twWall),
+      extraNote: `1 per truss × ${N}`,
+      count: N,
+      maxLenFt: uToFt(computed.truss_king_post_len),
+      totalLenFt: uToFt(N * computed.truss_king_post_len),
+    });
+    members.push({
+      item: "Truss web diagonals",
+      matSpec: matSpec(twSz, twWall),
+      extraNote: `2 per truss × ${N}`,
+      count: N * 2,
+      maxLenFt: uToFt(computed.truss_diag_len),
+      totalLenFt: uToFt(N * 2 * computed.truss_diag_len),
+    });
+    members.push({
+      item: "Truss web verticals",
+      matSpec: matSpec(twSz, twWall),
+      extraNote: `2 per truss × ${N}`,
+      count: N * 2,
+      maxLenFt: uToFt(computed.truss_vert_len),
+      totalLenFt: uToFt(N * 2 * computed.truss_vert_len),
     });
   }
 
+  // Long trusses (ridge-line) — same treatment.
   if (computed.long_truss_count > 0) {
-    rows.push({
-      item: "Long trusses (ridge-line)",
-      spec: "chord + web bars",
-      qty: String(computed.long_truss_count),
-      lenEach: `chord ${fmt(uToFt(computed.long_chord_total_each))} ft + web ${fmt(uToFt(computed.long_web_total_each))} ft`,
-      total: `${fmt(uToFt(computed.long_truss_count * (computed.long_chord_total_each + computed.long_web_total_each)))} ft`,
+    const longCfg = computed.long_truss_cfg as Record<string, unknown>;
+    const lcSz = (longCfg.chord_size_in as [number, number]) ?? [2, 4];
+    const lcWall = Number(longCfg.chord_wall_mm ?? 3);
+    const N = computed.long_truss_count;
+    // Long-truss members are grouped as one aggregate row per truss for now
+    // (chord + web totals are provided as per-truss aggregates on RoofComputed).
+    members.push({
+      item: "Long-truss chord bars",
+      matSpec: matSpec(lcSz, lcWall),
+      extraNote: `${N} truss(es)`,
+      count: N,
+      maxLenFt: uToFt(computed.long_chord_total_each),
+      totalLenFt: uToFt(N * computed.long_chord_total_each),
     });
   }
 
-  rows.push({
+  members.push({
     item: "Ring beam",
-    spec: `${computed.ring_beam_size[0]}×${computed.ring_beam_size[1]} in MS (${computed.ring_beam_wall} mm wall) · perimeter loop`,
-    qty: "1 loop",
-    lenEach: "",
-    total: `${fmt(uToFt(computed.ring_beam_total))} ft`,
+    matSpec: matSpec(computed.ring_beam_size, computed.ring_beam_wall),
+    extraNote: "perimeter loop",
+    count: 4,
+    maxLenFt: uToFt(Math.max(computed.house_trans_u, computed.house_long_u)),
+    totalLenFt: uToFt(computed.ring_beam_total),
   });
 
   if (computed.hip_beam_total_count > 0) {
-    rows.push({
+    members.push({
       item: "Hip beams",
-      spec: `${computed.hip_beam_size[0]}×${computed.hip_beam_size[1]} in MS`,
-      qty: String(computed.hip_beam_total_count),
-      lenEach: `${fmt(uToFt(computed.hip_beam_avg_len))} ft avg`,
-      total: `${fmt(uToFt(computed.hip_beam_total_len))} ft`,
+      matSpec: matSpec(computed.hip_beam_size, computed.hip_beam_wall),
+      extraNote: `avg ${fmt(uToFt(computed.hip_beam_avg_len))} ft`,
+      count: computed.hip_beam_total_count,
+      maxLenFt: uToFt(Math.max(computed.hip_beam_n_len, computed.hip_beam_s_len)),
+      totalLenFt: uToFt(computed.hip_beam_total_len),
     });
   }
 
   if (computed.vent_strut_count > 0) {
-    rows.push({
+    const trussCfg = computed.truss_cfg as Record<string, unknown>;
+    const twSz = (trussCfg.web_size_in as [number, number]) ?? [2, 2];
+    const twWall = Number(trussCfg.web_wall_mm ?? 2);
+    members.push({
       item: "Ridge-vent struts",
-      spec: "vertical struts under ridge cap",
-      qty: String(computed.vent_strut_count),
-      lenEach: `${fmt(uToFt(computed.vent_strut_len_each))} ft`,
-      total: `${fmt(uToFt(computed.vent_strut_total))} ft`,
+      matSpec: matSpec(twSz, twWall),
+      extraNote: "under ridge cap",
+      count: computed.vent_strut_count,
+      maxLenFt: uToFt(computed.vent_strut_len_each),
+      totalLenFt: uToFt(computed.vent_strut_total),
     });
   }
 
-  // Eave detail items (previously only in the materials takeoff SVG).
-  // Read straight off the framing config with the same defaults
-  // materials.ts uses. `eave_perim_total` is in project units → /10 = ft.
-  const framing = computed.framing;
+  // Eave detail items.
   const pp = (framing.pani_patti as Record<string, unknown>) ?? {};
   const ppH = Number(pp.height_in ?? 6);
   const ppThk = Number(pp.thickness_mm ?? 1.2);
@@ -162,35 +258,93 @@ export function frameBomHtml(computed: RoofComputed): string {
   const eavePerimFt = uToFt(computed.eave_perim_total);
   const hipRidgesTotalFt = uToFt(computed.hip_ridges_total);
 
-  rows.push({
+  members.push({
     item: "Pani Patti",
-    spec: `${ppH.toFixed(0)}″ × ${ppThk} mm GI · water-protector strip`,
-    qty: "4",
-    lenEach: "",
-    total: `${fmt(eavePerimFt)} ft`,
+    matSpec: `${ppH.toFixed(0)}″ × ${ppThk} mm GI strip`,
+    extraNote: "water-protector strip",
+    count: 4,
+    maxLenFt: eavePerimFt / 4,
+    totalLenFt: eavePerimFt,
   });
-  rows.push({
+  members.push({
     item: "Eave L-channel",
-    spec: `${lchSz[0]}×${lchSz[1]} in × ${lchWall} mm · on top of Pani Patti`,
-    qty: "4",
-    lenEach: "",
-    total: `${fmt(eavePerimFt)} ft`,
+    matSpec: matSpec(lchSz, lchWall),
+    extraNote: "on top of Pani Patti",
+    count: 4,
+    maxLenFt: eavePerimFt / 4,
+    totalLenFt: eavePerimFt,
   });
-  rows.push({
+  members.push({
     item: "Corner double angle",
-    spec: `${cornerSz[0]}×${cornerSz[1]} in × ${cornerWall} mm · 2 legs per hip`,
-    qty: "8",
-    lenEach: `${fmt(hipRidgesTotalFt / 4)} ft`,
-    total: `${fmt(2 * hipRidgesTotalFt)} ft`,
+    matSpec: matSpec(cornerSz, cornerWall),
+    extraNote: "2 legs per hip",
+    count: 8,
+    maxLenFt: hipRidgesTotalFt / 4,
+    totalLenFt: 2 * hipRidgesTotalFt,
   });
 
-  return renderTable("Frame BOM — steel takeoff by member", ["Item", "Spec", "Qty", "Length each", "Total length"], rows.map((r) => [r.item, r.spec, r.qty, r.lenEach, r.total]));
+  return members;
 }
 
-// Bill of materials for the roof COVERING — Mangalore tiles, ceiling
-// tiles, ridge tiles. Quantities come from the tile-per-sft densities
-// (config-configurable) multiplied by the total roof area, with a
-// waste allowance applied to each row.
+// ---------------------------------------------------------------
+// Public entry points — the three HTML BOM tables
+// ---------------------------------------------------------------
+
+export function frameBomHtml(computed: RoofComputed): string {
+  const members = collectFrameMembers(computed);
+  const rows = members.map((m) => [
+    m.item,
+    m.extraNote ? `${m.matSpec} · ${m.extraNote}` : m.matSpec,
+    String(m.count),
+    m.count > 1 ? `up to ${fmt(m.maxLenFt)} ft` : `${fmt(m.maxLenFt)} ft`,
+    `${fmt(m.totalLenFt)} ft`,
+  ]);
+  return renderTable(
+    "Frame BOM — steel takeoff by member",
+    ["Item", "Spec", "Qty", "Length each", "Total length"],
+    rows,
+  );
+}
+
+export function metalBomHtml(computed: RoofComputed, stock: MetalStockConfig): string {
+  const members = collectFrameMembers(computed);
+  // Group members by canonical matSpec, summing totalLenFt and tracking
+  // which item names contribute.
+  const groups = new Map<string, { totalLenFt: number; items: string[] }>();
+  for (const m of members) {
+    const g = groups.get(m.matSpec) ?? { totalLenFt: 0, items: [] };
+    g.totalLenFt += m.totalLenFt;
+    if (!g.items.includes(m.item)) g.items.push(m.item);
+    groups.set(m.matSpec, g);
+  }
+
+  const wasteMul = 1 + stock.cuttingWastePct;
+  const rows: string[][] = [];
+  const sortedSpecs = [...groups.keys()].sort();
+  for (const spec of sortedSpecs) {
+    const g = groups.get(spec)!;
+    const stockLen = stock.bySpec[spec] ?? stock.defaultLengthFt;
+    const orderLen = g.totalLenFt * wasteMul;
+    const pieces = stockLen > 0 ? Math.ceil(orderLen / stockLen) : 0;
+    rows.push([
+      spec,
+      g.items.join(", "),
+      `${fmt(g.totalLenFt)} ft`,
+      `${fmt(stockLen)} ft`,
+      `${pieces}`,
+    ]);
+  }
+
+  const wasteNote = stock.cuttingWastePct > 0
+    ? ` (incl. ${pct(stock.cuttingWastePct)} cutting waste)`
+    : "";
+  return renderTable(
+    `Metal BOM by spec — pieces to order${wasteNote}`,
+    ["Material spec", "Used in", "Total length", "Stock length", "Pieces"],
+    rows,
+  );
+}
+
 export function roofMaterialBomHtml(computed: RoofComputed, densities: TileDensities): string {
   const area = computed.total_roof_area_sft;
   const wasteMul = 1 + densities.wastePct;

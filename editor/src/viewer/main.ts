@@ -36,7 +36,7 @@ import { generateAllElevations } from "../svg2d/elevationsAll";
 import { generateCombinedElevations } from "../svg2d/elevationsCombined";
 import { computeRoofSections } from "../svg2d/roof/index";
 import { computeAll } from "../svg2d/roof/geometry";
-import { frameBomHtml, roofMaterialBomHtml, readTileDensities } from "../svg2d/roof/htmlBom";
+import { frameBomHtml, metalBomHtml, roofMaterialBomHtml, readTileDensities, readMetalStock } from "../svg2d/roof/htmlBom";
 import { expandRoomWalls } from "../svg2d/expand";
 import { generateAllPillarSvgs } from "../svg2d/pillar/index";
 import { pickAndLoadConfig, downloadConfig } from "../io/fileIO";
@@ -145,10 +145,13 @@ function rebuildSvgMap(): void {
     const computed = computeAll(expanded);
     if (computed) {
       const densities = readTileDensities(cfg);
+      const stock = readMetalStock(cfg);
       svgMap.set("2d/roof/frame_bom.html", frameBomHtml(computed));
+      svgMap.set("2d/roof/metal_bom.html", metalBomHtml(computed, stock));
       svgMap.set("2d/roof/roof_material_bom.html", roofMaterialBomHtml(computed, densities));
       window.roofBomManifest = [
         { filename: "2d/roof/frame_bom.html", displayName: "Frame BOM" },
+        { filename: "2d/roof/metal_bom.html", displayName: "Metal BOM by spec" },
         { filename: "2d/roof/roof_material_bom.html", displayName: "Roof material BOM" },
       ];
     }
