@@ -281,7 +281,9 @@ camera_views = [
     }
 ]
 
-OUTPUT_DIR = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender/docs/realistic_perspectives"
+# Perspective PNGs land under docs/3d/perspectives/ (post-reorg location).
+# Resolve relative to _PROJECT_ROOT so the repo can be moved / re-cloned.
+OUTPUT_DIR = os.path.join(_PROJECT_ROOT, "docs", "3d", "perspectives")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Render all views

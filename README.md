@@ -34,21 +34,31 @@ Everything is regenerated from the same JSON, so a schema change ripples through
                                        │
         ┌──────────────────────────────┼───────────────────────────────┐
         ▼                              ▼                               ▼
-┌───────────────────┐   ┌────────────────────────┐   ┌───────────────────────────┐
-│  Browser editor   │   │  Python (standalone)   │   │  Python (in Blender)      │
-│  editor/  (TS)    │   │  scripts/regenerate_*  │   │  python/konkan_house_*    │
-├───────────────────┤   ├────────────────────────┤   ├───────────────────────────┤
-│ live preview:     │   │ regenerates:           │   │ builds full 3D scene:     │
-│  2D floor plans   │   │  docs/2d/floor_plans/ │   │  house-model.blend        │
-│  2D elevations    │   │  docs/2d/elevations/  │   │  docs/3d/konkan_house.glb │
-│  3D (three.js)    │   │  docs/2d/roof/         │   │  docs/3d/perspectives/*   │
-│ edit / save JSON  │   │ no Blender required   │   │  requires Blender         │
-└───────────────────┘   └────────────────────────┘   └───────────────────────────┘
+┌────────────────────┐   ┌────────────────────────┐   ┌───────────────────────────┐
+│  Browser editor    │   │  TypeScript CLI        │   │  Python (in Blender)      │
+│  editor/  (React)  │   │  scripts/regen_svgs.sh │   │  python/konkan_house_*    │
+├────────────────────┤   ├────────────────────────┤   ├───────────────────────────┤
+│ live preview:      │   │ regenerates:           │   │ builds full 3D scene:     │
+│  2D plans          │   │  docs/2d/floor_plans/ │   │  house-model.blend        │
+│  2D elevations     │   │  docs/2d/elevations/  │   │  docs/3d/konkan_house.glb │
+│  Pillar drawings   │   │  docs/2d/pillar_*/     │   │  docs/3d/perspectives/*   │
+│  Roof drawings     │   │  docs/2d/roof/         │   │  requires Blender         │
+│  3D (three.js)     │   │  33 SVGs total         │   │                           │
+│ edit / save JSON   │   │ Node.js only          │   │                           │
+└────────────────────┘   └────────────────────────┘   └───────────────────────────┘
 ```
 
-The browser editor's 2D and 3D previews are **byte-identical** to the Python-generated ones — a parity harness in `editor/scripts/` diffs them on every change (34/34 primitive checks + 3/3 floor plans + 5/5 elevations + 15/15 roof outputs).
+Same underlying code runs the browser preview and the CLI generator: both call the TypeScript port under `editor/src/svg2d/`. The Python originals live in `archive/` and are still runnable for parity-regression verification.
 
-The roof SVG generator (`editor/src/svg2d/roof/`, ~4000 lines of TS) has full parity with `python/svg_2d.py::generate_roof_sections_svg` and is wired into the browser editor's *Roof* preview tab — pick the master or any of the 13 panels, toggle between rendered and raw SVG, download individual files. Node callers (`parity-roof.mjs`, `dump-svgs.mjs`) go through the same `computeRoofSections()` core; the disk-writing helper simply layers `fs.writeFileSync` on top.
+The browser editor's 2D and 3D previews are **byte-identical** to the Python-generated ones — a parity harness in `editor/scripts/` diffs them on every change: **67/67 checks pass** (34 primitives + 3 floor plans + 5 elevations + 15 roof outputs + 10 pillar outputs).
+
+Every 2D SVG generator has a full TypeScript port under `editor/src/svg2d/`. The roof pipeline (~4000 LOC) and the pillar pipeline (~600 LOC) each expose a browser-safe compute function used by the corresponding editor preview tab, and a Node adapter that writes the same output to disk. The `dump-svgs.mjs` runner drives everything — produce all 33 SVG artifacts with one command:
+
+```bash
+./scripts/regen_svgs.sh
+```
+
+The original Python generators live in `archive/` for parity-reference use.
 
 ---
 
@@ -56,10 +66,10 @@ The roof SVG generator (`editor/src/svg2d/roof/`, ~4000 lines of TS) has full pa
 
 ```
 blender/                       (repo root)
-├── house_config.json          ← THE ONE FILE YOU EDIT
+├── house_config.json          ← THE ONE FILE YOU EDIT (symlink → docs/house_config.json)
 ├── python/                    core library (all *.py the pipeline imports)
 │   ├── config.py              GLOBAL_CONFIG defaults (no bpy)
-│   ├── house_config.py        loads HOUSE_CONFIG from ../house_config.json
+│   ├── house_config.py        loads HOUSE_CONFIG from ../house_config.json (→ docs/house_config.json)
 │   ├── svg_2d.py              2D SVG generator (no bpy)
 │   ├── svg_combined.py        combined-view helpers
 │   ├── house_expand.py        room→wall/opening expansion
@@ -72,22 +82,19 @@ blender/                       (repo root)
 │   ├── src/                   (see editor/README.md for the full tour)
 │   └── scripts/               parity + validation harnesses
 ├── scripts/                   thin runners + shell wrappers
-│   ├── regenerate_combined_svgs.py   all 2D SVGs (Python only, no Blender)
-│   ├── generate_floor_plans.py       per-floor SVGs
-│   ├── generate_elevations_debug.py  per-view elevation SVGs
-│   ├── generate_pillar_elevations.py structural sections
+│   ├── regen_svgs.sh                 → npm run dump-svgs (all 33 2D SVGs, TS-only)
 │   ├── generate_3d_models.py         GLB (calls Blender headless)
 │   ├── render_all_final.py           7 photoreal perspective renders
 │   ├── auto_crop_perspectives.py     crops rendered PNGs
 │   ├── generate_pdf.py               stitches PDF from renders
 │   ├── extract_house_config_json.py  one-shot py→json converter
-│   ├── regenerate_all.sh             wrapper: all 2D outputs
 │   ├── regenerate_blender.sh         wrapper: renders + interactive 3D
 │   ├── serve.sh                      python -m http.server on docs/
 │   └── commit.sh                     stage + commit + push + Pages redeploy
 ├── docs/                      published to GitHub Pages
 │   ├── index.html             tabbed viewer (3D, plans, elevations, roof, editor link)
-│   ├── house_config.json      copy of the source (auto-loaded by the editor)
+│   ├── house_config.json      canonical location — auto-loaded by the editor
+│   │                          (root's house_config.json is a symlink to this)
 │   ├── 2d/                    per-type SVG output subfolders
 │   │   ├── floor_plans/       per-floor + combined + PDF
 │   │   ├── elevations/        per-side + combined
@@ -129,12 +136,14 @@ The editor is the primary way to iterate on the design. It runs entirely in the 
 2. **Click an object** in the object tree — rooms, walls, doors, windows, pillars, beams, slabs, staircase, roof.
 3. **Edit fields** in the right-hand property panel. Everything updates live:
    - **Summary** tab — text summary of the current object
-   - **Plans** tab — 2D floor plan (byte-identical to Python's SVG)
-   - **Elevations** tab — front / back / left / right (byte-identical)
+   - **Plans** tab — 2D floor plans (per floor + combined)
+   - **Elevations** tab — front / back / left / right
+   - **Pillars** tab — 4 outer pillar elevations + N internal row/column sections
+   - **Roof** tab — master plan + 13 individual panels (top view, sections, slopes, framing, BOM, tile)
    - **3D** tab — Three.js scene with CSG openings, hip roof, staircase, section cutter, per-layer toggles, camera presets
 4. **Undo / redo** with ⌘/Ctrl+Z / ⇧⌘/Ctrl+Z.
 5. **Save** with ⌘/Ctrl+S or the Download button — writes to your Downloads folder.
-6. **Drop the downloaded file** into the repo root as `house_config.json` (replacing the existing one).
+6. **Drop the downloaded file** into `docs/house_config.json` (or overwrite via the root's `house_config.json` symlink — it's the same file). Every pipeline reads from this single physical location; no copy step, no drift.
 
 The editor never touches your filesystem directly — it uses the browser's file picker for load and the download API for save. That's what lets it be a static single-page app on GitHub Pages.
 
@@ -146,23 +155,33 @@ Rooms are the main authoring primitive — a room definition holds its own per-s
 
 ## Regenerating outputs
 
-All commands below assume you're at the repo root. The Python scripts each `chdir` to the repo root at startup, so it's safe to invoke them from anywhere.
+All commands below run from the repo root.
 
-### 2D outputs (no Blender required)
+### 2D outputs (TypeScript only, no Blender, no Python required)
+
+Every SVG the pipeline produces is generated by the editor's TypeScript port under `editor/src/svg2d/`, which is verified byte-identical to the original Python (see the Development section below).
 
 ```bash
-# All floor plans + elevations + roof drawings + pillar sections
-python3 scripts/regenerate_combined_svgs.py
-
-# Or a subset:
-python3 scripts/generate_floor_plans.py           # per-floor + combined
-python3 scripts/generate_elevations_debug.py      # 4 elevations + combined
-python3 scripts/generate_pillar_elevations.py     # 4 structural elevations
+./scripts/regen_svgs.sh                # → docs/2d/**   (33 files)
 ```
 
-Outputs land in `docs/2d/{floor_plans,elevations,pillar_elevations,pillar_sections,roof}/`.
+That single wrapper calls `npm run dump-svgs` inside `editor/` (auto-installs deps on first run). Optional flags:
 
-The single call `generate_roof_sections_svg()` (invoked as step 3 of `regenerate_combined_svgs.py`) produces the full roof package in one shot: the master `roof_plan.svg`, all 13 per-panel SVGs cropped from it, and the `roof_panels.json` manifest.
+```bash
+./scripts/regen_svgs.sh --in path/to/other_config.json --out /tmp/out
+```
+
+Outputs written under `<out>/2d/`:
+
+| Folder | Files | What |
+| --- | --- | --- |
+| `floor_plans/` | 5 | 4 per-floor + 1 combined |
+| `elevations/` | 5 | 4 per-view + 1 combined |
+| `pillar_elevations/` | 4 | Front/back/left/right structural elevations |
+| `pillar_sections/` | 6 | 3 internal row + 3 internal column cross-sections |
+| `roof/` | 15 | Master `roof_plan.svg` + 13 per-panel SVGs + `roof_panels.json` manifest |
+
+The original Python generators still live under `archive/` for the parity harness's use; they're deprecated for day-to-day work but remain callable if you ever need to regenerate the golden reference.
 
 ### 3D outputs (require Blender)
 
@@ -245,22 +264,29 @@ The editor's TypeScript port of `svg_2d.py` is verified byte-identical against t
 
 ```bash
 cd editor
-npm run parity-all              # runs all 4 harnesses
+npm run parity-all              # runs all 5 harnesses
 # or individually:
 npm run parity-primitives       # 34 shape / dimension / expand checks
 npm run parity-floorplans       # 3 whole-SVG byte diffs
 npm run parity-elevations       # 5 whole-SVG byte diffs
 npm run parity-roof             # 15 roof output byte diffs
+npm run parity-pillars          # 10 pillar output byte diffs (4 elevations + 6 sections)
 ```
 
-The harness invokes `python3` under the hood and compares its output character-by-character. If Python and TS drift, the harness prints the exact character index at which they diverge.
+The whole-SVG harnesses compare TS output against the checked-in reference files in `docs/2d/`. If you ever change `svg2d/` and want to regenerate the Python-side reference first, re-run the archived generators:
+
+```bash
+python3 archive/regenerate_combined_svgs.py    # floor plans + elevations + roof
+python3 archive/generate_pillar_elevations.py  # 4 elevations + N sections
+```
+
+The primitives harness spawns `python3` inline and diffs the results character-by-character. If Python and TS ever drift, the harness prints the exact character index of divergence.
 
 ### Editor build
 
 ```bash
 cd editor
-npm run build                   # → ../docs/editor/ + copies house_config.json
-                                #   to ../docs/house_config.json
+npm run build                   # → ../docs/editor/
 ```
 
 Vite outputs a hashed JS/CSS pair under `docs/editor/assets/`, so cache-busting is automatic on the CDN.

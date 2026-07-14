@@ -40,6 +40,25 @@ exec(config_code, _ns)
 house_config = _ns['HOUSE_CONFIG']
 
 print("Generating pillar elevations...")
-generate_all_pillar_elevations(house_config, output_dir='docs')
 
-print("\n✓ Done! Check docs folder for pillar_elevation_*.svg files")
+# The Python generator emits every file into a single directory. Since
+# the docs reorg split them across docs/2d/{pillar_elevations,pillar_sections}/,
+# we render into a scratch dir and then move each file to its final spot.
+import tempfile, shutil
+
+with tempfile.TemporaryDirectory() as tmp:
+    generate_all_pillar_elevations(house_config, output_dir=tmp)
+
+    elevations_dir = os.path.join(_PROJECT_ROOT, 'docs', '2d', 'pillar_elevations')
+    sections_dir = os.path.join(_PROJECT_ROOT, 'docs', '2d', 'pillar_sections')
+    os.makedirs(elevations_dir, exist_ok=True)
+    os.makedirs(sections_dir, exist_ok=True)
+
+    for name in os.listdir(tmp):
+        src = os.path.join(tmp, name)
+        if name.startswith('pillar_elevation_'):
+            shutil.move(src, os.path.join(elevations_dir, name))
+        elif name.startswith('pillar_section_'):
+            shutil.move(src, os.path.join(sections_dir, name))
+
+print("\n✓ Done! Files written to docs/2d/{pillar_elevations,pillar_sections}/")

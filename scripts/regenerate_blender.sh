@@ -1,7 +1,10 @@
 #!/bin/bash
-# Regenerate Blender renders: realistic perspective PNGs + auto-crop.
-# Requires Blender installed at /Applications/Blender.app and python3 + Pillow
-# for the cropping step.
+# Regenerate every Blender-side asset the docs/ viewer consumes:
+#   1. Photoreal perspective PNGs (Cycles renders, 7 views)
+#   2. Auto-cropped versions of the above (Pillow)
+#   3. Interactive GLBs (normal + exploded) via export_to_web()
+# Requires Blender installed at /Applications/Blender.app and python3 +
+# Pillow for the cropping step.
 
 set -e
 
@@ -41,6 +44,6 @@ python3 "$SCRIPT_DIR/generate_3d_models.py"
 echo ""
 echo "=========================================="
 echo "Done."
-echo "  PNGs:  docs/realistic_perspectives/"
-echo "  GLBs:  docs/konkan_house.glb, docs/konkan_house_exploded.glb"
+echo "  PNGs:  docs/3d/perspectives/*.png"
+echo "  GLBs:  docs/3d/konkan_house.glb, docs/3d/konkan_house_exploded.glb"
 echo "=========================================="

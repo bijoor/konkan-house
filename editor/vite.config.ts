@@ -2,35 +2,21 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
-import fs from 'node:fs'
-import type { Plugin } from 'vite'
 
 // Editor is a standalone SPA that ships to `docs/editor/` on the same
 // GitHub Pages site as the model viewer. `base: './'` keeps asset URLs
 // relative so it works under any subpath (both local dev and Pages).
 //
-// The auto-load flow in App.tsx fetches `../house_config.json` on first
-// visit — this maps to `docs/house_config.json` once deployed to Pages.
-// The plugin below copies the canonical config from the repo root into
-// the docs output on every build so the fetch has a target.
-function copyHouseConfig(): Plugin {
-  return {
-    name: 'copy-house-config',
-    apply: 'build',
-    closeBundle() {
-      const src = path.resolve(__dirname, '../house_config.json')
-      const dst = path.resolve(__dirname, '../docs/house_config.json')
-      if (fs.existsSync(src)) {
-        fs.copyFileSync(src, dst)
-        console.log(`  copied ${path.relative(process.cwd(), src)} → ${path.relative(process.cwd(), dst)}`)
-      }
-    },
-  }
-}
+// The auto-load flow in App.tsx fetches `../house_config.json` — from
+// docs/editor/ that resolves to docs/house_config.json, which is the
+// single canonical source of truth for both Python (via a repo-root
+// symlink `house_config.json` → `docs/house_config.json`) and the
+// browser. No build-time copy needed — save anywhere and everything
+// sees it.
 
 export default defineConfig({
   base: './',
-  plugins: [react(), tailwindcss(), copyHouseConfig()],
+  plugins: [react(), tailwindcss()],
   build: {
     outDir: path.resolve(__dirname, '../docs/editor'),
     emptyOutDir: true,

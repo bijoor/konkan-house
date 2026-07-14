@@ -38,3 +38,6 @@ docs/realistic_perspectives/*_test.png
 docs/realistic_perspectives/test_*.png
 docs/3d/perspectives/*_test.png
 docs/3d/perspectives/test_*.png
+
+# Local test-from-scratch backups of docs/
+docs.backup.*/

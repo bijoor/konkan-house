@@ -18,6 +18,8 @@
 //   2d/elevations/elevations_combined.svg
 //   2d/roof/roof_*.svg  (14 files)
 //   2d/roof/roof_panels.json
+//   2d/pillar_elevations/pillar_elevation_{front,back,left,right}.svg
+//   2d/pillar_sections/pillar_section_{row_*,col_*}.svg
 //
 // Prints a one-line summary per file plus a total. Exits non-zero if
 // the input JSON fails Zod validation.
@@ -30,6 +32,7 @@ import { generateCombinedFloorPlans } from "../src/svg2d/floorPlansCombined.ts";
 import { generateAllElevations } from "../src/svg2d/elevationsAll.ts";
 import { generateCombinedElevations } from "../src/svg2d/elevationsCombined.ts";
 import { generateRoofSectionsSvg } from "../src/svg2d/roof/index.ts";
+import { generateAllPillarSvgs } from "../src/svg2d/pillar/index.ts";
 import { validate } from "../src/schema/houseConfig.ts";
 
 const here = path.dirname(url.fileURLToPath(import.meta.url));
@@ -49,9 +52,13 @@ if (!fs.existsSync(inputPath)) {
 const floorPlansDir = path.join(outDir, "2d", "floor_plans");
 const elevationsDir = path.join(outDir, "2d", "elevations");
 const roofDir = path.join(outDir, "2d", "roof");
+const pillarElevationsDir = path.join(outDir, "2d", "pillar_elevations");
+const pillarSectionsDir = path.join(outDir, "2d", "pillar_sections");
 fs.mkdirSync(floorPlansDir, { recursive: true });
 fs.mkdirSync(elevationsDir, { recursive: true });
 fs.mkdirSync(roofDir, { recursive: true });
+fs.mkdirSync(pillarElevationsDir, { recursive: true });
+fs.mkdirSync(pillarSectionsDir, { recursive: true });
 
 const raw = JSON.parse(fs.readFileSync(inputPath, "utf8"));
 // Validate for shape (fail loudly on schema errors) but pass the RAW
@@ -125,6 +132,16 @@ for (const f of ROOF_FILES) {
   const size = fs.statSync(p).size;
   console.log(`  ✓ ${rel.padEnd(50)} ${(size / 1024).toFixed(1).padStart(6)} KB`);
   written++;
+}
+
+// Pillar elevations (4 outer sides) and pillar sections (internal
+// rows + columns) → 2d/pillar_{elevations,sections}/. Filename
+// prefix decides where each one lands.
+for (const { filename, content } of generateAllPillarSvgs(cfg)) {
+  const dir = filename.startsWith("pillar_elevation_")
+    ? pillarElevationsDir
+    : pillarSectionsDir;
+  write(dir, filename, content);
 }
 
 console.log(`\n✓ ${written} files written to ${path.relative(process.cwd(), outDir)}`);

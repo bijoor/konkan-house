@@ -129,8 +129,8 @@
 <rect x="176" y="211.0" width="20" height="20.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
 <rect x="80" y="211.0" width="60" height="30.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
 <rect x="150" y="78.0" width="104" height="90.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
-<rect x="216" y="103.0" width="20" height="20.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
-<rect x="168" y="103.0" width="20" height="20.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
+<rect x="216" y="103.0" width="20" height="30.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
+<rect x="168" y="103.0" width="20" height="30.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
 <rect x="246" y="78.0" width="124" height="90.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
 <rect x="285" y="103.0" width="50" height="40.0" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
 <rect x="362" y="138.0" width="88" height="30.0" fill="#C19A6B" stroke="#000" stroke-width="0.5"/>
@@ -249,28 +249,28 @@
   <text x="110.0" y="269.0" text-anchor="middle" font-size="10" fill="#000">6'</text>
 </g>
 <g class="dimension">
-  <line x1="216" y1="138.0" x2="236" y2="138.0" stroke="#000" stroke-width="0.5"/>
-  <line x1="216" y1="123.0" x2="216" y2="138.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
-  <line x1="236" y1="123.0" x2="236" y2="138.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
-  <polygon points="216,138.0 219,135.0 219,141.0" fill="#000"/>
-  <polygon points="236,138.0 233,135.0 233,141.0" fill="#000"/>
-  <text x="226.0" y="151.0" text-anchor="middle" font-size="10" fill="#000">2'</text>
+  <line x1="216" y1="148.0" x2="236" y2="148.0" stroke="#000" stroke-width="0.5"/>
+  <line x1="216" y1="133.0" x2="216" y2="148.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="236" y1="133.0" x2="236" y2="148.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="216,148.0 219,145.0 219,151.0" fill="#000"/>
+  <polygon points="236,148.0 233,145.0 233,151.0" fill="#000"/>
+  <text x="226.0" y="161.0" text-anchor="middle" font-size="10" fill="#000">2'</text>
 </g>
 <g class="dimension">
-  <line x1="188" y1="138.0" x2="216" y2="138.0" stroke="#000" stroke-width="0.5"/>
-  <line x1="188" y1="123.0" x2="188" y2="138.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
-  <line x1="216" y1="123.0" x2="216" y2="138.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
-  <polygon points="188,138.0 191,135.0 191,141.0" fill="#000"/>
-  <polygon points="216,138.0 213,135.0 213,141.0" fill="#000"/>
-  <text x="202.0" y="151.0" text-anchor="middle" font-size="10" fill="#000">2' 10"</text>
+  <line x1="188" y1="148.0" x2="216" y2="148.0" stroke="#000" stroke-width="0.5"/>
+  <line x1="188" y1="133.0" x2="188" y2="148.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="216" y1="133.0" x2="216" y2="148.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="188,148.0 191,145.0 191,151.0" fill="#000"/>
+  <polygon points="216,148.0 213,145.0 213,151.0" fill="#000"/>
+  <text x="202.0" y="161.0" text-anchor="middle" font-size="10" fill="#000">2' 10"</text>
 </g>
 <g class="dimension">
-  <line x1="168" y1="138.0" x2="188" y2="138.0" stroke="#000" stroke-width="0.5"/>
-  <line x1="168" y1="123.0" x2="168" y2="138.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
-  <line x1="188" y1="123.0" x2="188" y2="138.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
-  <polygon points="168,138.0 171,135.0 171,141.0" fill="#000"/>
-  <polygon points="188,138.0 185,135.0 185,141.0" fill="#000"/>
-  <text x="178.0" y="151.0" text-anchor="middle" font-size="10" fill="#000">2'</text>
+  <line x1="168" y1="148.0" x2="188" y2="148.0" stroke="#000" stroke-width="0.5"/>
+  <line x1="168" y1="133.0" x2="168" y2="148.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <line x1="188" y1="133.0" x2="188" y2="148.0" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>
+  <polygon points="168,148.0 171,145.0 171,151.0" fill="#000"/>
+  <polygon points="188,148.0 185,145.0 185,151.0" fill="#000"/>
+  <text x="178.0" y="161.0" text-anchor="middle" font-size="10" fill="#000">2'</text>
 </g>
 <g class="dimension">
   <line x1="335" y1="158.0" x2="370" y2="158.0" stroke="#000" stroke-width="0.5"/>

@@ -57,7 +57,7 @@
 <line x1="1064.1999999999998" y1="3278.0" x2="1043.1999999999998" y2="3278.0" stroke="#0066cc" stroke-width="0.5"/>
 <line x1="1064.1999999999998" y1="3326" x2="1043.1999999999998" y2="3326" stroke="#0066cc" stroke-width="0.5"/>
 <line x1="1049.1999999999998" y1="3278.0" x2="1049.1999999999998" y2="3326" stroke="#0066cc" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/>
-<text x="1043.1999999999998" y="3302.0" text-anchor="end" font-size="10" fill="#0066cc">6.0"</text>
+<text x="1043.1999999999998" y="3302.0" text-anchor="end" font-size="10" fill="#0066cc">6"</text>
 <polygon points="1336.2,3326.0 1344.2,3326.0 1344.2,3318.0 1343.3,3318.0 1343.3,3325.1 1336.2,3325.1" fill="#7a7a80" stroke="#404040" stroke-width="2" stroke-linejoin="miter"/>
 <text x="1340.24" y="3386" text-anchor="middle" font-size="14" font-weight="600" fill="#222">EAVE L-CHANNEL</text>
 <text x="1340.24" y="3404" text-anchor="middle" font-size="12" fill="#333">1"×1"×3mm on top of Pani Patti</text>

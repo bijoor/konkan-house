@@ -122,7 +122,11 @@ def auto_crop_image(image_path, output_path=None, edge_threshold=150, content_ra
     return True
 
 def main():
-    input_dir = "/Users/ashutoshbijoor/Documents/Personal/Aatley Home Construction/New House/blender/docs/realistic_perspectives"
+    # Resolve docs/3d/perspectives/ relative to this script's parent so
+    # the repo can be moved / re-cloned. Matches render_all_final.py.
+    _script_dir = os.path.dirname(os.path.abspath(__file__))
+    _project_root = os.path.abspath(os.path.join(_script_dir, ".."))
+    input_dir = os.path.join(_project_root, "docs", "3d", "perspectives")
 
     # List of rendered perspective views
     views = [

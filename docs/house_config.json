@@ -26,145 +26,145 @@
         },
         {
           "type": "pillar",
+          "name": "First_Pillar_1",
           "x": 5,
           "y": 4,
           "width": 10,
-          "name": "First_Pillar_1",
           "height": 200
         },
         {
           "type": "pillar",
+          "name": "First_Pillar_2",
           "x": 105,
           "y": 4,
           "width": 10,
-          "name": "First_Pillar_2",
           "height": 200
         },
         {
           "type": "pillar",
+          "name": "First_Pillar_3",
           "x": 165,
           "y": 4,
           "width": 10,
-          "name": "First_Pillar_3",
           "height": 200
         },
         {
           "type": "pillar",
+          "name": "First_Pillar_4",
           "x": 265,
           "y": 4,
           "width": 10,
-          "name": "First_Pillar_4",
           "height": 200
         },
         {
           "type": "pillar",
+          "name": "Second_Pillar_1",
           "x": 4,
           "y": 86.225,
           "length": 12.5,
-          "name": "Second_Pillar_1",
           "height": 200
         },
         {
           "type": "pillar",
+          "name": "Second_Pillar_2",
           "x": 120,
           "y": 86.225,
           "length": 12.5,
-          "name": "Second_Pillar_2",
           "height": 200
         },
         {
           "type": "pillar",
+          "name": "Second_Pillar_3",
           "x": 266,
           "y": 86.225,
           "length": 12.5,
-          "name": "Second_Pillar_3",
           "height": 200
         },
         {
           "type": "pillar",
+          "name": "Center_Pillar_1",
           "x": 6.2,
           "y": 200,
           "width": 12.5,
-          "name": "Center_Pillar_1",
           "height": 200
         },
         {
           "type": "pillar",
+          "name": "Center_Pillar_2",
           "x": 120,
           "y": 197.5,
           "length": 12.5,
-          "name": "Center_Pillar_2",
           "height": 200
         },
         {
           "type": "pillar",
+          "name": "Center_Pillar_3",
           "x": 263.8,
           "y": 200,
           "width": 12.5,
-          "name": "Center_Pillar_3",
           "height": 200
         },
         {
           "type": "pillar",
+          "name": "Fourth_Pillar_1",
           "x": 4,
           "y": 296,
           "length": 12.5,
-          "name": "Fourth_Pillar_1",
           "height": 200
         },
         {
           "type": "pillar",
+          "name": "Staircase_Pillar",
           "x": 44,
           "y": 296,
-          "name": "Staircase_Pillar",
           "height": 200
         },
         {
           "type": "pillar",
+          "name": "Fourth_Pillar_2",
           "x": 180,
           "y": 296,
           "width": 12.5,
-          "name": "Fourth_Pillar_2",
           "height": 200
         },
         {
           "type": "pillar",
+          "name": "Fourth_Pillar_3",
           "x": 266,
           "y": 296,
           "length": 12.5,
-          "name": "Fourth_Pillar_3",
           "height": 200
         },
         {
           "type": "pillar",
+          "name": "Rear_Corner_Pillar_1",
           "x": 4,
           "y": 443.5,
           "length": 12.5,
-          "name": "Rear_Corner_Pillar_1",
           "height": 200
         },
         {
           "type": "pillar",
+          "name": "Rear_Entrance_Pillar_1",
           "x": 93.5,
           "y": 446,
           "width": 10,
-          "name": "Rear_Entrance_Pillar_1",
           "height": 200
         },
         {
           "type": "pillar",
+          "name": "Rear_Entrance_Pillar_2",
           "x": 178.5,
           "y": 446,
           "width": 10,
-          "name": "Rear_Entrance_Pillar_2",
           "height": 200
         },
         {
           "type": "pillar",
+          "name": "Rear_Corner_Pillar_2",
           "x": 266,
           "y": 443.5,
           "length": 12.5,
-          "name": "Rear_Corner_Pillar_2",
           "height": 200
         },
         {
@@ -178,6 +178,7 @@
           "material": "verandah",
           "walls": {
             "north": {
+              "height": 18,
               "openings": [
                 {
                   "kind": "door",
@@ -213,7 +214,6 @@
                 }
               ]
             },
-            "east": {},
             "south": {
               "openings": [
                 {
@@ -225,6 +225,7 @@
                 }
               ]
             },
+            "east": {},
             "west": {
               "openings": [
                 {
@@ -267,6 +268,17 @@
                 }
               ]
             },
+            "south": {
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Workshop_Exit",
+                  "offset": 10.5,
+                  "width": 30,
+                  "height": 65
+                }
+              ]
+            },
             "east": {
               "openings": [
                 {
@@ -276,17 +288,6 @@
                   "width": 50,
                   "height": 40,
                   "sill_height": 25
-                }
-              ]
-            },
-            "south": {
-              "openings": [
-                {
-                  "kind": "door",
-                  "name": "Workshop_Exit",
-                  "offset": 10.5,
-                  "width": 30,
-                  "height": 65
                 }
               ]
             }
@@ -301,6 +302,7 @@
           "length": 104,
           "material": "bathroom",
           "walls": {
+            "south": {},
             "west": {
               "openings": [
                 {
@@ -311,8 +313,7 @@
                   "height": 65
                 }
               ]
-            },
-            "south": {}
+            }
           }
         },
         {
@@ -324,6 +325,33 @@
           "length": 254,
           "material": "living",
           "walls": {
+            "south": {
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "Living_Rear_Window_1",
+                  "offset": 24,
+                  "width": 60,
+                  "height": 40,
+                  "sill_height": 25
+                },
+                {
+                  "kind": "door",
+                  "name": "Living_Kitchen_Exit",
+                  "offset": 98.5,
+                  "width": 75,
+                  "height": 65
+                },
+                {
+                  "kind": "window",
+                  "name": "Living_Rear_Window_2",
+                  "offset": 187.5,
+                  "width": 60,
+                  "height": 40,
+                  "sill_height": 25
+                }
+              ]
+            },
             "east": {
               "openings": [
                 {
@@ -371,33 +399,6 @@
                   "sill_height": 35
                 }
               ]
-            },
-            "south": {
-              "openings": [
-                {
-                  "kind": "window",
-                  "name": "Living_Rear_Window_1",
-                  "offset": 24,
-                  "width": 60,
-                  "height": 40,
-                  "sill_height": 25
-                },
-                {
-                  "kind": "door",
-                  "name": "Living_Kitchen_Exit",
-                  "offset": 98.5,
-                  "width": 75,
-                  "height": 65
-                },
-                {
-                  "kind": "window",
-                  "name": "Living_Rear_Window_2",
-                  "offset": 187.5,
-                  "width": 60,
-                  "height": 40,
-                  "sill_height": 25
-                }
-              ]
             }
           }
         },
@@ -414,11 +415,11 @@
           "type": "staircase",
           "start_x": 8,
           "start_y": 430,
-          "direction": "north",
           "num_steps": 20,
-          "step_width": 30,
-          "step_tread": 10,
           "step_rise": 5,
+          "step_tread": 10,
+          "step_width": 30,
+          "direction": "north",
           "material": "floor"
         }
       ]
@@ -528,7 +529,9 @@
           "height": 30,
           "material": "verandah",
           "walls": {
-            "north": {},
+            "north": {
+              "height": 18
+            },
             "east": {},
             "west": {}
           }
@@ -562,6 +565,18 @@
                 }
               ]
             },
+            "south": {
+              "height": 90,
+              "openings": [
+                {
+                  "kind": "door",
+                  "name": "Bedroom_2_Entry",
+                  "offset": 83.5,
+                  "width": 30,
+                  "height": 65
+                }
+              ]
+            },
             "east": {
               "height": 90
             },
@@ -575,18 +590,6 @@
                   "width": 50,
                   "height": 40,
                   "sill_height": 25
-                }
-              ]
-            },
-            "south": {
-              "height": 90,
-              "openings": [
-                {
-                  "kind": "door",
-                  "name": "Bedroom_2_Entry",
-                  "offset": 83.5,
-                  "width": 30,
-                  "height": 65
                 }
               ]
             }
@@ -621,19 +624,6 @@
                 }
               ]
             },
-            "east": {
-              "height": 90,
-              "openings": [
-                {
-                  "kind": "window",
-                  "name": "Bedroom_3_Window_East",
-                  "offset": 35,
-                  "width": 50,
-                  "height": 40,
-                  "sill_height": 25
-                }
-              ]
-            },
             "south": {
               "height": 90,
               "openings": [
@@ -653,6 +643,19 @@
                   "direction": "north"
                 }
               ]
+            },
+            "east": {
+              "height": 90,
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "Bedroom_3_Window_East",
+                  "offset": 35,
+                  "width": 50,
+                  "height": 40,
+                  "sill_height": 25
+                }
+              ]
             }
           }
         },
@@ -665,30 +668,6 @@
           "length": 104,
           "material": "bathroom",
           "walls": {
-            "west": {
-              "height": 90
-            },
-            "east": {
-              "height": 90,
-              "openings": [
-                {
-                  "kind": "window",
-                  "name": "Bathroom_2_Window_N",
-                  "offset": 18,
-                  "width": 20,
-                  "height": 20,
-                  "sill_height": 45
-                },
-                {
-                  "kind": "window",
-                  "name": "Bathroom_2_Window_S",
-                  "offset": 66,
-                  "width": 20,
-                  "height": 20,
-                  "sill_height": 45
-                }
-              ]
-            },
             "south": {
               "height": 90,
               "openings": [
@@ -700,6 +679,30 @@
                   "height": 65
                 }
               ]
+            },
+            "east": {
+              "height": 90,
+              "openings": [
+                {
+                  "kind": "window",
+                  "name": "Bathroom_2_Window_N",
+                  "offset": 18,
+                  "width": 20,
+                  "height": 30,
+                  "sill_height": 35
+                },
+                {
+                  "kind": "window",
+                  "name": "Bathroom_2_Window_S",
+                  "offset": 66,
+                  "width": 20,
+                  "height": 30,
+                  "sill_height": 35
+                }
+              ]
+            },
+            "west": {
+              "height": 90
             }
           }
         },
@@ -826,10 +829,10 @@
         {
           "type": "hip_roof",
           "ridge_axis": "y",
-          "ridge_h_ft": 7.0,
+          "ridge_h_ft": 7,
           "min_overhang_ft": 2.5,
           "ridge_ventilation": {
-            "extension_ft": 5.0,
+            "extension_ft": 5,
             "end_pani_patti": true,
             "mesh_screen": true
           },
@@ -883,7 +886,7 @@
             "pani_patti": {
               "material": "GI sheet",
               "thickness_mm": 1.2,
-              "height_in": 6.0,
+              "height_in": 6,
               "note": "folded water-protector strip along the eave"
             },
             "eave_L_channel_size_in": [
@@ -918,8 +921,8 @@
             ],
             "supporting_truss_wall_mm": 4,
             "house_footprint_ft": [
-              27.0,
-              45.0
+              27,
+              45
             ],
             "ring_beam": {
               "size_in": [
@@ -927,7 +930,7 @@
                 2
               ],
               "wall_mm": 3,
-              "note": "Perimeter ring beam at wall top \u2014 27\u00d745 rectangle at 1'4\" above eave"
+              "note": "Perimeter ring beam at wall top — 27×45 rectangle at 1'4\" above eave"
             },
             "hip_end_beam": {
               "count_per_end": 3,

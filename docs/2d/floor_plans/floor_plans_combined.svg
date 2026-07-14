@@ -65,13 +65,13 @@
 <rect x="-1" y="117" width="2" height="50" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
 <rect x="187" y="79" width="50" height="2" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
 <rect x="261" y="115" width="2" height="50" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
+<rect x="24" y="441" width="60" height="2" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
+<rect x="187.5" y="441" width="60" height="2" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
 <rect x="261" y="214" width="2" height="20" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
 <rect x="261" y="254" width="2" height="20" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
 <rect x="261" y="310" width="2" height="60" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
 <rect x="-1" y="224" width="2" height="40" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
 <rect x="-1" y="386" width="2" height="40" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
-<rect x="24" y="441" width="60" height="2" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
-<rect x="187.5" y="441" width="60" height="2" fill="#87CEEB" stroke="#000" stroke-width="0.5"/>
 <g class="opening-dimension">
   <line x1="8" y1="-8.0" x2="110" y2="-8.0" stroke="#666" stroke-width="0.3"/>
   <line x1="8" y1="0" x2="8" y2="-8.0" stroke="#666" stroke-width="0.2" stroke-dasharray="1,1"/>
