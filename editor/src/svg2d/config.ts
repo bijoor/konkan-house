@@ -64,7 +64,7 @@ export const DEFAULT_GLOBAL_CONFIG: GlobalConfig = {
     dimension_offset_increment: 20,
     inner_dimension_offset: 15,
     opening_dimension_offset: 8,
-    min_dimension_length: 20,
+    min_dimension_length: 10,
     unit_display: "feet",
     unit_conversion: 10.0,
     precision: 1,

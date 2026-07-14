@@ -54,7 +54,7 @@ GLOBAL_CONFIG = {
         'dimension_offset_increment': 20,   # Additional offset for each stacked dimension level
         'inner_dimension_offset': 15,       # Offset for interior dimensions
         'opening_dimension_offset': 8,      # Offset for door/window dimensions
-        'min_dimension_length': 20,         # Don't dimension edges shorter than this
+        'min_dimension_length': 10,         # Don't dimension edges shorter than this
         'unit_display': 'feet',             # Display unit name
         'unit_conversion': 10.0,            # Conversion factor (10 units = 1 foot)
         'precision': 1,                     # Decimal places for dimensions (used when use_feet_inches is False)

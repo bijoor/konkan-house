@@ -5,10 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Konkan House - 3D Model Viewer</title>
     <style>
-        * {
+        /* Universal box-sizing everywhere (safe), but keep the margin/
+           padding reset OFF the mounted editor panels — the React
+           components inside them assume browser defaults + Tailwind
+           Preflight, and a global reset here beats Tailwind's own
+           element-level rules by cascade order.
+           `:where()` is used inside `:not()` so the whole selector keeps
+           the specificity of `*` (0) rather than inheriting the ID
+           specificity from `#viewer-sidebar` — otherwise this rule
+           would override every class-based padding on the page. */
+        * { box-sizing: border-box; }
+        *:not(:where(#viewer-sidebar, #viewer-sidebar *,
+                     #viewer-property-panel, #viewer-property-panel *)) {
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -18,13 +28,17 @@
             height: 100vh;
             overflow: hidden;
         }
-        header {
+        /* Scoped to the top-of-page header only. Un-scoped rules on the
+           `header` / `h1` tags used to leak into <header>/<h1> elements
+           inside mounted React panels (e.g. PropertyPanel's title bar),
+           painting them white. */
+        body > header {
             background: rgba(255, 255, 255, 0.95);
             padding: 1rem 2rem;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             z-index: 100;
         }
-        h1 {
+        body > header h1 {
             color: #333;
             font-size: 1.5rem;
             font-weight: 600;
@@ -33,6 +47,121 @@
             color: #666;
             font-size: 0.9rem;
             margin-top: 0.25rem;
+        }
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .header-actions {
+            display: flex;
+            gap: 0.4rem;
+            align-items: center;
+            /* Pin to the top-right corner of the header regardless of
+               how the title/subtitle wrap. `body > header` is the
+               positioning context (set below). */
+            position: absolute;
+            top: 50%;
+            right: 1rem;
+            transform: translateY(-50%);
+        }
+        body > header {
+            position: relative;
+        }
+        /* Edit-mode indicator: the button lights up in laterite when
+           edit mode is on, sits neutral when off. Driven by
+           body[data-edit-mode="on"|"off"] which main.ts toggles. */
+        body[data-edit-mode="on"] #btn-edit-toggle {
+            background: #B85028;
+            color: #fff;
+            border-color: #B85028;
+        }
+        body[data-edit-mode="on"] #btn-edit-toggle:hover:not(:disabled) {
+            background: #a04620;
+        }
+        .hdr-btn {
+            background: #f2f2f5;
+            color: #333;
+            border: 1px solid #d0d0d5;
+            border-radius: 8px;
+            padding: 0.35rem 0.6rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        .hdr-btn:hover:not(:disabled) {
+            background: #e6e6ea;
+        }
+        .hdr-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+        .hdr-btn.hdr-btn-primary {
+            background: #B85028;
+            color: #fff;
+            border-color: #B85028;
+        }
+        .hdr-btn.hdr-btn-primary:hover {
+            background: #a04620;
+        }
+        /* ---- Editing layout ---------------------------------------------
+           Default (edit mode OFF): the viewer content area fills the row
+           and both edit panels are hidden. In edit mode wide screens
+           show sidebar | content | property-panel via flex; narrow
+           screens overlay the panels as drawers. -------- */
+        #viewer-container {
+            position: relative;
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: row;
+        }
+        #viewer-content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 0;
+        }
+        /* Wrapper that holds all the .view-container children. It's the
+           positioning context they anchor to (they use position:absolute
+           to overlay each other), and takes the remaining vertical
+           space below the top tab strip. */
+        #viewer-views {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            min-height: 0;
+        }
+        /* Panels are hidden by default and take their intrinsic width
+           from the mounted React component (Sidebar = w-72 / 288 px,
+           PropertyPanel = w-96 / 384 px). We give the wrapper aside
+           nothing but flex-item boilerplate so the editor's own
+           dark theme + typography come through unmodified. */
+        #viewer-sidebar,
+        #viewer-property-panel {
+            display: none;
+            flex: 0 0 auto;
+        }
+        body[data-edit-mode="on"] #viewer-sidebar,
+        body[data-edit-mode="on"] #viewer-property-panel {
+            display: flex;
+        }
+        /* Below 900 px: drawers overlay the viewer instead of docking. */
+        @media (max-width: 900px) {
+            body[data-edit-mode="on"] #viewer-sidebar,
+            body[data-edit-mode="on"] #viewer-property-panel {
+                position: absolute;
+                top: 0;
+                height: 100%;
+                z-index: 60;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            }
+            body[data-edit-mode="on"] #viewer-sidebar { left: 0; }
+            body[data-edit-mode="on"] #viewer-property-panel { right: 0; }
         }
         #viewer-container {
             flex: 1;
@@ -58,7 +187,12 @@
             align-items: center;
             z-index: 10;
         }
-        button {
+        /* Legacy global button style — originally targeted the
+           bottom "Top View / Front View / Reset" controls of the
+           old <model-viewer>. Now scoped to .viewer-btn so it stops
+           hitting every React-rendered button inside the mounted
+           editor panels (which have their own Tailwind styling). */
+        .viewer-btn {
             background: #667eea;
             color: white;
             border: none;
@@ -69,7 +203,7 @@
             font-weight: 500;
             transition: all 0.3s ease;
         }
-        button:hover {
+        .viewer-btn:hover {
             background: #5568d3;
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
@@ -526,13 +660,13 @@
            bar. Frees up ~50 px of vertical space and keeps the top strip
            to just the title. */
         @media (min-width: 641px) {
-            header {
-                padding: 0.5rem 1rem 0.5rem 76px;   /* 60 sidebar + 16 gap */
+            body > header {
+                padding: 0.5rem 1rem;
                 display: flex;
                 align-items: center;
                 gap: 1rem;
             }
-            header h1 {
+            body > header h1 {
                 font-size: 1.15rem;
                 margin: 0;
             }
@@ -541,42 +675,43 @@
                 margin: 0;
                 color: #666;
             }
+            /* Desktop tab strip: horizontal row docked at the top of the
+               view panel. Sits INSIDE #viewer-content-area, so it doesn't
+               overlap the edit-mode sidebar. Icons + labels shown. */
             .tabs {
-                position: fixed;
-                top: 0; bottom: 0; left: 0;
-                width: 60px;
-                flex-direction: column;
+                flex: 0 0 auto;
+                display: flex;
+                flex-direction: row;
                 justify-content: flex-start;
-                margin: 0 !important;
+                gap: 0.25rem;
+                margin: 0;
+                padding: 0.25rem 0.5rem;
+                background: rgba(255, 255, 255, 0.95);
                 border-radius: 0;
-                border-right: 1px solid rgba(0,0,0,0.08);
-                box-shadow: 2px 0 8px rgba(0,0,0,0.05);
-                padding: 0.5rem 0;
-                gap: 0.1rem;
-                z-index: 90;
-                overflow-y: auto;
+                border-bottom: 1px solid rgba(0,0,0,0.08);
+                box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+                overflow-x: auto;
                 scrollbar-width: none;
+                z-index: 10;
             }
             .tabs::-webkit-scrollbar { display: none; }
             .tab {
-                padding: 0.75rem 0;
-                width: 100%;
-                text-align: center;
-                font-size: 1.4rem;
-                border-bottom: none;
-                border-left: 3px solid transparent;
-                border-radius: 0;
+                flex: 0 0 auto;
+                display: inline-flex;
+                align-items: center;
+                gap: 0.35rem;
+                padding: 0.5rem 0.85rem;
+                font-size: 0.9rem;
+                border-radius: 6px;
+                border-bottom: 3px solid transparent;
+                border-left: none;
             }
             .tab.active {
-                border-bottom-color: transparent;
-                border-left-color: #667eea;
+                border-bottom-color: #667eea;
+                border-left-color: transparent;
             }
             .tab-label {
-                display: none;   /* icon-only sidebar; tooltip via title=... */
-            }
-            /* Shift the main content past the sidebar. */
-            #viewer-container {
-                margin-left: 60px;
+                display: inline;
             }
         }
 
@@ -735,21 +870,72 @@
                 width: 34px; height: 34px; font-size: 1rem;
             }
         }
+
+        /* Defensive rules for the mounted editor panels. With the
+           universal reset above now scoped to skip these subtrees,
+           the mounted React components render with browser defaults
+           + Tailwind Preflight, matching the standalone editor.
+           Only two things still need explicit help:
+             - fieldset needs min-width:0 so wide inputs inside a
+               <Section> don't force horizontal overflow (Tailwind
+               Preflight doesn't add this)
+             - Tailwind Preflight hides <summary>'s native disclosure
+               triangle but doesn't add a replacement, so add ▸/▾. */
+        #viewer-property-panel fieldset {
+            min-width: 0;
+        }
+        #viewer-sidebar details > summary {
+            list-style: none;
+        }
+        #viewer-sidebar details > summary::-webkit-details-marker {
+            display: none;
+        }
+        #viewer-sidebar details > summary::before {
+            content: "▸ ";
+            color: rgb(100 116 139); /* slate-500 */
+        }
+        #viewer-sidebar details[open] > summary::before {
+            content: "▾ ";
+        }
     </style>
     <!-- TS viewer bootstrap — fetches house_config.json, runs SVG
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-Bhwh7BgH.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-aNM6ODdp.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/viewer-DEUWCn5s.css">
 </head>
 <body>
     <header>
-        <h1>🏠 Konkan House</h1>
-        <div class="subtitle">
-            3D Interactive Model Viewer ·
-            <a href="editor/" style="color: #667eea; text-decoration: none;">✏️ Open editor</a>
+        <div class="header-row">
+            <div>
+                <h1>🏠 Konkan House</h1>
+                <div class="subtitle">3D Interactive Model Viewer</div>
+            </div>
+            <div class="header-actions">
+                <!-- Edit-mode buttons — only meaningful when the sidebar
+                     is visible, but they're always rendered so the
+                     header layout doesn't shift when toggling. -->
+                <button id="btn-undo" class="hdr-btn" title="Undo (⌘Z)" aria-label="Undo">↶</button>
+                <button id="btn-redo" class="hdr-btn" title="Redo (⇧⌘Z)" aria-label="Redo">↷</button>
+                <button id="btn-load" class="hdr-btn hdr-btn-text" title="Load JSON…">📂 Load</button>
+                <button id="btn-save" class="hdr-btn hdr-btn-text" title="Download JSON">💾 Save</button>
+                <button id="btn-edit-toggle" class="hdr-btn hdr-btn-text" title="Toggle edit panels">✏️ Edit</button>
+                <input id="file-input-json" type="file" accept="application/json,.json" hidden />
+            </div>
         </div>
-        <div class="tabs" style="margin-top: 1rem;">
+    </header>
+
+    <div id="viewer-container">
+        <!-- Edit-mode slots: React roots for the editor's Sidebar (left)
+             and PropertyPanel (right). Hidden unless body[data-edit-mode=on]. -->
+        <aside id="viewer-sidebar"></aside>
+        <div id="viewer-content-area">
+        <!-- View tabs: docked at the top of the content area so they
+             don't overlap the edit-mode sidebar. On mobile the same
+             .tabs element is repositioned to the bottom as a footer
+             nav (see the @media (max-width: 640px) block below). -->
+        <nav class="tabs">
             <button class="tab active" onclick="switchView('3d')" title="3D Model">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <!-- isometric cube: laterite top face + outlined side faces -->
@@ -792,10 +978,8 @@
                     <line x1="17" y1="11.5" x2="12" y2="18" stroke="rgba(0,0,0,0.55)" stroke-width="1.2"/>
                 </svg><span class="tab-label"> Roof Details</span>
             </button>
-        </div>
-    </header>
-
-    <div id="viewer-container">
+        </nav>
+        <div id="viewer-views">
         <!-- 3D Model View -->
         <div id="view-3d" class="view-container active">
             <!-- Layer toggles (top-left) — populated by React on load.
@@ -864,6 +1048,9 @@
             </div>
             <p style="color: #666; text-align: center; padding: 2rem;">Loading...</p>
         </div>
+        </div><!-- /viewer-views -->
+        </div><!-- /viewer-content-area -->
+        <aside id="viewer-property-panel"></aside>
     </div>
 
     <script>
@@ -907,9 +1094,14 @@
         }
 
         // Load floor plans dynamically
-        let floorPlansLoaded = false;
+        // Loaded flags live on `window` so the TS bootstrap in main.ts
+        // can reset them to false when the config changes (forcing a
+        // re-fetch that picks up the freshly-regenerated SVGs). A local
+        // `let` would be invisible to main.ts and the loader would
+        // early-return with stale content.
+        window.floorPlansLoaded = false;
         async function loadFloorPlans() {
-            if (floorPlansLoaded) return;
+            if (window.floorPlansLoaded) return;
 
             const grid = document.getElementById('floor-plans-grid');
             const floorPlanFiles = [
@@ -968,13 +1160,13 @@
                 `;
             }
 
-            floorPlansLoaded = true;
+            window.floorPlansLoaded = true;
         }
 
         // Load elevations dynamically
-        let elevationsLoaded = false;
+        window.elevationsLoaded = false;
         async function loadElevations() {
-            if (elevationsLoaded) return;
+            if (window.elevationsLoaded) return;
 
             const grid = document.getElementById('elevations-grid');
             const elevationFiles = [
@@ -993,12 +1185,20 @@
                 filename: `2d/elevations/elevation_${e.name}.svg`,
                 displayName: e.displayName,
             }));
+            // Pillar cards come from a manifest published by the TS
+            // bootstrap after it runs generateAllPillarSvgs — filenames
+            // include row/col section variants that depend on the config.
+            const pillarCards = (window.pillarSvgManifest || []).map((p) => ({
+                filename: p.filename,
+                displayName: p.displayName,
+            }));
             const cards = [
                 ...perView,
                 {
                     filename: '2d/elevations/elevations_combined.svg',
                     displayName: 'All Elevations',
                 },
+                ...pillarCards,
             ];
             for (const c of cards) {
                 try {
@@ -1032,15 +1232,15 @@
                 `;
             }
 
-            elevationsLoaded = true;
+            window.elevationsLoaded = true;
         }
 
         // Load roof panels dynamically from the manifest emitted by the
         // SVG generator (docs/roof_panels.json). One card per panel; SVGs
         // are inlined so lightbox click-through works the same way.
-        let roofPanelsLoaded = false;
+        window.roofPanelsLoaded = false;
         async function loadRoofPanels() {
-            if (roofPanelsLoaded) return;
+            if (window.roofPanelsLoaded) return;
             const grid = document.getElementById('roof-panels-grid');
             grid.innerHTML = '<p style="text-align: center; color: #666;">Loading roof panels…</p>';
             let manifest = [];
@@ -1077,7 +1277,7 @@
                     console.warn('[roof panels]', p.id, e);
                 }
             }
-            roofPanelsLoaded = true;
+            window.roofPanelsLoaded = true;
         }
 
         // Zoom and Pan state for combined views

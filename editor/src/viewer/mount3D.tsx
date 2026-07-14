@@ -19,8 +19,14 @@ import { House3D } from "../three/House3D";
 import { readPlotBounds } from "../three/coords";
 import { expandRoomWalls, type HouseConfig } from "../svg2d/expand";
 import { ViewerLayerPanel } from "./LayerPanel";
+import { useConfigStore } from "../state/configStore";
 
-function ViewerScene({ config }: { config: HouseConfig }) {
+function ViewerScene() {
+  // Subscribe to useConfigStore so property-panel edits re-render the
+  // scene without any external glue. If the store is empty (initial
+  // load), render nothing until the config arrives.
+  const config = useConfigStore((s) => s.config) as HouseConfig | null;
+  if (!config) return null;
   const plot = useMemo(() => readPlotBounds(expandRoomWalls(config)), [config]);
   // Rough bounding sphere: floor plan diagonal + a chunky vertical
   // allowance (the roof reaches ~30-35% of the plot's larger side).
@@ -107,9 +113,9 @@ function ViewerScene({ config }: { config: HouseConfig }) {
   );
 }
 
-export function mountViewer3D(container: HTMLElement, config: HouseConfig): void {
+export function mountViewer3D(container: HTMLElement): void {
   const root = createRoot(container);
-  root.render(<ViewerScene config={config} />);
+  root.render(<ViewerScene />);
 }
 
 // Mount the layer-visibility checkboxes into a separate HTML slot.
