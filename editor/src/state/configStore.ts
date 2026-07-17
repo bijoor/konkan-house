@@ -33,10 +33,14 @@ interface ConfigState {
   setFloorEditor: (idx: number | null) => void;
   updateSite: (patch: Partial<HouseConfig["site"]>) => void;
   updatePlinth: (patch: Partial<HouseConfig["plinth"]>) => void;
-  // Patches the house-level defaults block (floor_height / slab_thickness).
-  // Passing undefined for a field deletes it (so it falls back to the
-  // code globals); passing a number sets it.
-  updateDefaults: (patch: { floor_height?: number | undefined; slab_thickness?: number | undefined }) => void;
+  // Patches the house-level defaults block (floor_height / wall_height
+  // / slab_thickness). Passing undefined for a field deletes it (so it
+  // falls back to the code globals); passing a number sets it.
+  updateDefaults: (patch: {
+    floor_height?: number | undefined;
+    wall_height?: number | undefined;
+    slab_thickness?: number | undefined;
+  }) => void;
   // Patches a floor's top-level fields (name, height, slab_thickness).
   // The `objects` array is edited via updateObject / insertObject etc.
   updateFloor: (floorIdx: number, patch: Partial<HouseConfig["floors"][number]>) => void;

@@ -60,6 +60,10 @@ const floorSlab = z
     y: z.number(),
     width: positive(),
     length: positive(),
+    // Optional per-slab thickness override. Defaults to the floor's
+    // slab_thickness (which itself defaults to house.defaults or the
+    // code global). In project units.
+    thickness: z.number().nonnegative().optional(),
   })
   .strict();
 
@@ -83,7 +87,9 @@ const beam = z
     y: z.number(),
     width: positive(),
     length: positive(),
-    z_offset_ft: z.number().optional(),
+    // Vertical lift above the floor slab, in PROJECT UNITS
+    // (10 units = 1 ft). Was previously z_offset_ft in feet.
+    z_offset: z.number().optional(),
   })
   .strict();
 
@@ -219,6 +225,33 @@ const shedRoof = z
   })
   .catchall(z.unknown());
 
+// v2 roof — unified segment-based type that replaces hip/gable/flat/shed.
+// Schema is permissive; the v2 pipeline (svg2d/roof/v2/) validates
+// segments + slope + endpoint style at derivation time.
+const roofV2 = z
+  .object({
+    type: z.literal("roof"),
+  })
+  .catchall(z.unknown());
+
+// Kitchen platform — a polyline countertop / cooking slab that runs
+// along the base of walls. Path is the wall-side edge; the platform
+// extends `depth` units perpendicular to each segment on the given
+// `side`. Renders as one box per path segment; corners meet at the
+// shared point (no fancy mitering in v1).
+const kitchenPlatform = z
+  .object({
+    type: z.literal("kitchen_platform"),
+    name: z.string().optional(),
+    path: z.array(z.tuple([z.number(), z.number()])).min(2),
+    side: z.enum(["left", "right"]),
+    depth: positive(),           // horizontal extent from path (project units)
+    height: positive(),          // vertical extent above floor slab top (project units)
+    base_z: z.number().optional(),   // override base Z (defaults to floor slab top)
+    material: z.string().optional(),
+  })
+  .strict();
+
 export const object = z.discriminatedUnion("type", [
   floorSlab,
   pillar,
@@ -228,10 +261,12 @@ export const object = z.discriminatedUnion("type", [
   staircase,
   door,
   windowObj,
+  kitchenPlatform,
   hipRoof,
   gableRoof,
   flatRoof,
   shedRoof,
+  roofV2,
 ]);
 export type HouseObject = z.infer<typeof object>;
 
@@ -239,11 +274,15 @@ const floor = z
   .object({
     floor_number: z.number().int().nonnegative(),
     name: z.string(),
-    // Per-floor overrides for the default floor_heights in GlobalConfig.
-    // Height = wall height on that floor in project units (10 units = 1 ft).
-    // Slab thickness = the horizontal slab between this floor and the one
-    // above. Both fall back to GlobalConfig defaults when omitted.
+    // Per-floor overrides for the default heights in GlobalConfig.
+    // In project units (10 units = 1 ft). All three are INDEPENDENT —
+    // no relationship enforced between them:
+    //   height           — floor-to-floor rise (drives roof wallTop-Z stack)
+    //   wall_height      — standing wall height (floor top → ceiling)
+    //   slab_thickness   — RCC deck between this floor and the one above
+    // All fall back to GlobalConfig defaults when omitted.
     height: z.number().positive().optional(),
+    wall_height: z.number().positive().optional(),
     slab_thickness: z.number().nonnegative().optional(),
     objects: z.array(object),
   })
@@ -251,12 +290,12 @@ const floor = z
 export type Floor = z.infer<typeof floor>;
 
 // House-level overrides for the built-in GlobalConfig defaults. Every
-// floor without its own `.height` / `.slab_thickness` falls back to
-// these; if these are absent too, the code defaults in
-// DEFAULT_GLOBAL_CONFIG apply.
+// floor without its own value falls back to these; if these are absent
+// too, the code defaults in DEFAULT_GLOBAL_CONFIG apply.
 const houseDefaults = z
   .object({
     floor_height: z.number().positive().optional(),
+    wall_height: z.number().positive().optional(),
     slab_thickness: z.number().nonnegative().optional(),
   })
   .strict();

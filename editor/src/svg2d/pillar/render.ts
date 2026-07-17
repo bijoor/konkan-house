@@ -65,17 +65,15 @@ export function renderPillarView(
     view_extent = building_length;
   }
 
-  // Python type propagation:
-  //   plinth_height, slab_thickness, p.height   are int
-  //   floor_0_height = GLOBAL_CONFIG.floor_heights[0] = 100.0  is float
-  // → z_floor1_slab_bottom and z_floor1_slab_top become float via
-  // int + float. z_plinth_top / z_floor0_slab_top / z_pillar_start stay
-  // int. Renderer uses these floor1 flags to decide f() vs fFloat().
+  // Z stack per user's directive:
+  //   next-floor Z = current Z + floor_height  (slab NOT added into stack)
+  //   pillars start at the plinth TOP (they pass THROUGH the slab up
+  //   to the ring beam above), matching the 3D scene + main elevation.
   const z_plinth_top = plinth_height;                                 // int
-  const z_floor0_slab_top = plinth_height + slab_thickness;           // int
-  const z_pillar_start = z_floor0_slab_top;                            // int
-  const z_floor1_slab_bottom = z_floor0_slab_top + floor_0_height;    // float (100.0)
-  const z_floor1_slab_top = z_floor1_slab_bottom + slab_thickness;     // float
+  const z_floor0_slab_top = plinth_height + slab_thickness;           // int (visual only)
+  const z_pillar_start = z_plinth_top;                                // pillars from plinth top
+  const z_floor1_slab_bottom = z_plinth_top + floor_0_height;         // float when fh is float
+  const z_floor1_slab_top = z_floor1_slab_bottom + slab_thickness;    // float
 
   const rendered: RenderedPillar[] = [];
   for (const p of options.pillarsToShow) {

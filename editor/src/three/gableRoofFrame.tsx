@@ -91,6 +91,13 @@ function buildGableFrame(
   shellLift: number,
 ): Member[] {
   const members: Member[] = [];
+  // Frame currently only supports ridge_axis='y'. For x-axis gables the
+  // shell still renders (via gableRoof.tsx) but the frame is skipped.
+  // A full x-axis frame builder can follow the same structure with
+  // X and Y swapped throughout — that's a separate follow-up.
+  if (g.ridge_axis !== "y") {
+    return members;
+  }
   const eaveZ = g.eave_z;
   const wallTopZ = eaveZ + (g.wall_top_above_eave ?? 0);
   const ridgeZ = wallTopZ + g.ridge_h;

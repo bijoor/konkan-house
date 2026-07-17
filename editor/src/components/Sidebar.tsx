@@ -18,8 +18,12 @@ const TYPE_ORDER: HouseObject["type"][] = [
   "staircase",
   "door",
   "window",
+  "kitchen_platform",
+  "roof",
   "hip_roof",
   "gable_roof",
+  "flat_roof",
+  "shed_roof",
 ];
 
 const TYPE_LABEL: Record<HouseObject["type"], string> = {
@@ -31,8 +35,12 @@ const TYPE_LABEL: Record<HouseObject["type"], string> = {
   staircase: "Staircases",
   door: "Doors (flat)",
   window: "Windows (flat)",
-  hip_roof: "Hip roofs",
-  gable_roof: "Gable roofs",
+  kitchen_platform: "Kitchen platforms",
+  roof: "Roofs (v2)",
+  hip_roof: "Hip roofs (legacy)",
+  gable_roof: "Gable roofs (legacy)",
+  flat_roof: "Flat roofs (legacy)",
+  shed_roof: "Shed roofs (legacy)",
 };
 
 function objectLabel(obj: HouseObject, index: number): string {

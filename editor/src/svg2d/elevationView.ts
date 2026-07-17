@@ -19,6 +19,8 @@ import { svgDrawDimensionLine } from "./dimensions";
 import { deriveAllHipRoofs } from "./roofGeometry";
 import { deriveAllGableRoofs } from "./roof/gableGeometry";
 import type { HouseConfig } from "./expand";
+import { computeMergedV2Spec } from "./roof/v2/computeFromHouse";
+import { renderV2ToElevation, roofMaxZ } from "./roof/v2/projections";
 
 type Obj = Record<string, unknown>;
 
@@ -148,6 +150,20 @@ export function generateElevationView(
       GC.floor_height ??
       100;
     totalHeight += floorHeight;
+  }
+
+  // v2 unified roofs — extend canvas to include their ridge.
+  let v2Spec: ReturnType<typeof computeMergedV2Spec> | null = null;
+  try {
+    v2Spec = computeMergedV2Spec(houseConfig, { filter: "v2Only" });
+    if (v2Spec.planes.length > 0 || v2Spec.members.length > 0) {
+      totalHeight = Math.max(totalHeight, roofMaxZ(v2Spec) + GC.roof_thickness);
+    } else {
+      v2Spec = null;
+    }
+  } catch (e) {
+    console.warn("[elevationView] v2 roof compute failed:", e);
+    v2Spec = null;
   }
 
   // Check for roof
@@ -356,15 +372,22 @@ export function generateElevationView(
 
     const objectsToDraw: DrawObject[] = [];
 
-    const slabZ = currentZ;
-    const wallZ = currentZ + slabThickness;
-    const wallTop = wallZ + floorHeight;
+    // floor_height is now the total floor-to-floor rise (includes
+    // slab + walls + top beam per user's model). The vertical stack
+    // is plinth + Σ floor_heights only — slab_thickness is NOT
+    // summed into currentZ. Slab still lives at the bottom of the
+    // floor band as a mesh; walls sit above it.
+    const slabZ = currentZ;                       // floor's start Z (includes slab)
+    const wallZ = currentZ + slabThickness;       // top of slab / bottom of walls
+    const wallTop = currentZ + floorHeight;       // top of floor = next floor's start
 
     const floorName = floorConfig.name ?? `Floor ${floorNum}`;
     floorLevels.push({
       name: floorName,
-      z_bottom: wallZ,
-      z_top: wallTop,
+      // Dimension bar spans the FULL floor-to-floor extent so the
+      // label matches the config's `floor_height` value.
+      z_bottom: slabZ,
+      z_top: slabZ + floorHeight,
       height: floorHeight,
     });
 
@@ -429,8 +452,8 @@ export function generateElevationView(
           } else continue;
         } else continue;
 
-        const beamZ =
-          slabZ + Number(obj.z_offset_ft ?? 0.0) * 10.0;
+        // z_offset is in project units (10 = 1 ft) — no conversion.
+        const beamZ = slabZ + Number(obj.z_offset ?? 0.0);
 
         objectsToDraw.push({
           type: "beam",
@@ -691,7 +714,11 @@ export function generateElevationView(
           x: pillarX,
           width: pillarVisibleWidth,
           height: pillarHeight,
-          z: wallZ,
+          // Pillars sit at the FLOOR'S START (slabZ = top of previous
+          // floor / plinth), not at wallZ (top of slab). Matches the
+          // 3D scene where pillars rise from plinth top through the
+          // slab up to the ring beam.
+          z: slabZ,
           openings: [],
           coord_key: null,
         });
@@ -710,56 +737,64 @@ export function generateElevationView(
     // Roof collection
     for (const obj of (floorConfig.objects ?? []) as Obj[]) {
       if (obj.type === "gable_roof") {
-        // Phase 2 gable elevations — reads the derived geometry
-        // (eave_x_west/east, eave_y_north/south, eave_z, ridge_y_start/end,
-        // ridge_h, wall_top_above_eave) that deriveAllGableRoofs
-        // populated above. Only ridge_axis='y' supported.
+        // Both ridge_axis='y' (ridge runs N-S) and 'x' (ridge runs E-W)
+        // supported. For y: triangle in front/back, rectangle in left/
+        // right. For x: triangle in left/right, rectangle in front/back.
+        const ridgeAxisG = (obj.ridge_axis as string | undefined) ?? "y";
+        const isY = ridgeAxisG === "y";
         const ex_w = obj.eave_x_west as number | undefined;
         const ex_e = obj.eave_x_east as number | undefined;
         const ey_n = obj.eave_y_north as number | undefined;
         const ey_s = obj.eave_y_south as number | undefined;
         const ez = obj.eave_z as number | undefined;
-        const rys = obj.ridge_y_start as number | undefined;
-        const rye = obj.ridge_y_end as number | undefined;
         const rh = obj.ridge_h as number | undefined;
         const wte = (obj.wall_top_above_eave as number | undefined) ?? 0;
+        // Ridge endpoints — pick the meaningful pair per axis.
+        const rStart = isY
+          ? (obj.ridge_y_start as number | undefined)
+          : (obj.ridge_x_start as number | undefined);
+        const rEnd = isY
+          ? (obj.ridge_y_end as number | undefined)
+          : (obj.ridge_x_end as number | undefined);
         if (
-          ex_w !== undefined && ex_e !== undefined && ez !== undefined &&
-          rys !== undefined && rye !== undefined && rh !== undefined
+          ex_w !== undefined && ex_e !== undefined &&
+          ey_n !== undefined && ey_s !== undefined &&
+          ez !== undefined && rh !== undefined &&
+          rStart !== undefined && rEnd !== undefined
         ) {
           const roofThickVal = GC.roof_thickness;
-          const ridgeX = (ex_w + ex_e) / 2;
           const ridgeZ = ez + wte + rh;
+          // In y-axis mode: triangle base spans X (west→east); ridge
+          // apex is at midX. Side (left/right) view sees the rectangle
+          // between ridge_y_start and ridge_y_end.
+          // In x-axis mode: swap — triangle base spans Y (north→south);
+          // apex at midY. Rectangle between ridge_x_start / ridge_x_end
+          // is seen in front/back.
+          const triangleViews: string[] = isY ? ["front", "back"] : ["left", "right"];
+          const apexAlongCoord = isY ? (ex_w + ex_e) / 2 : (ey_n + ey_s) / 2;
+          const triBaseLo = isY ? ex_w : ey_n;
+          const triBaseHi = isY ? ex_e : ey_s;
 
-          if (viewType === "front" || viewType === "back") {
-            // Triangle silhouette from the gable end: apex at ridge,
-            // base along the eave line between the two X-eaves.
+          if (triangleViews.includes(viewType)) {
             const apexSvgY = zToY(ridgeZ + roofThickVal);
             const eaveSvgY = zToY(ez);
-            const apexSvgX = worldToSvgX(ridgeX, 0);
-            const westSvgX = worldToSvgX(ex_w, 0);
-            const eastSvgX = worldToSvgX(ex_e, 0);
-            roofSvg += `<line x1="${fFloat(westSvgX)}" y1="${fFloat(eaveSvgY)}" x2="${fFloat(apexSvgX)}" y2="${fFloat(apexSvgY)}" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
-            roofSvg += `<line x1="${fFloat(apexSvgX)}" y1="${fFloat(apexSvgY)}" x2="${fFloat(eastSvgX)}" y2="${fFloat(eaveSvgY)}" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
+            const apexSvgX = worldToSvgX(apexAlongCoord, 0);
+            const loSvgX = worldToSvgX(triBaseLo, 0);
+            const hiSvgX = worldToSvgX(triBaseHi, 0);
+            roofSvg += `<line x1="${fFloat(loSvgX)}" y1="${fFloat(eaveSvgY)}" x2="${fFloat(apexSvgX)}" y2="${fFloat(apexSvgY)}" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
+            roofSvg += `<line x1="${fFloat(apexSvgX)}" y1="${fFloat(apexSvgY)}" x2="${fFloat(hiSvgX)}" y2="${fFloat(eaveSvgY)}" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
           } else {
-            // Side view (left/right): a rectangle from ridge_y_start to
-            // ridge_y_end horizontally, and from ridge_z down to eave_z
-            // vertically. Plus a ridge cap line on top.
             const ridgeTopY = zToY(ridgeZ + roofThickVal);
             const ridgeBottomY = zToY(ridgeZ);
             const eaveSvgY = zToY(ez);
-            const startSvgX = worldToSvgX(rys, 0);
-            const endSvgX = worldToSvgX(rye, 0);
+            const startSvgX = worldToSvgX(rStart, 0);
+            const endSvgX = worldToSvgX(rEnd, 0);
             const rectX = Math.min(startSvgX, endSvgX);
             const rectW = Math.abs(endSvgX - startSvgX);
             const rectH = eaveSvgY - ridgeBottomY;
             roofSvg += `<rect x="${fFloat(rectX)}" y="${fFloat(ridgeBottomY)}" width="${fFloat(rectW)}" height="${fFloat(rectH)}" fill="none" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
             roofSvg += `<line x1="${fFloat(startSvgX)}" y1="${fFloat(ridgeTopY)}" x2="${fFloat(endSvgX)}" y2="${fFloat(ridgeTopY)}" stroke="#8B4513" stroke-width="${f(roofThickVal)}"/>\n`;
           }
-          // Suppress the unused-var warning for ey_n / ey_s — they might
-          // matter for ridge_axis='x' later; kept here for symmetry.
-          void ey_n;
-          void ey_s;
         }
       }
       if (obj.type === "hip_roof") {
@@ -1040,6 +1075,19 @@ export function generateElevationView(
   }
 
   svg += roofSvg;
+
+  // v2 roofs — rendered via the shared projection helper. Injected
+  // AFTER legacy roofSvg so they draw on top (they're the current
+  // architecture; legacy roofs on the same house are the fallback).
+  if (v2Spec) {
+    svg += renderV2ToElevation(
+      v2Spec,
+      viewType as "front" | "back" | "left" | "right",
+      worldToSvgX,
+      zToY,
+      GC.roof_thickness,
+    );
+  }
 
   // Dimensions
   if (dimCfg.show_outer_dimensions) {

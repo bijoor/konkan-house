@@ -17,15 +17,18 @@ export interface GableRoofGeom {
   eave_y_north: number;
   eave_y_south: number;
   eave_z: number;
-  // Ridge runs from ridge_y_start to ridge_y_end along Y. For a plain
-  // gable both endpoints sit at the walls (or extended slightly if a
-  // gable overhang is configured).
+  // Ridge endpoints. For ridge_axis='y' the ridge runs along Y so
+  // ridge_y_start/end are the meaningful pair; ridge_x_start/end
+  // equal each other at the centre.
+  // For ridge_axis='x' the roles swap.
   ridge_y_start: number;
   ridge_y_end: number;
+  ridge_x_start: number;
+  ridge_x_end: number;
   ridge_h: number;               // above wall_top_z
-  ridge_axis: "y";
+  ridge_axis: "y" | "x";
   wall_top_above_eave: number;   // eaveDrop
-  slope_angle_ew: number;        // degrees
+  slope_angle_ew: number;        // slope angle (perpendicular-to-ridge)
 }
 
 export interface GableRoofConfig {
@@ -59,12 +62,18 @@ export function deriveGableRoofGeometry(
   roofX: number = 0,
   roofY: number = 0,
 ): GableRoofGeom {
-  if ((hipRoof.ridge_axis ?? "y") !== "y") {
+  const ridgeAxis = (hipRoof.ridge_axis ?? "y") as "y" | "x";
+  if (ridgeAxis !== "y" && ridgeAxis !== "x") {
     throw new Error(
-      "deriveGableRoofGeometry currently supports ridge_axis='y' only",
+      `gable_roof.ridge_axis must be 'y' or 'x', got '${ridgeAxis}'`,
     );
   }
-  // Overhangs — prefer unit-form; fall back to _ft.
+  const isY = ridgeAxis === "y";
+  // "Cross" = perpendicular to ridge (the slope span). "Along" = with
+  // the ridge (the length the ridge runs).
+  const crossLen = isY ? houseTransU : houseLongU;
+  const alongLen = isY ? houseLongU : houseTransU;
+
   const minOv = Number(
     hipRoof.min_overhang ??
       (hipRoof.min_overhang_ft !== undefined ? Number(hipRoof.min_overhang_ft) * 10.0 : 0),
@@ -93,37 +102,50 @@ export function deriveGableRoofGeometry(
     if (!(mp > 0 && mp < 90)) {
       throw new Error("gable_roof.min_pitch_deg must be in (0, 90)");
     }
-    ridgeH = (houseTransU / 2.0) * Math.tan((mp * Math.PI) / 180);
+    ridgeH = (crossLen / 2.0) * Math.tan((mp * Math.PI) / 180);
   } else {
     throw new Error(
       "gable_roof must specify one of 'ridge_h' / 'ridge_h_ft' / 'min_pitch_deg'",
     );
   }
 
-  // Eave drop from the outward overhang: at the outermost point of the
-  // overhang the roof surface is below the wall top by
-  //   eaveDrop = overhang * (ridgeH / (houseTrans/2))
-  // Same formula as hip's E-W slope.
-  const halfTrans = houseTransU / 2.0;
-  const eaveDrop = (minOv * ridgeH) / halfTrans;
+  // Eave drop from the outward overhang (measured on the cross axis).
+  const halfCross = crossLen / 2.0;
+  const eaveDrop = (minOv * ridgeH) / halfCross;
   const eaveZ = wallTopZ - eaveDrop;
+  const pitchCross = (Math.atan(ridgeH / halfCross) * 180) / Math.PI;
 
-  const pitchEw = (Math.atan(ridgeH / halfTrans) * 180) / Math.PI;
+  // Overhangs: minOv on the two cross-eaves, gableOv on the two
+  // along-ends. Map to N/S/E/W based on ridge_axis.
+  const oxWest = isY ? minOv : gableOv;
+  const oxEast = isY ? minOv : gableOv;
+  const oyNorth = isY ? gableOv : minOv;
+  const oySouth = isY ? gableOv : minOv;
+
+  // Ridge endpoints in world coords. Along axis (Y for ridge='y',
+  // X for ridge='x') gets the two endpoints; the other axis gets a
+  // constant equal to the centre.
+  const centreY = roofY + houseLongU / 2;
+  const centreX = roofX + houseTransU / 2;
+  const ridge_y_start = isY ? roofY - gableOv : centreY;
+  const ridge_y_end = isY ? roofY + houseLongU + gableOv : centreY;
+  const ridge_x_start = isY ? centreX : roofX - gableOv;
+  const ridge_x_end = isY ? centreX : roofX + houseTransU + gableOv;
 
   return {
-    // Shifted by (roofX, roofY) so multiple positioned gables land at
-    // the correct absolute world coordinates.
-    eave_x_west: roofX + 0 - minOv,
-    eave_x_east: roofX + houseTransU + minOv,
-    eave_y_north: roofY + 0 - gableOv,
-    eave_y_south: roofY + houseLongU + gableOv,
+    eave_x_west: roofX - oxWest,
+    eave_x_east: roofX + houseTransU + oxEast,
+    eave_y_north: roofY - oyNorth,
+    eave_y_south: roofY + houseLongU + oySouth,
     eave_z: eaveZ,
-    ridge_y_start: roofY + 0 - gableOv,
-    ridge_y_end: roofY + houseLongU + gableOv,
+    ridge_y_start,
+    ridge_y_end,
+    ridge_x_start,
+    ridge_x_end,
     ridge_h: ridgeH,
-    ridge_axis: "y",
+    ridge_axis: ridgeAxis,
     wall_top_above_eave: eaveDrop,
-    slope_angle_ew: pitchEw,
+    slope_angle_ew: pitchCross,
   };
 }
 

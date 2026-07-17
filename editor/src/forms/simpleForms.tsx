@@ -51,13 +51,23 @@ export function BeamForm({
           <NumberField label="Width" value={obj.width} onCommit={(v) => v !== undefined && patch({ width: v })} min={0.01} />
           <NumberField label="Length" value={obj.length} onCommit={(v) => v !== undefined && patch({ length: v })} min={0.01} />
         </div>
-        <NumberField
-          label="Z offset (ft)"
-          value={obj.z_offset_ft}
-          onCommit={(v) => patch({ z_offset_ft: v })}
-          allowEmpty
-          hint="vertical lift above the floor slab, in feet"
-        />
+        <div className="grid grid-cols-2 gap-x-2">
+          <NumberField
+            label="Thickness"
+            value={obj.height}
+            onCommit={(v) => patch({ height: v })}
+            allowEmpty
+            min={0.01}
+            hint="defaults to floor's slab thickness"
+          />
+          <NumberField
+            label="Z offset"
+            value={obj.z_offset}
+            onCommit={(v) => patch({ z_offset: v })}
+            allowEmpty
+            hint="lift above floor start (10u = 1ft)"
+          />
+        </div>
       </Section>
     </div>
   );
@@ -80,6 +90,14 @@ export function FloorSlabForm({
           <NumberField label="Width" value={obj.width} onCommit={(v) => v !== undefined && patch({ width: v })} min={0.01} />
           <NumberField label="Length" value={obj.length} onCommit={(v) => v !== undefined && patch({ length: v })} min={0.01} />
         </div>
+        <NumberField
+          label="Thickness"
+          value={obj.thickness}
+          onCommit={(v) => patch({ thickness: v })}
+          allowEmpty
+          min={0}
+          hint="defaults to floor's slab thickness"
+        />
       </Section>
     </div>
   );

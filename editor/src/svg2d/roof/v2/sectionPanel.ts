@@ -1,0 +1,204 @@
+// V2 section panel — vertical cross-section through the RoofSpec.
+//
+// A section cut is a vertical plane parallel to one horizontal axis.
+// Cut axis = "y" (a section A-A parallel to the Y axis, cutting at
+// X = cutCoord) or "x" (a section B-B parallel to X, cutting at
+// Y = cutCoord). The panel draws the intersection LINES of each
+// roof plane with the cut plane, projected onto the section view.
+//
+// Section view axes:
+//   horizontal = the axis PARALLEL to the cut plane (i.e. NOT the
+//                axis whose coord is fixed). "y" cut → horizontal is Y.
+//   vertical   = Z (world height).
+
+import type { Point3D, RoofPlane, RoofSpec } from "./model";
+
+export type SectionAxis = "x" | "y";   // the axis whose coord is FIXED
+
+// Intersect one polygon with a vertical plane (axis-aligned). Returns
+// the set of line segments produced by the intersection (each is a
+// pair of 3D points that lie ON the polygon's plane AND on the cut
+// plane). For a convex planar polygon this yields 0 or 1 segments.
+function planePolygonSectionSegments(
+  poly: Point3D[],
+  cutAxis: SectionAxis,
+  cutCoord: number,
+): Array<[Point3D, Point3D]> {
+  if (poly.length < 3) return [];
+  const idx = cutAxis === "x" ? 0 : 1;
+  const hits: Point3D[] = [];
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i];
+    const b = poly[(i + 1) % poly.length];
+    const da = a[idx] - cutCoord;
+    const db = b[idx] - cutCoord;
+    if (Math.abs(da) < 1e-6) {
+      hits.push([a[0], a[1], a[2]]);
+      continue;
+    }
+    // Sign-change edge — interpolate intersection.
+    if ((da > 0 && db < 0) || (da < 0 && db > 0)) {
+      const t = da / (da - db);
+      const p: Point3D = [
+        a[0] + t * (b[0] - a[0]),
+        a[1] + t * (b[1] - a[1]),
+        a[2] + t * (b[2] - a[2]),
+      ];
+      hits.push(p);
+    }
+  }
+  // Deduplicate near-identical points that come from vertices exactly
+  // on the cut plane (touched twice by adjacent edges).
+  const dedup: Point3D[] = [];
+  for (const h of hits) {
+    const last = dedup[dedup.length - 1];
+    if (last
+      && Math.abs(last[0] - h[0]) < 1e-3
+      && Math.abs(last[1] - h[1]) < 1e-3
+      && Math.abs(last[2] - h[2]) < 1e-3) continue;
+    dedup.push(h);
+  }
+  if (dedup.length < 2) return [];
+  // For a convex polygon, exactly 2 hits form the section segment.
+  // For higher counts (rare), pair consecutive.
+  const segs: Array<[Point3D, Point3D]> = [];
+  for (let i = 0; i + 1 < dedup.length; i += 2) {
+    segs.push([dedup[i], dedup[i + 1]]);
+  }
+  return segs;
+}
+
+interface SectionOpts {
+  title?: string;
+  cutAxis: SectionAxis;
+  cutCoord: number;
+  wallTopZ?: number;
+  groundZ?: number;
+}
+
+const PLANE_STROKES: Record<string, string> = {
+  slope: "#8B4513",
+  hip_face: "#8B4513",
+  gable_wall: "#8a6a3f",
+  flat_slab: "#5a5854",
+  parapet: "#5a5854",
+};
+
+export function v2SectionPanel(
+  x0: number,
+  y0: number,
+  width: number,
+  height: number,
+  spec: RoofSpec,
+  opts: SectionOpts,
+): string {
+  const titleH = opts.title ? 40 : 0;
+  const innerPad = 20;
+  const drawW = width - 2 * innerPad;
+  const drawH = height - titleH - 2 * innerPad;
+
+  // Collect section segments across all roof planes.
+  const allSegs: Array<{ role: RoofPlane["role"]; seg: [Point3D, Point3D] }> = [];
+  for (const p of spec.planes) {
+    if (p.role === "parapet") continue;
+    for (const s of planePolygonSectionSegments(p.vertices, opts.cutAxis, opts.cutCoord)) {
+      allSegs.push({ role: p.role, seg: s });
+    }
+  }
+
+  // Compute 2D bounds. Horizontal axis is the OTHER axis (not the cut).
+  const horIdx = opts.cutAxis === "x" ? 1 : 0;
+  let minH = Infinity, maxH = -Infinity;
+  let minZ = Infinity, maxZ = -Infinity;
+  for (const { seg: [a, b] } of allSegs) {
+    for (const p of [a, b]) {
+      if (p[horIdx] < minH) minH = p[horIdx];
+      if (p[horIdx] > maxH) maxH = p[horIdx];
+      if (p[2] < minZ) minZ = p[2];
+      if (p[2] > maxZ) maxZ = p[2];
+    }
+  }
+  if (opts.groundZ != null && opts.groundZ < minZ) minZ = opts.groundZ;
+  if (opts.wallTopZ != null) {
+    if (opts.wallTopZ < minZ) minZ = opts.wallTopZ;
+    if (opts.wallTopZ > maxZ) maxZ = opts.wallTopZ;
+  }
+  if (!isFinite(minH)) return "";
+  const horSpan = maxH - minH || 1;
+  const zSpan = maxZ - minZ || 1;
+  const scale = Math.min(drawW / horSpan, drawH / zSpan);
+  const offX = x0 + innerPad + (drawW - horSpan * scale) / 2 - minH * scale;
+  const offY = y0 + titleH + innerPad + (drawH - zSpan * scale) / 2 + maxZ * scale;
+  const toSvg = (p: Point3D): [number, number] => [
+    offX + p[horIdx] * scale,
+    offY - p[2] * scale,
+  ];
+
+  let svg = `<g id="v2-section-${opts.cutAxis}">\n`;
+  svg += `<rect x="${x0}" y="${y0}" width="${width}" height="${height}" fill="#fdfcfa" stroke="#333" stroke-width="1"/>\n`;
+  if (opts.title) {
+    svg += `<text x="${x0 + width / 2}" y="${y0 + 24}" text-anchor="middle" font-size="14" font-weight="bold" fill="#222">${opts.title}</text>\n`;
+  }
+
+  // Optional wall-top reference line.
+  if (opts.wallTopZ != null) {
+    const [x1, y1] = toSvg([minH, minH, opts.wallTopZ] as Point3D);
+    const [x2, y2] = toSvg([maxH, maxH, opts.wallTopZ] as Point3D);
+    svg += `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="#999" stroke-width="0.5" stroke-dasharray="4,2"/>\n`;
+  }
+
+  // Section segments (plane cuts).
+  for (const { role, seg } of allSegs) {
+    const [a, b] = seg;
+    const [x1, y1] = toSvg(a);
+    const [x2, y2] = toSvg(b);
+    const stroke = PLANE_STROKES[role] ?? "#8B4513";
+    svg += `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${stroke}" stroke-width="2"/>\n`;
+  }
+
+  // Framing member CROSSINGS at the cut plane — draw small squares
+  // (member cross-sections) wherever a rafter/purlin/ridge/hip/valley/
+  // ring-beam crosses the cut plane. For linear members, "crosses"
+  // means the fixed-axis coord of one endpoint is on the opposite
+  // side of cutCoord from the other.
+  const memberIdx = opts.cutAxis === "x" ? 0 : 1;
+  for (const m of spec.members) {
+    if (!MEMBER_MARK_ROLES.has(m.role)) continue;
+    const c1 = m.start[memberIdx];
+    const c2 = m.end[memberIdx];
+    const d1 = c1 - opts.cutCoord;
+    const d2 = c2 - opts.cutCoord;
+    // Same-side (both sign) → member doesn't cross the plane. Skip.
+    if (Math.sign(d1) === Math.sign(d2) && Math.abs(d1) > 1e-6 && Math.abs(d2) > 1e-6) continue;
+    // Interpolate crossing point.
+    const t = Math.abs(d1) < 1e-6 ? 0
+            : Math.abs(d2) < 1e-6 ? 1
+            : d1 / (d1 - d2);
+    const px: [number, number, number] = [
+      m.start[0] + t * (m.end[0] - m.start[0]),
+      m.start[1] + t * (m.end[1] - m.start[1]),
+      m.start[2] + t * (m.end[2] - m.start[2]),
+    ];
+    const [sx, sy] = toSvg(px);
+    const color = MEMBER_MARK_COLORS[m.role] ?? "#334155";
+    // Small square (~ member depth) centered on the crossing.
+    const half = 3;
+    svg += `<rect x="${(sx - half).toFixed(2)}" y="${(sy - half).toFixed(2)}" width="${(half * 2).toFixed(2)}" height="${(half * 2).toFixed(2)}" fill="${color}" stroke="#111" stroke-width="0.4"/>\n`;
+  }
+
+  svg += `</g>\n`;
+  return svg;
+}
+
+// Roles rendered as crossing marks in section views.
+const MEMBER_MARK_ROLES = new Set<string>([
+  "rafter", "purlin", "ring_beam", "ridge", "hip", "valley",
+]);
+const MEMBER_MARK_COLORS: Record<string, string> = {
+  rafter: "#94a3b8",       // slate
+  purlin: "#64748b",       // slate darker
+  ring_beam: "#16a34a",    // green
+  ridge: "#dc2626",        // red
+  hip: "#ea580c",          // orange
+  valley: "#2563eb",       // blue
+};

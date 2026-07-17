@@ -79,16 +79,32 @@ function buildGableRoof(
 
   const eaveZ = g.eave_z + shellLift;
   const ridgeZ = eaveZ + g.wall_top_above_eave + g.ridge_h;
-  const ridgeX = (g.eave_x_west + g.eave_x_east) / 2;
+
+  // For ridge_axis='y' the ridge runs along Y at the middle X. Its
+  // two endpoints are (ridgeMidX, ridge_y_start) and (ridgeMidX,
+  // ridge_y_end). Slopes are on the west and east flanks; gable
+  // walls close the north + south ends.
+  // For ridge_axis='x' everything is rotated 90°: the ridge runs
+  // along X at the middle Y; slopes on north + south flanks; gable
+  // walls on east + west ends.
+  const isY = g.ridge_axis === "y";
+  const ridgeMidX = (g.eave_x_west + g.eave_x_east) / 2;
+  const ridgeMidY = (g.eave_y_north + g.eave_y_south) / 2;
 
   const nw = t(g.eave_x_west, g.eave_y_north, eaveZ);
   const ne = t(g.eave_x_east, g.eave_y_north, eaveZ);
   const se = t(g.eave_x_east, g.eave_y_south, eaveZ);
   const sw = t(g.eave_x_west, g.eave_y_south, eaveZ);
-  const r1 = t(ridgeX, g.ridge_y_start, ridgeZ);
-  const r2 = t(ridgeX, g.ridge_y_end, ridgeZ);
+  // Ridge endpoints. For y-axis they sit at (mid, ridge_y_start/end);
+  // for x-axis at (ridge_x_start/end, mid).
+  const r1 = isY
+    ? t(ridgeMidX, g.ridge_y_start, ridgeZ)
+    : t(g.ridge_x_start, ridgeMidY, ridgeZ);
+  const r2 = isY
+    ? t(ridgeMidX, g.ridge_y_end, ridgeZ)
+    : t(g.ridge_x_end, ridgeMidY, ridgeZ);
 
-  // ---- Sloping tile surfaces (west + east) ------------------------
+  // Vertices — same 6 corners for both axis cases.
   const slopeVerts: number[] = [
     nw.x, nw.y, nw.z, // 0
     ne.x, ne.y, ne.z, // 1
@@ -97,14 +113,73 @@ function buildGableRoof(
     r1.x, r1.y, r1.z, // 4
     r2.x, r2.y, r2.z, // 5
   ];
-  const slopeIdx: number[] = [
-    // W slope (rectangle NW-SW-R2-R1) split into 2 tris, CCW from west
-    0, 3, 5,
-    0, 5, 4,
-    // E slope (rectangle NE-R1-R2-SE) split into 2 tris, CCW from east
-    1, 4, 5,
-    1, 5, 2,
-  ];
+
+  // Face indices differ by axis. For y-axis:
+  //   W slope: NW-SW-R2-R1, E slope: NE-R1-R2-SE
+  //   N gable: NW-R1-NE, S gable: SE-R2-SW
+  // For x-axis (r1 near west edge, r2 near east):
+  //   N slope: NW-R1-R2-NE, S slope: SW-R1... wait let me re-derive.
+  // For ridge_axis='x' the ridge runs W→E, so:
+  //   R1 = (near west, mid Y, ridgeZ), R2 = (near east, mid Y, ridgeZ)
+  //   North slope quad: NW→R1→R2→NE (from outside/north looking south)
+  //   South slope quad: SW→SE→R2→R1 (viewed from south)
+  //   W gable-end tri: NW→R1→SW
+  //   E gable-end tri: NE→SE→R2
+  let slopeIdx: number[];
+  let gableIdx: number[];
+  if (isY) {
+    slopeIdx = [
+      // W slope (NW-SW-R2-R1)
+      0, 3, 5,
+      0, 5, 4,
+      // E slope (NE-R1-R2-SE)
+      1, 4, 5,
+      1, 5, 2,
+    ];
+    gableIdx = [
+      // N gable end (NW→R1→NE)
+      0, 1, 4,
+      // S gable end (SE→R2→SW)
+      2, 3, 5,
+    ];
+  } else {
+    // Note: R1 near west (x = ridge_x_start), R2 near east.
+    slopeIdx = [
+      // N slope (NW-R1-R2-NE)
+      0, 4, 5,
+      0, 5, 1,
+      // S slope (SW-SE-R2-R1)
+      3, 5, 4,
+      3, 2, 5,
+    ];
+    gableIdx = [
+      // W gable-end (NW-SW-R1)
+      0, 3, 4,
+      // E gable-end (NE-R2-SE)
+      1, 5, 2,
+    ];
+    // Correct winding: for gable ends viewed from outside, use tris
+    // that put the ridge apex between the two eave corners.
+    // W end: apex at R1, base NW-SW
+    // E end: apex at R2, base NE-SE
+    gableIdx = [
+      // W gable-end (NW → R1 → SW)
+      0, 4, 3,
+      // E gable-end (SE → R2 → NE)
+      2, 5, 1,
+    ];
+  }
+  // Correct N-gable/S-gable winding (isY): apex at R1 (north) between
+  // NW and NE; apex at R2 (south) between SE and SW.
+  if (isY) {
+    gableIdx = [
+      // N gable end apex R1 between NW & NE
+      0, 4, 1,
+      // S gable end apex R2 between SE & SW
+      2, 5, 3,
+    ];
+  }
+
   const slopeGeometry = new THREE.BufferGeometry();
   slopeGeometry.setAttribute(
     "position",
@@ -113,28 +188,10 @@ function buildGableRoof(
   slopeGeometry.setIndex(slopeIdx);
   slopeGeometry.computeVertexNormals();
 
-  // ---- Vertical gable-end walls (north + south triangles) ---------
-  // These are the plaster infill above the wall top, closing off each
-  // end of the roof. They rise from the eave-level corners up to the
-  // ridge endpoint.
-  const gableVerts: number[] = [
-    nw.x, nw.y, nw.z, // 0
-    r1.x, r1.y, r1.z, // 1
-    ne.x, ne.y, ne.z, // 2
-    se.x, se.y, se.z, // 3
-    r2.x, r2.y, r2.z, // 4
-    sw.x, sw.y, sw.z, // 5
-  ];
-  const gableIdx: number[] = [
-    // N gable end (NW → R1 → NE, CCW viewed from north)
-    0, 1, 2,
-    // S gable end (SE → R2 → SW, CCW viewed from south)
-    3, 4, 5,
-  ];
   const gableWallGeometry = new THREE.BufferGeometry();
   gableWallGeometry.setAttribute(
     "position",
-    new THREE.Float32BufferAttribute(gableVerts, 3),
+    new THREE.Float32BufferAttribute(slopeVerts, 3),
   );
   gableWallGeometry.setIndex(gableIdx);
   gableWallGeometry.computeVertexNormals();

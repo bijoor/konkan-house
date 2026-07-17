@@ -41,6 +41,9 @@ import { collectAllGableMembers, gableTileContribution } from "../svg2d/roof/gab
 import { generateFlatPanels, collectAllFlatMembers, flatTileContribution } from "../svg2d/roof/flatCompose";
 import { generateShedPanels, collectAllShedMembers, shedTileContribution } from "../svg2d/roof/shedCompose";
 import { frameBomHtml, metalBomHtml, roofMaterialBomHtml, readTileDensities, readMetalStock } from "../svg2d/roof/htmlBom";
+import { collectV2AsLegacyFrameMembers } from "../svg2d/roof/v2/computeFromHouse";
+import { computeMergedV2Spec } from "../svg2d/roof/v2/computeFromHouse";
+import { ridgeRunFt, slopeAreaSft } from "../svg2d/roof/v2/bom";
 import { expandRoomWalls } from "../svg2d/expand";
 import { generateAllPillarSvgs } from "../svg2d/pillar/index";
 import { pickAndLoadConfig, downloadConfig } from "../io/fileIO";
@@ -240,12 +243,20 @@ function rebuildSvgMap(): void {
   const gableMembers = collectAllGableMembers(cfg);
   const flatMembers = collectAllFlatMembers(cfg);
   const shedMembers = collectAllShedMembers(cfg);
+  // v2 roof contributions (type: "roof" only — legacy types are
+  // already counted by the paths above). Emits members as legacy
+  // FrameMember shape so the existing BOM tables can consume them.
+  const v2Members = collectV2AsLegacyFrameMembers(cfg);
   const gableTiles = gableTileContribution(cfg);
   const flatTiles = flatTileContribution(cfg);
   const shedTiles = shedTileContribution(cfg);
-  const extraMembers = [...gableMembers, ...flatMembers, ...shedMembers];
-  const extraArea = gableTiles.areaSft + flatTiles.areaSft + shedTiles.areaSft;
-  const extraRidgeRun = gableTiles.ridgeRunFt + shedTiles.ridgeRunFt;
+  const extraMembers = [...gableMembers, ...flatMembers, ...shedMembers, ...v2Members];
+  // v2 tile contribution — slope area + ridge run for type:"roof" objects.
+  const v2Spec = computeMergedV2Spec(cfg, { filter: "v2Only" });
+  const v2Area = slopeAreaSft(v2Spec);
+  const v2RidgeRun = ridgeRunFt(v2Spec);
+  const extraArea = gableTiles.areaSft + flatTiles.areaSft + shedTiles.areaSft + v2Area;
+  const extraRidgeRun = gableTiles.ridgeRunFt + shedTiles.ridgeRunFt + v2RidgeRun;
   const hasAnyRoof = allRoofs.length > 0 || extraMembers.length > 0;
   if (hasAnyRoof) {
     const densities = readTileDensities(cfg);
@@ -264,17 +275,19 @@ function rebuildSvgMap(): void {
   } else {
     window.roofBomManifest = [];
   }
-  // Pillar elevations + cross-sections. The section files depend on the
-  // house's row/col count, so we publish a manifest on window for the
-  // vanilla loader in viewer.html to iterate — it doesn't have to know
-  // the count up front.
-  const pillars = generateAllPillarSvgs(cfg);
+  // Pillar elevations + cross-sections. Wrapped because
+  // generatePillarElevationView throws "No ground-floor pillars to
+  // draw" for houses without pillars (e.g. courtyard_home) — that
+  // shouldn't take out the whole template load.
   const pillarManifest: { filename: string; displayName: string }[] = [];
-  for (const p of pillars) {
-    const url = `2d/pillars/${p.filename}`;
-    svgMap.set(url, p.content);
-    pillarManifest.push({ filename: url, displayName: p.label });
-  }
+  safe("pillar svgs", () => {
+    const pillars = generateAllPillarSvgs(cfg);
+    for (const p of pillars) {
+      const url = `2d/pillars/${p.filename}`;
+      svgMap.set(url, p.content);
+      pillarManifest.push({ filename: url, displayName: p.label });
+    }
+  });
   window.pillarSvgManifest = pillarManifest;
 }
 
@@ -467,32 +480,31 @@ interface TemplateEntry {
   description: string;
   file: string;
 }
-// Cache the manifest between opens so we don't refetch every click.
-let templateManifestCache: TemplateEntry[] | null = null;
-
 async function openNewHouseModal(): Promise<void> {
   const modal = document.getElementById("new-house-modal");
   const grid = document.getElementById("new-house-modal-grid");
   if (!modal || !grid) return;
   modal.style.display = "block";
 
-  if (!templateManifestCache) {
-    try {
-      const r = await fetch("templates/index.json");
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const parsed = (await r.json()) as { templates: TemplateEntry[] };
-      templateManifestCache = parsed.templates;
-    } catch (e) {
-      grid.innerHTML =
-        `<div style="grid-column: 1 / -1; color: #b00; padding: 1rem;">
-          Failed to load templates/index.json: ${e instanceof Error ? e.message : String(e)}
-        </div>`;
-      return;
-    }
+  // Always refetch on open — the manifest is small, and caching it
+  // meant users saw a stale template list until they hard-reloaded.
+  // Cache-buster on the URL side-steps browser HTTP caching too.
+  let templates: TemplateEntry[];
+  try {
+    const r = await fetch(`templates/index.json?t=${Date.now()}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const parsed = (await r.json()) as { templates: TemplateEntry[] };
+    templates = parsed.templates;
+  } catch (e) {
+    grid.innerHTML =
+      `<div style="grid-column: 1 / -1; color: #b00; padding: 1rem;">
+        Failed to load templates/index.json: ${e instanceof Error ? e.message : String(e)}
+      </div>`;
+    return;
   }
 
   grid.innerHTML = "";
-  for (const t of templateManifestCache) {
+  for (const t of templates) {
     const card = document.createElement("div");
     card.className = "template-card";
     card.innerHTML = `

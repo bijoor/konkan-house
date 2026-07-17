@@ -12,6 +12,11 @@
     "width": 270,
     "height": 30
   },
+  "defaults": {
+    "floor_height": 98,
+    "wall_height": 90,
+    "slab_thickness": 8
+  },
   "floors": [
     {
       "floor_number": 0,
@@ -30,7 +35,7 @@
           "x": 5,
           "y": 4,
           "width": 10,
-          "height": 200
+          "height": 196
         },
         {
           "type": "pillar",
@@ -38,7 +43,7 @@
           "x": 105,
           "y": 4,
           "width": 10,
-          "height": 200
+          "height": 196
         },
         {
           "type": "pillar",
@@ -46,7 +51,7 @@
           "x": 165,
           "y": 4,
           "width": 10,
-          "height": 200
+          "height": 196
         },
         {
           "type": "pillar",
@@ -54,7 +59,7 @@
           "x": 265,
           "y": 4,
           "width": 10,
-          "height": 200
+          "height": 196
         },
         {
           "type": "pillar",
@@ -62,7 +67,7 @@
           "x": 4,
           "y": 86.225,
           "length": 12.5,
-          "height": 200
+          "height": 196
         },
         {
           "type": "pillar",
@@ -70,7 +75,7 @@
           "x": 120,
           "y": 86.225,
           "length": 12.5,
-          "height": 200
+          "height": 196
         },
         {
           "type": "pillar",
@@ -78,7 +83,7 @@
           "x": 266,
           "y": 86.225,
           "length": 12.5,
-          "height": 200
+          "height": 196
         },
         {
           "type": "pillar",
@@ -86,7 +91,7 @@
           "x": 6.2,
           "y": 200,
           "width": 12.5,
-          "height": 200
+          "height": 196
         },
         {
           "type": "pillar",
@@ -94,7 +99,7 @@
           "x": 120,
           "y": 197.5,
           "length": 12.5,
-          "height": 200
+          "height": 196
         },
         {
           "type": "pillar",
@@ -102,7 +107,7 @@
           "x": 263.8,
           "y": 200,
           "width": 12.5,
-          "height": 200
+          "height": 196
         },
         {
           "type": "pillar",
@@ -110,14 +115,14 @@
           "x": 4,
           "y": 296,
           "length": 12.5,
-          "height": 200
+          "height": 196
         },
         {
           "type": "pillar",
           "name": "Staircase_Pillar",
           "x": 44,
           "y": 296,
-          "height": 200
+          "height": 196
         },
         {
           "type": "pillar",
@@ -125,7 +130,7 @@
           "x": 180,
           "y": 296,
           "width": 12.5,
-          "height": 200
+          "height": 196
         },
         {
           "type": "pillar",
@@ -133,7 +138,7 @@
           "x": 266,
           "y": 296,
           "length": 12.5,
-          "height": 200
+          "height": 196
         },
         {
           "type": "pillar",
@@ -141,7 +146,7 @@
           "x": 4,
           "y": 443.5,
           "length": 12.5,
-          "height": 200
+          "height": 196
         },
         {
           "type": "pillar",
@@ -149,7 +154,7 @@
           "x": 93.5,
           "y": 446,
           "width": 10,
-          "height": 200
+          "height": 196
         },
         {
           "type": "pillar",
@@ -157,7 +162,7 @@
           "x": 178.5,
           "y": 446,
           "width": 10,
-          "height": 200
+          "height": 196
         },
         {
           "type": "pillar",
@@ -165,7 +170,7 @@
           "x": 266,
           "y": 443.5,
           "length": 12.5,
-          "height": 200
+          "height": 196
         },
         {
           "type": "room",
@@ -421,13 +426,37 @@
           "step_width": 30,
           "direction": "north",
           "material": "floor"
+        },
+        {
+          "type": "kitchen_platform",
+          "name": "Kitchen_Counter",
+          "path": [
+            [262, 370],
+            [262, 300],
+            [192, 300]
+          ],
+          "side": "right",
+          "depth": 21.5,
+          "height": 26.67
+        },
+        {
+          "type": "kitchen_platform",
+          "name": "KitchenPlatform_1",
+          "path": [
+            [8, 274],
+            [8, 204],
+            [78, 204]
+          ],
+          "side": "left",
+          "depth": 24,
+          "height": 32
         }
       ]
     },
     {
       "floor_number": 1,
       "name": "First Floor",
-      "height": 90,
+      "wall_height": 82,
       "objects": [
         {
           "type": "floor_slab",
@@ -470,7 +499,7 @@
           "y": 0,
           "width": 270,
           "length": 8,
-          "z_offset_ft": 9.8
+          "z_offset": 90
         },
         {
           "type": "beam",
@@ -478,7 +507,7 @@
           "y": 80,
           "width": 270,
           "length": 12,
-          "z_offset_ft": 9.8
+          "z_offset": 90
         },
         {
           "type": "beam",
@@ -486,7 +515,7 @@
           "y": 196,
           "width": 270,
           "length": 8,
-          "z_offset_ft": 9.8
+          "z_offset": 90
         },
         {
           "type": "beam",
@@ -494,7 +523,7 @@
           "y": 290,
           "width": 270,
           "length": 12,
-          "z_offset_ft": 9.8
+          "z_offset": 90
         },
         {
           "type": "beam",
@@ -502,7 +531,7 @@
           "y": 438,
           "width": 270,
           "length": 12,
-          "z_offset_ft": 9.8
+          "z_offset": 90
         },
         {
           "type": "beam",
@@ -510,7 +539,7 @@
           "y": 0,
           "width": 8,
           "length": 450,
-          "z_offset_ft": 9.8
+          "z_offset": 90
         },
         {
           "type": "beam",
@@ -518,7 +547,7 @@
           "y": 0,
           "width": 8,
           "length": 450,
-          "z_offset_ft": 9.8
+          "z_offset": 90
         },
         {
           "type": "room",
@@ -828,39 +857,43 @@
       "name": "Loft Floor",
       "objects": [
         {
-          "type": "hip_roof",
-          "ridge_axis": "y",
-          "ridge_h_ft": 7,
-          "min_overhang_ft": 2.5,
-          "ridge_ventilation": {
-            "extension_ft": 5,
-            "end_pani_patti": true,
-            "mesh_screen": true
+          "type": "roof",
+          "roof_type": "pitched",
+          "default_endpoint": "closed",
+          "segments": [
+            {
+              "id": "seg0",
+              "start": [
+                135,
+                0
+              ],
+              "end": [
+                135,
+                450
+              ],
+              "width": 270,
+              "hip_setback_start": 86.225,
+              "hip_setback_end": 154,
+              "hip_ridge_extension_start": 50,
+              "hip_ridge_extension_end": 50
+            }
+          ],
+          "slope": {
+            "by": "height",
+            "ridge_h": 70
           },
-          "trusses": {
-            "type": "fink",
-            "positions": [
-              86.225,
-              200,
-              296
-            ],
-            "chord_size_in": [
-              2,
-              4
-            ],
-            "chord_wall_mm": 3,
-            "web_size_in": [
-              2,
-              2
-            ],
-            "web_wall_mm": 2,
-            "panel_ratio_bottom": 0.25,
-            "include_king_post": true,
-            "note": "3 Fink trusses aligned to pillar rows for direct load transfer"
-          },
-          "frame_explosion_offset": 250,
-          "explosion_offset": 500,
-          "show_frame_3d": true,
+          "min_overhang": 25,
+          "trusses": [
+            {
+              "segment_id": "seg0",
+              "type": "fink",
+              "positions_along": [
+                86.225,
+                200,
+                296
+              ]
+            }
+          ],
           "framing": {
             "rafter_size_in": [
               2,
@@ -879,78 +912,40 @@
               3
             ],
             "ridge_wall_mm": 2,
-            "eave_edge_size_in": [
-              1,
-              2
-            ],
-            "eave_edge_wall_mm": 1.5,
             "pani_patti": {
               "material": "GI sheet",
               "thickness_mm": 1.2,
-              "height_in": 6,
-              "note": "folded water-protector strip along the eave"
+              "height_in": 6
             },
             "eave_L_channel_size_in": [
               1,
               1
             ],
             "eave_L_channel_wall_mm": 3,
-            "barge_pipe_size_in": [
-              3,
-              1
-            ],
-            "barge_pipe_wall_mm": 1.6,
-            "ridge_angle_size_in": [
-              1,
-              1
-            ],
-            "ridge_angle_wall_mm": 3,
             "corner_double_angle_size_in": [
               1,
               1
             ],
             "corner_double_angle_wall_mm": 3,
-            "main_beam_size_in": [
-              8,
-              4
-            ],
-            "main_beam_wall_mm": 4,
-            "main_beam_spacing_in": 36,
-            "supporting_truss_size_in": [
-              4,
-              8
-            ],
-            "supporting_truss_wall_mm": 4,
-            "house_footprint_ft": [
-              27,
-              45
-            ],
             "ring_beam": {
               "size_in": [
                 4,
                 2
               ],
-              "wall_mm": 3,
-              "note": "Perimeter ring beam at wall top — 27×45 rectangle at 1'4\" above eave"
+              "wall_mm": 3
             },
-            "hip_end_beam": {
-              "count_per_end": 3,
-              "size_in": [
-                4,
-                2
-              ],
-              "wall_mm": 2,
-              "extend_between_trusses": true,
-              "note": "Longitudinal beams at wall level, from corner trusses to N/S walls (+ between trusses when extend_between_trusses)"
-            },
-            "membrane": {
-              "material": "thermal + waterproof fabric",
-              "sealing_tape": "RBD / aluminium-butyl",
-              "overlap_horizontal_in": 12,
-              "overlap_vertical_in": 8,
-              "barge_extension_in": 2,
-              "note": "depression pressed at each ceiling-tile gap so tile lip seats"
-            }
+            "chord_size_in": [
+              2,
+              4
+            ],
+            "chord_wall_mm": 3,
+            "web_size_in": [
+              2,
+              2
+            ],
+            "web_wall_mm": 2,
+            "panel_ratio_bottom": 0.25,
+            "include_king_post": true
           },
           "material": "roof"
         }

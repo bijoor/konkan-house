@@ -66,7 +66,10 @@ export function GableRoofForm({
           label="Ridge axis"
           value={(get<string>(bag, ["ridge_axis"]) as "x" | "y" | undefined) ?? "y"}
           onChange={(v) => setAt(["ridge_axis"], v)}
-          options={[{ value: "y", label: "y (ridge runs N–S)" }]}
+          options={[
+            { value: "y", label: "y (ridge runs N–S)" },
+            { value: "x", label: "x (ridge runs E–W)" },
+          ]}
         />
         <SelectField
           label="Specify pitch by"

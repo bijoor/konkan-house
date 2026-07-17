@@ -10,7 +10,7 @@ import { DEFAULT_GLOBAL_CONFIG } from "./config";
 import { formatDimension, f, fFloat } from "./format";
 import {
   svgDrawWall, svgDrawRoom, svgDrawDoor, svgDrawWindow, svgDrawFloorSlab,
-  svgDrawPillar, svgDrawBeam, svgDrawStaircase,
+  svgDrawPillar, svgDrawBeam, svgDrawStaircase, svgDrawKitchenPlatform,
 } from "./shapes";
 import {
   extractFloorEdges, classifyPerimeterEdges, detectWallConnections,
@@ -19,11 +19,22 @@ import {
 import {
   assignOpeningOffsetLevels, svgDrawDimensionLine, svgDrawOpeningDimensions,
 } from "./dimensions";
+import type { RoofSpec } from "./roof/v2/model";
+import { renderV2ToFloorPlan } from "./roof/v2/projections";
 
 interface FloorConfig {
   floor_number?: number;
   name?: string;
   objects?: Array<Record<string, unknown>>;
+}
+
+// Optional v2 roof overlay — caller (floorPlansAll) computes the spec
+// for the floor's v2 roof objects and passes it in. When provided, the
+// roof outline (planes + ridge/hip/valley members) is drawn on the plan
+// after all regular objects. The roof bounds also extend the canvas
+// bounds so overhangs beyond the walls remain visible.
+export interface FloorPlanRoofOverlay {
+  spec: RoofSpec;
 }
 
 // Guard the "min still ∞" case with Number.POSITIVE_INFINITY, which
@@ -34,6 +45,7 @@ const INF = Number.POSITIVE_INFINITY;
 export function generateFloorPlanSvg(
   floorConfig: FloorConfig,
   scale = 2.0,
+  roofOverlay?: FloorPlanRoofOverlay,
 ): string {
   const floorNum = floorConfig.floor_number ?? 0;
   const floorName = floorConfig.name ?? `Floor ${floorNum}`;
@@ -63,6 +75,17 @@ export function generateFloorPlanSvg(
       if (Math.max(sx, ex) > maxX) maxX = Math.max(sx, ex);
       if (Math.min(sy, ey) < minY) minY = Math.min(sy, ey);
       if (Math.max(sy, ey) > maxY) maxY = Math.max(sy, ey);
+    }
+  }
+  // Extend bounds with roof geometry so overhangs stay visible.
+  if (roofOverlay) {
+    for (const p of roofOverlay.spec.planes) {
+      for (const [vx, vy] of p.vertices) {
+        if (vx < minX) minX = vx;
+        if (vy < minY) minY = vy;
+        if (vx > maxX) maxX = vx;
+        if (vy > maxY) maxY = vy;
+      }
     }
   }
   if (minX === INF || maxX === -INF) return "";
@@ -124,6 +147,15 @@ export function generateFloorPlanSvg(
         obj.width as number, obj.length as number,
       );
     }
+  }
+  // Kitchen platforms — one polygon per polyline segment.
+  for (const obj of objects) {
+    if (obj.type !== "kitchen_platform") continue;
+    const path = obj.path as [number, number][];
+    if (!Array.isArray(path) || path.length < 2) continue;
+    const depth = obj.depth as number;
+    const side = ((obj.side as string) ?? "right") as "left" | "right";
+    svg += svgDrawKitchenPlatform(path, depth, side);
   }
   // Python's `generate_floor_plan_svg` has a variable-shadowing quirk:
   // the local `width` used for the SVG canvas dimensions gets rebound
@@ -548,6 +580,18 @@ export function generateFloorPlanSvg(
   // -----------------------------------------------------------------
   // Title footer
   // -----------------------------------------------------------------
+  // V2 roof overlay — draws the top-down projection of any roof
+  // objects on this floor (slope/hip_face polygons + ridge/hip/valley
+  // members). Injected after all regular objects so it renders on top.
+  if (roofOverlay) {
+    svg += "\n<!-- v2 roof overlay -->\n";
+    svg += renderV2ToFloorPlan(
+      roofOverlay.spec,
+      (x, y) => [x, y],
+    );
+    svg += "\n";
+  }
+
   // Python: `f'<text x="{width/2}" ...` — `width` is the shadowed local
   // variable (canvas width by default, or last staircase width if any).
   // Division always yields float in Python 3.

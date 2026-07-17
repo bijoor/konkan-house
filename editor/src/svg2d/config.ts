@@ -52,10 +52,14 @@ export interface GlobalConfig {
   floor_slab_thickness: number;
   roof_thickness: number;
   beam_size: number;
-  // Single default wall-height for any floor without an explicit override.
-  // Was previously a per-floor-number dict; flattened so any newly-added
-  // floor gets the same default regardless of position in the stack.
+  // Floor-to-floor height for any floor without an override — drives
+  // the vertical stack used to compute wall-top / roof position.
+  // INDEPENDENT of wall_height (no enforced relationship).
   floor_height: number;
+  // Wall standing height (floor top → ceiling) for any floor without
+  // an override — used by wall meshes / dimension labels. INDEPENDENT
+  // of floor_height.
+  wall_height: number;
   roof_framing: RoofFramingDefaults;
   elevation_rendering_priority: Record<string, number>;
   dimensions: DimensionConfig;
@@ -68,6 +72,7 @@ export const DEFAULT_GLOBAL_CONFIG: GlobalConfig = {
   roof_thickness: 3,
   beam_size: 8,
   floor_height: 100.0,
+  wall_height: 100.0,
   roof_framing: {
     rafter_size_in: [2, 4],
     rafter_spacing_in: 36,

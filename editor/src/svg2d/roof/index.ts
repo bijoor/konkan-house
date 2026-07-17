@@ -19,6 +19,7 @@ import { computeAll } from "./geometry";
 import { computeLayout } from "./layout";
 import { compose } from "./compose";
 import { splitPanels } from "./manifest";
+import { computeV2RoofSections } from "./v2/compose";
 
 export interface RoofPanelFile {
   filename: string;
@@ -44,10 +45,40 @@ export interface ComputeRoofOptions {
 }
 
 // Pure, in-memory version. Safe for browsers.
+//
+// Dispatches on the config's roof types:
+//   - Any `type: "roof"` (v2) objects → v2 pipeline (computeV2RoofSections).
+//   - Otherwise → legacy pipeline (computeAll → compose).
+// If both v2 and legacy exist on the same house, v2 wins (legacy roofs
+// are ignored in the master sheet).
 export function computeRoofSections(
   cfg: HouseConfig,
   options: ComputeRoofOptions = {},
 ): RoofSectionsResult | null {
+  // Try v2 first — if any roof is v2, use v2 pipeline.
+  const v2 = computeV2RoofSections(cfg);
+  if (v2) {
+    // Manifest is a FLAT ARRAY (same shape as legacy splitPanels
+    // produces) — callers use it directly in Array spread and
+    // Object-form would blow up with "s is not iterable".
+    const manifestArray = v2.panels.map((p) => ({
+      id: p.id,
+      title: p.title,
+      file: p.filename,
+      width: p.width,
+      height: p.height,
+    }));
+    return {
+      master: v2.master,
+      panels: v2.panels,
+      manifest: {
+        filename: "roof_panels.json",
+        content: JSON.stringify(manifestArray, null, 2),
+      },
+    };
+  }
+
+  // Legacy path.
   const hc = expandRoomWalls(cfg);
   const computed = computeAll(hc);
   if (!computed) return null;

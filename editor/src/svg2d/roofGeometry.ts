@@ -30,24 +30,24 @@ export function computeTopFloorWallTopZ(
   globalConfig: GlobalConfig,
   beamOffset = 0.0,
   // Optional per-floor overrides — if the caller passes the config's
-  // `floors` array, each floor's own `.height` / `.slab_thickness` are
-  // preferred first. House-level `houseDefaults` come next; the code
-  // defaults in globalConfig are the final fallback.
-  floors?: Array<{ height?: number; slab_thickness?: number }>,
-  houseDefaults?: { floor_height?: number; slab_thickness?: number },
+  // `floors` array, each floor's own `.height` is preferred first.
+  // House-level `houseDefaults.floor_height` comes next; the code
+  // default in globalConfig is the final fallback.
+  //
+  // ROOF POSITION is a function of PLINTH + FLOOR_HEIGHTS ONLY.
+  // slab_thickness is a separate metadata field (RCC deck depth) and
+  // is NOT added into the vertical stack — floor_height already
+  // represents the full floor-to-floor rise.
+  floors?: Array<{ height?: number }>,
+  houseDefaults?: { floor_height?: number },
 ): number {
   let z = globalConfig.plinth_height as number;
-  const defaultSlab =
-    houseDefaults?.slab_thickness ??
-    (globalConfig.floor_slab_thickness as number | undefined) ??
-    0;
   const defaultHeight =
     houseDefaults?.floor_height ??
     (globalConfig.floor_height as number | undefined) ??
     100;
   for (let f = 0; f < floorNumber; f++) {
     const perFloor = floors?.[f];
-    z += perFloor?.slab_thickness ?? defaultSlab;
     z += perFloor?.height ?? defaultHeight;
   }
   z += beamOffset;
@@ -57,20 +57,24 @@ export function computeTopFloorWallTopZ(
 export function deriveHipRoofGeometry(
   hipRoof: HipRoof,
   wallTopZ: number,
-  houseTransU: number,
-  houseLongU: number,
+  houseTransU: number,      // callers pass roofW (X extent)
+  houseLongU: number,       // callers pass roofL (Y extent)
   ridgeAxis: string = "y",
-  // NEW (Phase 2): roof position in world coords. Defaults to (0,0)
-  // so existing single-roof configs keep working — the derived
-  // eave_x_west etc. become absolute world X/Y once these are added.
   roofX: number = 0,
   roofY: number = 0,
 ): Record<string, unknown> {
-  if (ridgeAxis !== "y") {
-    throw new Error(
-      "deriveHipRoofGeometry currently supports ridge_axis='y' only",
-    );
-  }
+  // Generalise for both ridge_axis='y' (ridge runs N-S) and 'x' (ridge
+  // runs E-W). "Along" = along the ridge; "cross" = perpendicular.
+  //   ridge_axis='y': along = Y (long dim), cross = X (trans dim)
+  //   ridge_axis='x': along = X (trans dim), cross = Y (long dim)
+  // Trusses.positions are always ALONG-axis offsets from the roof's NW
+  // corner.
+  const isY = ridgeAxis === "y";
+  const alongLen = isY ? houseLongU : houseTransU;
+  const crossLen = isY ? houseTransU : houseLongU;
+  const roofAlong = isY ? roofY : roofX;
+  const roofCross = isY ? roofX : roofY;
+  const alongAxisLabel = isY ? "Y" : "X";
 
   const trusses = hipRoof.trusses as { positions?: number[] } | undefined;
   if (!trusses || !trusses.positions) {
@@ -87,27 +91,24 @@ export function deriveHipRoofGeometry(
       );
     }
   }
-  const ridgeYStart = Number(positions[0]);
-  const ridgeYEnd = Number(positions[positions.length - 1]);
-  if (ridgeYStart <= 0) {
-    throw new Error(`trusses.positions[0]=${ridgeYStart} must be > 0`);
+  const ridgeAlongStart = Number(positions[0]);
+  const ridgeAlongEnd = Number(positions[positions.length - 1]);
+  if (ridgeAlongStart <= 0) {
+    throw new Error(`trusses.positions[0]=${ridgeAlongStart} must be > 0`);
   }
-  if (ridgeYEnd >= houseLongU) {
+  if (ridgeAlongEnd >= alongLen) {
     throw new Error(
-      `trusses.positions[-1]=${ridgeYEnd} must be < house_long_u (${houseLongU})`,
+      `trusses.positions[-1]=${ridgeAlongEnd} must be < along-axis ${alongAxisLabel} extent (${alongLen})`,
     );
   }
 
   const dMax = Math.max(
-    houseTransU / 2.0,
-    ridgeYStart,
-    houseLongU - ridgeYEnd,
+    crossLen / 2.0,
+    ridgeAlongStart,
+    alongLen - ridgeAlongEnd,
   );
 
   let ridgeH: number;
-  // Prefer unit-form fields (matches room/pillar convention: 10 units = 1 ft).
-  // The old `_ft` fields are still honoured for backward-compat with
-  // existing configs.
   if ("ridge_h" in hipRoof && (hipRoof as { ridge_h?: number }).ridge_h !== undefined) {
     const v = Number((hipRoof as { ridge_h?: number }).ridge_h);
     if (!(v > 0)) throw new Error("hip_roof.ridge_h must be > 0");
@@ -134,66 +135,95 @@ export function deriveHipRoofGeometry(
   if (minOv <= 0) throw new Error("hip_roof.min_overhang must be > 0");
 
   const dCrit = Math.min(
-    houseTransU / 2.0,
-    ridgeYStart,
-    houseLongU - ridgeYEnd,
+    crossLen / 2.0,
+    ridgeAlongStart,
+    alongLen - ridgeAlongEnd,
   );
 
-  const pitchEw =
-    (Math.atan(ridgeH / (houseTransU / 2.0)) * 180) / Math.PI;
-  const pitchN = (Math.atan(ridgeH / ridgeYStart) * 180) / Math.PI;
-  const pitchS =
-    (Math.atan(ridgeH / (houseLongU - ridgeYEnd)) * 180) / Math.PI;
+  // Slope angles: "cross" slope has pitch based on crossLen/2; the
+  // two "along" ends (hip triangles) have pitch based on the near/far
+  // ridge offset.
+  const pitchCross = (Math.atan(ridgeH / (crossLen / 2.0)) * 180) / Math.PI;
+  const pitchAlongStart = (Math.atan(ridgeH / ridgeAlongStart) * 180) / Math.PI;
+  const pitchAlongEnd = (Math.atan(ridgeH / (alongLen - ridgeAlongEnd)) * 180) / Math.PI;
 
   const eaveDrop = (minOv * ridgeH) / dCrit;
   const eaveZ = wallTopZ - eaveDrop;
 
-  const oEw = (minOv * (houseTransU / 2.0)) / dCrit;
-  const oN = (minOv * ridgeYStart) / dCrit;
-  const oS = (minOv * (houseLongU - ridgeYEnd)) / dCrit;
+  const oCross = (minOv * (crossLen / 2.0)) / dCrit;
+  const oAlongStart = (minOv * ridgeAlongStart) / dCrit;
+  const oAlongEnd = (minOv * (alongLen - ridgeAlongEnd)) / dCrit;
 
   const ventCfg =
     (hipRoof.ridge_ventilation as Record<string, unknown> | null | undefined) ??
     {};
   let ridgeExtU =
     Math.max(0.0, Number(ventCfg.extension_ft ?? 0.0)) * 10.0;
-  const maxExtU = Math.min(ridgeYStart - 1.0, houseLongU - ridgeYEnd - 1.0);
+  const maxExtU = Math.min(ridgeAlongStart - 1.0, alongLen - ridgeAlongEnd - 1.0);
   if (ridgeExtU > maxExtU && maxExtU > 0) {
     ridgeExtU = maxExtU;
   }
   const hasRidgeVent = ridgeExtU > 1e-6;
-  const ridgeYStartExt = ridgeYStart - ridgeExtU;
-  const ridgeYEndExt = ridgeYEnd + ridgeExtU;
+  const ridgeAlongStartExt = ridgeAlongStart - ridgeExtU;
+  const ridgeAlongEndExt = ridgeAlongEnd + ridgeExtU;
 
-  return {
-    // All X/Y outputs shifted by (roofX, roofY) so multiple positioned
-    // roofs land at the correct absolute world coordinates. Existing
-    // single-roof callers pass (0, 0) and behaviour is unchanged.
-    eave_x_west: roofX + 0 - oEw,
-    eave_x_east: roofX + houseTransU + oEw,
-    eave_y_north: roofY + 0 - oN,
-    eave_y_south: roofY + houseLongU + oS,
+  // Translate along/cross → world x/y based on ridge_axis. For 'y' the
+  // legacy field labels (ridge_y_start, eave_y_north, slope_angle_ew /
+  // ns) apply directly. For 'x' we populate the x-based fields
+  // (ridge_x_start etc) and reinterpret the ns/ew slope labels.
+  const base: Record<string, unknown> = {
     eave_z: eaveZ,
-    ridge_y_start: roofY + ridgeYStart,
-    ridge_y_end: roofY + ridgeYEnd,
     ridge_h: ridgeH,
     ridge_axis: ridgeAxis,
-    slope_angle_ew: pitchEw,
-    slope_angle_ns: pitchN,
-    slope_angle_ns_n: pitchN,
-    slope_angle_ns_s: pitchS,
     wall_top_above_eave: eaveDrop,
     wall_top_above_eave_ft: eaveDrop / 10.0,
-    overhang_ew_ft: oEw / 10.0,
-    overhang_n_ft: oN / 10.0,
-    overhang_s_ft: oS / 10.0,
     d_crit: dCrit,
     ridge_ext_u: ridgeExtU,
     ridge_ext_ft: ridgeExtU / 10.0,
     has_ridge_vent: hasRidgeVent,
-    ridge_y_start_ext: roofY + ridgeYStartExt,
-    ridge_y_end_ext: roofY + ridgeYEndExt,
     ridge_vent_cfg: { ...ventCfg },
+  };
+  if (isY) {
+    // Ridge along Y. Cross = X. Overhangs: cross = E+W, along = N+S.
+    return {
+      ...base,
+      eave_x_west: roofX + 0 - oCross,
+      eave_x_east: roofX + houseTransU + oCross,
+      eave_y_north: roofY + 0 - oAlongStart,
+      eave_y_south: roofY + houseLongU + oAlongEnd,
+      ridge_y_start: roofAlong + ridgeAlongStart,
+      ridge_y_end: roofAlong + ridgeAlongEnd,
+      ridge_y_start_ext: roofAlong + ridgeAlongStartExt,
+      ridge_y_end_ext: roofAlong + ridgeAlongEndExt,
+      slope_angle_ew: pitchCross,
+      slope_angle_ns: pitchAlongStart,
+      slope_angle_ns_n: pitchAlongStart,
+      slope_angle_ns_s: pitchAlongEnd,
+      overhang_ew_ft: oCross / 10.0,
+      overhang_n_ft: oAlongStart / 10.0,
+      overhang_s_ft: oAlongEnd / 10.0,
+    };
+  }
+  // Ridge along X. Cross = Y. Overhangs: cross = N+S, along = E+W.
+  return {
+    ...base,
+    eave_x_west: roofX + 0 - oAlongStart,
+    eave_x_east: roofX + houseTransU + oAlongEnd,
+    eave_y_north: roofY + 0 - oCross,
+    eave_y_south: roofY + houseLongU + oCross,
+    ridge_x_start: roofAlong + ridgeAlongStart,
+    ridge_x_end: roofAlong + ridgeAlongEnd,
+    ridge_x_start_ext: roofAlong + ridgeAlongStartExt,
+    ridge_x_end_ext: roofAlong + ridgeAlongEndExt,
+    // Slope-angle labels for the E-W ridge: the cross-slope is now
+    // north-south, the "hip end" slopes are east + west.
+    slope_angle_ns: pitchCross,
+    slope_angle_ew: pitchAlongStart,
+    slope_angle_ew_w: pitchAlongStart,
+    slope_angle_ew_e: pitchAlongEnd,
+    overhang_ns_ft: oCross / 10.0,
+    overhang_w_ft: oAlongStart / 10.0,
+    overhang_e_ft: oAlongEnd / 10.0,
   };
 }
 

@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 340" width="700" height="340">
+  <title>Pitched roof endpoint styles: open (gable) vs closed (hip)</title>
+  <rect width="700" height="340" fill="#f8fafc"/>
+  <text x="350" y="24" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="600" fill="#1e293b">Pitched roof endpoint styles (leaf endpoints only)</text>
+
+  <!-- LEFT: open (gable) -->
+  <g transform="translate(40, 60)">
+    <text x="120" y="0" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#84cc16">open (gable)</text>
+    <text x="120" y="14" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#4b5563">vertical wall triangle rises to apex</text>
+
+    <!-- Wall rectangle -->
+    <rect x="0" y="60" width="240" height="200" fill="none" stroke="#c19a6b" stroke-width="5"/>
+    <!-- Slope planes (side view triangle for gable end) -->
+    <path d="M -10,60 L 120,20 L 250,60 Z" fill="#d9f99d" fill-opacity="0.55" stroke="#65a30d" stroke-width="2"/>
+    <!-- Ridge (extends past wall by gable_overhang default = min_overhang) -->
+    <line x1="120" y1="20" x2="120" y2="220" stroke="#dc2626" stroke-width="2.5"/>
+    <circle cx="120" cy="20" r="4" fill="#dc2626"/>
+    <text x="130" y="25" font-family="sans-serif" font-size="10" fill="#dc2626">ridge apex</text>
+    <!-- Seg endpoint marker -->
+    <circle cx="120" cy="60" r="5" fill="#dc2626" stroke="#7f1d1d" stroke-width="1.5"/>
+    <text x="130" y="65" font-family="sans-serif" font-size="10" font-weight="600" fill="#dc2626">seg.start</text>
+    <!-- Wall + eave overhang labels -->
+    <text x="120" y="285" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#78350f">walls (rectangle base)</text>
+    <text x="120" y="300" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#65a30d">gable-end wall (vertical triangle)</text>
+    <text x="120" y="315" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#334155">ridge + eaves extend past wall by min_overhang</text>
+  </g>
+
+  <!-- RIGHT: closed (hip) -->
+  <g transform="translate(410, 60)">
+    <text x="120" y="0" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#f97316">closed (hip)</text>
+    <text x="120" y="14" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#4b5563">sloped triangular roof face closes the end</text>
+
+    <rect x="0" y="60" width="240" height="200" fill="none" stroke="#c19a6b" stroke-width="5"/>
+    <!-- Hip face (perspective: triangle from ridge apex down to eave corners) -->
+    <path d="M 120,80 L -10,60 L 250,60 Z" fill="#fed7aa" fill-opacity="0.65" stroke="#ea580c" stroke-width="2"/>
+    <!-- Ridge (trimmed inward by hip_setback) -->
+    <line x1="120" y1="80" x2="120" y2="220" stroke="#dc2626" stroke-width="2.5"/>
+    <circle cx="120" cy="80" r="4" fill="#dc2626"/>
+    <text x="130" y="85" font-family="sans-serif" font-size="10" fill="#dc2626">ridge apex (trimmed inward)</text>
+    <!-- Hip diagonals -->
+    <line x1="120" y1="80" x2="-10" y2="60" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="6,2"/>
+    <line x1="120" y1="80" x2="250" y2="60" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="6,2"/>
+    <!-- Seg endpoint marker (at end wall midpoint) -->
+    <circle cx="120" cy="60" r="5" fill="#dc2626" stroke="#7f1d1d" stroke-width="1.5"/>
+    <text x="130" y="65" font-family="sans-serif" font-size="10" font-weight="600" fill="#dc2626">seg.start</text>
+    <!-- Labels -->
+    <text x="120" y="285" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#78350f">walls (rectangle base)</text>
+    <text x="120" y="300" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#ea580c">hip face (sloped triangle) + hip diagonals</text>
+    <text x="120" y="315" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#334155">ridge trimmed inward by hip_setback (default = width/2)</text>
+  </g>
+</svg>

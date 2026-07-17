@@ -1,0 +1,350 @@
+import { describe, expect, it } from "vitest";
+import {
+  derivePitchedRoof,
+  pitchedRidge,
+  pitchedSlopeFootprint,
+} from "./derivePitched";
+import type { RoofConfig } from "./model";
+
+// Y-axis segment: N→S, cx=150, y∈[0,500], width=300. Modelled after
+// the classical "27 × 45 ft" Konkan-house roof rectangle.
+const yAxisCfg = (overrides: Partial<RoofConfig> = {}): RoofConfig => ({
+  type: "roof",
+  roof_type: "pitched",
+  segments: [
+    { id: "s0", start: [150, 0], end: [150, 500], width: 300 },
+  ],
+  slope: { by: "height", ridge_h: 50 },
+  min_overhang: 25,
+  default_endpoint: "closed",
+  ...overrides,
+});
+
+// X-axis segment: W→E, cy=100, x∈[0,600], width=200.
+const xAxisCfg = (overrides: Partial<RoofConfig> = {}): RoofConfig => ({
+  type: "roof",
+  roof_type: "pitched",
+  segments: [
+    { id: "s0", start: [0, 100], end: [600, 100], width: 200 },
+  ],
+  slope: { by: "height", ridge_h: 50 },
+  min_overhang: 25,
+  default_endpoint: "closed",
+  ...overrides,
+});
+
+describe("derivePitchedRoof — basic", () => {
+  it("empty segments → empty spec", () => {
+    const spec = derivePitchedRoof(
+      { type: "roof", roof_type: "pitched", segments: [] },
+      { wallTopZ: 100 },
+    );
+    expect(spec.planes.length).toBe(0);
+    expect(spec.members.length).toBe(0);
+  });
+
+  it("throws when called with wrong roof_type", () => {
+    expect(() =>
+      derivePitchedRoof(
+        { type: "roof", roof_type: "flat", segments: [] },
+        { wallTopZ: 100 },
+      ),
+    ).toThrow(/expected roof_type/);
+  });
+
+  it("throws when slope missing", () => {
+    expect(() =>
+      derivePitchedRoof(yAxisCfg({ slope: undefined }), { wallTopZ: 100 }),
+    ).toThrow(/slope spec required/);
+  });
+
+  it("throws when min_overhang <= 0", () => {
+    expect(() =>
+      derivePitchedRoof(yAxisCfg({ min_overhang: 0 }), { wallTopZ: 100 }),
+    ).toThrow(/min_overhang/);
+  });
+});
+
+describe("derivePitchedRoof — pure gable (all open)", () => {
+  it("emits 2 slopes + 2 gable_walls + 0 hip members", () => {
+    const cfg = yAxisCfg({ default_endpoint: "open" });
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    expect(spec.planes.filter((p) => p.role === "slope").length).toBe(2);
+    expect(spec.planes.filter((p) => p.role === "gable_wall").length).toBe(2);
+    expect(spec.planes.filter((p) => p.role === "hip_face").length).toBe(0);
+    expect(spec.members.filter((m) => m.role === "hip").length).toBe(0);
+    expect(spec.members.filter((m) => m.role === "ridge").length).toBe(1);
+  });
+
+  it("open ends default to gable_overhang = min_overhang (eave extends past wall)", () => {
+    // Segment (150, 0) → (150, 500), min_overhang 25. With no
+    // explicit gable_overhang, open ends should extend by 25.
+    const cfg = yAxisCfg({ default_endpoint: "open" });
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    const ridge = pitchedRidge(spec)!;
+    // Ridge extends 25u past each end.
+    expect(ridge.start[1]).toBeCloseTo(-25, 6);
+    expect(ridge.end[1]).toBeCloseTo(525, 6);
+    // Slope footprint Y extents also reach past the wall by 25u.
+    const fp = pitchedSlopeFootprint(spec)!;
+    expect(fp.y_min).toBeCloseTo(-25, 6);
+    expect(fp.y_max).toBeCloseTo(525, 6);
+  });
+
+  it("explicit gable_overhang = 0 disables the overhang", () => {
+    const cfg = yAxisCfg({ default_endpoint: "open" });
+    cfg.segments[0].gable_overhang_start = 0;
+    cfg.segments[0].gable_overhang_end = 0;
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    const ridge = pitchedRidge(spec)!;
+    expect(ridge.start[1]).toBeCloseTo(0, 6);
+    expect(ridge.end[1]).toBeCloseTo(500, 6);
+  });
+
+  it("ridge runs the full segment length + gable_overhang past each end", () => {
+    // cfg has segments[0].gable_overhang_{start,end} = 10 → ridge extends 10 past.
+    const cfg = yAxisCfg({ default_endpoint: "open" });
+    cfg.segments[0].gable_overhang_start = 10;
+    cfg.segments[0].gable_overhang_end = 10;
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    const ridge = pitchedRidge(spec)!;
+    expect(ridge.start[1]).toBeCloseTo(-10, 6);   // y = 0 - 10
+    expect(ridge.end[1]).toBeCloseTo(510, 6);     // y = 500 + 10
+    expect(ridge.start[0]).toBeCloseTo(150, 6);   // cx
+    expect(ridge.end[0]).toBeCloseTo(150, 6);
+    expect(ridge.start[2]).toBeCloseTo(150, 6);   // wallTop + ridge_h = 100+50
+  });
+
+  it("eave drop = min_overhang · ridge_h / (width/2) for pure gable", () => {
+    // width/2 = 150, min_overhang = 25, ridge_h = 50 →
+    // eaveDrop = 25·50/150 ≈ 8.333. eaveZ = 100 - 8.333 = 91.666.
+    const cfg = yAxisCfg({ default_endpoint: "open" });
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    const fp = pitchedSlopeFootprint(spec)!;
+    expect(fp.eave_z).toBeCloseTo(100 - (25 * 50) / 150, 6);
+    expect(fp.ridge_z).toBeCloseTo(150, 6);
+  });
+});
+
+describe("derivePitchedRoof — ridge vent extension", () => {
+  it("hip_ridge_extension_start/end extends the RIDGE MEMBER past the hip apex", () => {
+    const cfg = yAxisCfg();
+    // Default hip: setback 150 → ridge y ∈ [150, 350]. Add 50u
+    // extension at both ends → ridge should span [100, 400].
+    cfg.segments[0].hip_ridge_extension_start = 50;
+    cfg.segments[0].hip_ridge_extension_end = 50;
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    const ridge = pitchedRidge(spec)!;
+    expect(ridge.start[1]).toBeCloseTo(100, 6);
+    expect(ridge.end[1]).toBeCloseTo(400, 6);
+  });
+
+  it("hip diagonals still meet at the true apex (not the extended ridge)", () => {
+    const cfg = yAxisCfg();
+    cfg.segments[0].hip_ridge_extension_start = 50;
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    const hipDiag = spec.members.find((m) => m.id === "s0.hip.start.left")!;
+    // Apex of the north hip is at (cx, seg.start.y + hipSetback, ridgeZ)
+    // = (150, 150, 150) — NOT (150, 100, 150).
+    const apexEnd = hipDiag.start[2] > hipDiag.end[2] ? hipDiag.start : hipDiag.end;
+    expect(apexEnd[1]).toBeCloseTo(150, 6);
+  });
+
+  it("no extension by default (hip roof behaves as before)", () => {
+    const cfg = yAxisCfg();
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    const ridge = pitchedRidge(spec)!;
+    expect(ridge.start[1]).toBeCloseTo(150, 6);
+    expect(ridge.end[1]).toBeCloseTo(350, 6);
+  });
+
+  it("open (gable) endpoint ignores the extension (only applies to closed)", () => {
+    const cfg = yAxisCfg({ default_endpoint: "open" });
+    cfg.segments[0].hip_ridge_extension_start = 999;
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    const ridge = pitchedRidge(spec)!;
+    // Open end: ridge extends by gable_overhang (default = min_overhang = 25),
+    // NOT by 999. So ridge start = 0 - 25 = -25.
+    expect(ridge.start[1]).toBeCloseTo(-25, 6);
+  });
+
+  it("emits 2 vent struts per closed endpoint with extension > 0", () => {
+    const cfg = yAxisCfg();
+    cfg.segments[0].hip_ridge_extension_start = 50;
+    cfg.segments[0].hip_ridge_extension_end = 30;
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    const struts = spec.members.filter((m) => m.role === "vent_strut");
+    expect(struts.length).toBe(4);   // 2 per end × 2 ends
+  });
+
+  it("vent struts start at the ridge tip and end on the hip diagonals", () => {
+    const cfg = yAxisCfg();
+    cfg.segments[0].hip_ridge_extension_start = 50;
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    const struts = spec.members.filter(
+      (m) => m.role === "vent_strut" && m.id.includes(".start."),
+    );
+    expect(struts.length).toBe(2);
+    // Both start at the ridge tip (which is at y = 100 = seg.start.y +
+    // hip_setback − extension = 0 + 150 − 50).
+    for (const s of struts) {
+      expect(s.start[1]).toBeCloseTo(100, 6);
+      expect(s.start[2]).toBeCloseTo(150, 6);   // ridge Z
+      // Ends are on the hip diagonals — Z lower than ridge Z.
+      expect(s.end[2]).toBeLessThan(150);
+    }
+  });
+
+  it("no vent struts when extension is 0 (default)", () => {
+    const spec = derivePitchedRoof(yAxisCfg(), { wallTopZ: 100 });
+    const struts = spec.members.filter((m) => m.role === "vent_strut");
+    expect(struts.length).toBe(0);
+  });
+});
+
+describe("derivePitchedRoof — pure hip (all closed)", () => {
+  // Use hip_setback = width/2 (150) which is the default → equal-pitch pyramid.
+  it("emits 2 slopes + 2 hip_faces + 4 hip members", () => {
+    const spec = derivePitchedRoof(yAxisCfg(), { wallTopZ: 100 });
+    expect(spec.planes.filter((p) => p.role === "slope").length).toBe(2);
+    expect(spec.planes.filter((p) => p.role === "hip_face").length).toBe(2);
+    expect(spec.planes.filter((p) => p.role === "gable_wall").length).toBe(0);
+    expect(spec.members.filter((m) => m.role === "hip").length).toBe(4);
+  });
+
+  it("ridge is trimmed inward by hip_setback at each end", () => {
+    const cfg = yAxisCfg();
+    // Override setback to 75 (less than default 150) → steeper hips.
+    cfg.segments[0].hip_setback_start = 75;
+    cfg.segments[0].hip_setback_end = 75;
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    const ridge = pitchedRidge(spec)!;
+    expect(ridge.start[1]).toBeCloseTo(75, 6);    // y = 0 + 75
+    expect(ridge.end[1]).toBeCloseTo(425, 6);     // y = 500 - 75
+  });
+
+  it("eave drop uses dCrit = min(width/2, hip_setback_start, hip_setback_end)", () => {
+    const cfg = yAxisCfg();
+    cfg.segments[0].hip_setback_start = 75;   // smaller than width/2 = 150
+    cfg.segments[0].hip_setback_end = 100;
+    // dCrit = 75. eaveDrop = 25·50/75 ≈ 16.667.
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    const fp = pitchedSlopeFootprint(spec)!;
+    expect(fp.eave_z).toBeCloseTo(100 - (25 * 50) / 75, 6);
+  });
+});
+
+describe("derivePitchedRoof — dutch gable (mixed)", () => {
+  it("open start + closed end → 1 gable_wall + 1 hip_face + 2 hip members", () => {
+    const cfg = yAxisCfg({ default_endpoint: undefined });
+    cfg.segments[0].start_endpoint = "open";
+    cfg.segments[0].end_endpoint = "closed";
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    expect(spec.planes.filter((p) => p.role === "gable_wall").length).toBe(1);
+    expect(spec.planes.filter((p) => p.role === "hip_face").length).toBe(1);
+    expect(spec.members.filter((m) => m.role === "hip").length).toBe(2);
+  });
+
+  it("ridge start extends past segment; ridge end trimmed inward", () => {
+    const cfg = yAxisCfg({ default_endpoint: undefined });
+    cfg.segments[0].start_endpoint = "open";
+    cfg.segments[0].end_endpoint = "closed";
+    cfg.segments[0].gable_overhang_start = 5;
+    cfg.segments[0].hip_setback_end = 100;
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    const ridge = pitchedRidge(spec)!;
+    expect(ridge.start[1]).toBeCloseTo(-5, 6);    // open + gable overhang
+    expect(ridge.end[1]).toBeCloseTo(400, 6);     // closed, trimmed inward
+  });
+});
+
+describe("derivePitchedRoof — x-axis ridge", () => {
+  it("x-axis hip: same footprint math as y-axis, rotated 90°", () => {
+    // xAxisCfg has segment along X, width=200 → cross half = 100.
+    // For pure hip (default): dCrit = min(100, 100, 100) = 100.
+    // eaveDrop = 25·50/100 = 12.5. eaveZ = 100 - 12.5 = 87.5.
+    // Overhangs symmetric: 25 all around.
+    const spec = derivePitchedRoof(xAxisCfg(), { wallTopZ: 100 });
+    const fp = pitchedSlopeFootprint(spec)!;
+    // Segment at cy=100, x∈[0,600]. Rectangle: y∈[0,200], x∈[0,600].
+    // With hip_setback = 100 default = crossHalf, oStart = oEnd = 25 = oCross.
+    // Slope + hip_face together span x∈[-25, 625], y∈[-25, 225].
+    expect(fp.x_min).toBeCloseTo(-25, 6);
+    expect(fp.x_max).toBeCloseTo(625, 6);
+    expect(fp.y_min).toBeCloseTo(-25, 6);
+    expect(fp.y_max).toBeCloseTo(225, 6);
+    expect(fp.eave_z).toBeCloseTo(87.5, 6);
+    expect(fp.ridge_z).toBeCloseTo(150, 6);
+  });
+
+  it("x-axis gable: ridge runs along X, extends by gable overhang", () => {
+    const cfg = xAxisCfg({ default_endpoint: "open" });
+    cfg.segments[0].gable_overhang_start = 15;
+    cfg.segments[0].gable_overhang_end = 15;
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    const ridge = pitchedRidge(spec)!;
+    expect(ridge.start[0]).toBeCloseTo(-15, 6);
+    expect(ridge.end[0]).toBeCloseTo(615, 6);
+    expect(ridge.start[1]).toBeCloseTo(100, 6);   // cy
+    expect(ridge.end[1]).toBeCloseTo(100, 6);
+  });
+});
+
+describe("derivePitchedRoof — trusses", () => {
+  it("emits one truss triangle per position", () => {
+    const cfg = yAxisCfg();
+    cfg.trusses = [
+      { segment_id: "s0", type: "fink", positions_along: [100, 250, 400] },
+    ];
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    expect(spec.trusses.length).toBe(3);
+    for (const t of spec.trusses) {
+      expect(t.apex[2]).toBeCloseTo(150, 6);         // ridge Z
+      expect(t.bottom_left[2]).toBeCloseTo(100, 6);  // wall top Z
+      expect(t.bottom_right[2]).toBeCloseTo(100, 6);
+    }
+    // Apexes on ridge line at Y = 100, 250, 400, X = 150 (cx).
+    expect(spec.trusses[0].apex[1]).toBeCloseTo(100, 6);
+    expect(spec.trusses[1].apex[1]).toBeCloseTo(250, 6);
+    expect(spec.trusses[2].apex[1]).toBeCloseTo(400, 6);
+  });
+
+  it("no truss entry → 0 truss triangles", () => {
+    const spec = derivePitchedRoof(yAxisCfg(), { wallTopZ: 100 });
+    expect(spec.trusses.length).toBe(0);
+  });
+});
+
+describe("derivePitchedRoof — angle-based slope", () => {
+  it("min_pitch_deg produces rise = (width/2) · tan(angle)", () => {
+    const cfg = yAxisCfg({ slope: { by: "angle", angle_deg: 30 } });
+    // rise = 150 · tan30 ≈ 86.6
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    const expectedRise = 150 * Math.tan(Math.PI / 6);
+    expect(pitchedRidge(spec)!.start[2]).toBeCloseTo(100 + expectedRise, 6);
+  });
+});
+
+describe("derivePitchedRoof — joint endpoints", () => {
+  it("shared endpoint gets treated as closed regardless of style config", () => {
+    // Two collinear segments sharing an endpoint. Even if user asks
+    // for open, joint endpoints must NOT emit gable_wall / hip_face.
+    const cfg: RoofConfig = {
+      type: "roof",
+      roof_type: "pitched",
+      segments: [
+        { id: "a", start: [150, 0], end: [150, 250], width: 300, end_endpoint: "open" },
+        { id: "b", start: [150, 250], end: [150, 500], width: 300, start_endpoint: "open" },
+      ],
+      slope: { by: "height", ridge_h: 50 },
+      min_overhang: 25,
+      default_endpoint: "closed",
+    };
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    // Joint endpoint at (150, 250) is shared: 0 endcaps emitted for it.
+    // Each segment has 1 leaf endpoint (closed by default) → 2 hip_faces
+    // total across both segments.
+    expect(spec.planes.filter((p) => p.role === "hip_face").length).toBe(2);
+    expect(spec.planes.filter((p) => p.role === "gable_wall").length).toBe(0);
+  });
+});

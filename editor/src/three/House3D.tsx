@@ -35,6 +35,7 @@ import { deriveAllFlatRoofs } from "../svg2d/roof/flatGeometry";
 import { deriveAllShedRoofs } from "../svg2d/roof/shedGeometry";
 import { deriveAllHipRoofs } from "../svg2d/roofGeometry";
 import { RoofFrameMesh, computeShellLift, type RoofFraming, type RoofFrameGeom, type RoofTrusses } from "./roofFrame";
+import { V2RoofFrame, V2RoofSolid, V2RoofSurface } from "./V2RoofSolid";
 import { StaircaseMesh } from "./staircase";
 import { OpeningPane, WallWithOpenings, type WallOpening } from "./wallCSG";
 import { DEFAULT_LAYERS, useLayerStore } from "./layers";
@@ -74,6 +75,7 @@ export function House3D({ config }: { config: HouseConfig }) {
       globals.plinthHeight,
       globals.slabThickness,
       globals.floorHeight,
+      globals.wallHeight,
     );
 
     const groups: Record<string, React.ReactNode[]> = {};
@@ -321,6 +323,14 @@ export function House3D({ config }: { config: HouseConfig }) {
       roofDebug.push({ type: "shed_roof", status: "error", error: msg });
     }
 
+    // V2 unified roofs (type: "roof"). Shells go into "loft" so the
+    // roof-shell toggle hides them; truss members go into
+    // "frame_spine" alongside legacy ridges/trusses so the framing
+    // toggle hides them together.
+    push("loft", <V2RoofSolid key="v2-roofs" config={hc} />);
+    push("frame_spine", <V2RoofFrame key="v2-frame" config={hc} />);
+    push("frame_surface", <V2RoofSurface key="v2-surface" config={hc} />);
+
     (window as unknown as { __roofDebug?: unknown }).__roofDebug = {
       status: roofDebug.length ? "ok" : "no-roof",
       roofs: roofDebug,
@@ -363,6 +373,9 @@ export function House3D({ config }: { config: HouseConfig }) {
         if (obj.type === "floor_slab") {
           const x = obj.x as number, y = obj.y as number;
           const w = obj.width as number, l = obj.length as number;
+          // Slab thickness defaults to the floor's slab_thickness
+          // (band.slabThickness). Per-object `thickness` overrides.
+          const slabT = (obj.thickness as number | undefined) ?? band.slabThickness;
           const c = toThreePos(x + w / 2, y + l / 2, 0, plot.width, plot.length);
           push(
             slabLayer,
@@ -373,19 +386,19 @@ export function House3D({ config }: { config: HouseConfig }) {
               width={w}
               length={l}
               z={band.slabZ}
-              thickness={globals.slabThickness}
+              thickness={slabT}
             />,
           );
         } else if (obj.type === "beam") {
           const x = obj.x as number, y = obj.y as number;
           const w = obj.width as number, l = obj.length as number;
-          const h = (obj.height as number | undefined) ?? globals.beamSize;
-          // z_offset_ft (feet) lifts the beam above the floor slab —
-          // used e.g. for top-of-wall beams which sit at slab + wall
-                    // height (config uses 9.8 ft = 98 world units on the
-          // first floor's perimeter beams).
-          const zOffsetFt = (obj.z_offset_ft as number | undefined) ?? 0;
-          const zOffsetU = zOffsetFt * 10;
+          // Beam thickness defaults to the floor's slab_thickness
+          // (band.slabThickness). Per-object `height` overrides.
+          const h = (obj.height as number | undefined) ?? band.slabThickness;
+          // z_offset (project units, 10 = 1 ft) lifts the beam above
+          // the floor's reference start (band.slabZ) — used e.g. for
+          // top-of-wall beams that sit at slab + wall height.
+          const zOffsetU = (obj.z_offset as number | undefined) ?? 0;
           const c = toThreePos(x + w / 2, y + l / 2, 0, plot.width, plot.length);
           push(
             "f1_beam",
@@ -413,10 +426,11 @@ export function House3D({ config }: { config: HouseConfig }) {
               cz={c.z}
               width={w}
               length={l}
-              // Pillars sit ON TOP of the ground-floor slab (matches
-              // Python's create_pillar which adds slab_thickness to
-              // the floor's Z base).
-              z={globals.plinthHeight + globals.slabThickness}
+              // Pillars start at the TOP OF THE PLINTH (Z = plinth
+              // height) and rise up through the slab to the ring beam
+              // above. Height should equal ring-beam Z minus plinth
+              // top (e.g. 226 − 30 = 196 in the current default config).
+              z={globals.plinthHeight}
               height={h}
             />,
           );
@@ -452,6 +466,51 @@ export function House3D({ config }: { config: HouseConfig }) {
               plotLength={plot.length}
             />,
           );
+        } else if (obj.type === "kitchen_platform") {
+          // Path-based platform — render one box per polyline segment.
+          // Each segment extrudes a rectangle of `depth` × segment-length
+          // in XY, from base_z (default = floor slab top) up by `height`.
+          // The `side` picks which side of segment direction the platform
+          // extends: "left" = +90° CCW from start→end, "right" = -90°.
+          const path = obj.path as [number, number][];
+          const depth = obj.depth as number;
+          const height = obj.height as number;
+          const side = (obj.side as "left" | "right" | undefined) ?? "right";
+          const baseZ = (obj.base_z as number | undefined) ?? band.wallZ;
+          for (let i = 0; i < path.length - 1; i++) {
+            const a = path[i], b = path[i + 1];
+            const dx = b[0] - a[0], dy = b[1] - a[1];
+            const segLen = Math.hypot(dx, dy);
+            if (segLen < 1e-6) continue;
+            const ux = dx / segLen, uy = dy / segLen;
+            // Perpendicular: +90° CCW (leftN) = (-uy, ux)
+            const perpX = side === "left" ? -uy : uy;
+            const perpY = side === "left" ? ux : -ux;
+            // Rectangle corners in XY: back edge on path, front edge
+            // offset by depth in the perp direction. Centre = midpoint
+            // between them.
+            const midAlongX = (a[0] + b[0]) / 2;
+            const midAlongY = (a[1] + b[1]) / 2;
+            const cxWorld = midAlongX + perpX * (depth / 2);
+            const cyWorld = midAlongY + perpY * (depth / 2);
+            const centre = toThreePos(cxWorld, cyWorld, 0, plot.width, plot.length);
+            // Orientation: box's local X = segment direction, local Z =
+            // depth direction (into room), local Y = up.
+            const angleY = Math.atan2(-uy, ux);   // three.js z inverted from world y
+            push(
+              slabLayer,
+              <mesh
+                key={`${key}-${i}`}
+                position={[centre.x, baseZ + height / 2, centre.z]}
+                rotation={[0, angleY, 0]}
+                castShadow
+                receiveShadow
+              >
+                <boxGeometry args={[segLen, height, depth]} />
+                <meshStandardMaterial color="#3f3f46" roughness={0.7} />
+              </mesh>,
+            );
+          }
         }
         // door/window: emitted alongside their wall via WallWithOpenings +
         // OpeningPane. No standalone rendering.
@@ -482,7 +541,8 @@ export function House3D({ config }: { config: HouseConfig }) {
 type PushFn = (layer: string, node: React.ReactNode) => void;
 
 interface Band {
-  slabZ: number; wallZ: number; wallTop: number; floorHeight: number;
+  slabZ: number; wallZ: number; wallTop: number;
+  floorHeight: number; wallHeight: number; slabThickness: number;
 }
 interface Globals {
   wallThickness: number;
@@ -491,6 +551,7 @@ interface Globals {
   roofThickness: number;
   beamSize: number;
   floorHeight: number;
+  wallHeight: number;
 }
 interface Plot { width: number; length: number }
 
@@ -593,7 +654,8 @@ function emitRoomWalls(
 
   for (const sideRaw of wallsList) {
     const side = sideRaw.toLowerCase() as "north" | "south" | "east" | "west";
-    const wh = heightFor(obj, side, band.floorHeight);
+    // Walls use the floor's WALL height (independent of floor_height).
+    const wh = heightFor(obj, side, band.wallHeight);
 
     const matched: WallOpening[] = [];
     for (const op of openings) {
@@ -673,7 +735,9 @@ function emitStandaloneWall(
   const sx = obj.start_x as number, sy = obj.start_y as number;
   const ex = obj.end_x as number, ey = obj.end_y as number;
   const t = (obj.thickness as number | undefined) ?? globals.wallThickness;
-  const h = (obj.height as number | undefined) ?? band.floorHeight;
+  // Standalone walls use the floor's WALL height (independent of
+  // floor_height); the wall's own `height` field overrides both.
+  const h = (obj.height as number | undefined) ?? band.wallHeight;
   const dx = ex - sx, dy = ey - sy;
   const wallLen = Math.hypot(dx, dy);
   if (wallLen < 1e-6) return;

@@ -15,6 +15,8 @@ import { HipRoofForm } from "../forms/HipRoofForm";
 import { GableRoofForm } from "../forms/GableRoofForm";
 import { FlatRoofForm } from "../forms/FlatRoofForm";
 import { ShedRoofForm } from "../forms/ShedRoofForm";
+import { RoofV2Form } from "../forms/RoofV2Form";
+import { KitchenPlatformForm } from "../forms/KitchenPlatformForm";
 import { HouseSettingsForm } from "../forms/HouseSettingsForm";
 import { FloorPropertiesForm } from "../forms/FloorPropertiesForm";
 import { useEffect } from "react";
@@ -156,6 +158,10 @@ function FormFor({ object, selection }: { object: HouseObject; selection: Select
       return <FlatRoofForm obj={object} selection={selection} />;
     case "shed_roof":
       return <ShedRoofForm obj={object} selection={selection} />;
+    case "roof":
+      return <RoofV2Form obj={object} selection={selection} />;
+    case "kitchen_platform":
+      return <KitchenPlatformForm obj={object} selection={selection} />;
     default:
       return (
         <div className="text-xs text-slate-500">

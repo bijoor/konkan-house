@@ -19,37 +19,48 @@ export interface Vec3 {
 }
 
 export interface FloorZBounds {
-  slabZ: number; // World Z of top of the floor's slab (walls sit on this)
-  wallZ: number; // World Z of bottom of walls
-  wallTop: number; // World Z of top of walls
-  floorHeight: number;
+  slabZ: number;       // World Z of THIS floor's reference start (= sum of previous floors + plinth). Both slab and beam objects are placed with this as their base.
+  wallZ: number;       // World Z of bottom of walls (slabZ + slab thickness)
+  wallTop: number;     // World Z of top of walls (next floor's base)
+  floorHeight: number; // floor-to-floor rise (drives Z stack)
+  wallHeight: number;  // standing wall height (used for wall meshes)
+  slabThickness: number; // this floor's slab depth — the default for floor_slab + beam thickness on this floor
 }
 
 // Compute the per-floor Z bands the elevation code uses. Same math:
 //   current_z = plinth_height
 //   for floor:
-//     slab_z   = current_z
-//     wall_z   = current_z + slab_thickness
-//     wall_top = wall_z + floor_height
+//     slab_z   = current_z            (bottom of slab / top of floor below)
+//     wall_z   = current_z + slab     (floor-top → base of walls)
+//     wall_top = current_z + fh       (next floor level)
 //     current_z = wall_top
+//
+// Floor-position stack uses PLINTH + FLOOR_HEIGHTS ONLY. `slab_thickness`
+// is a separate metadata dimension used to place the slab MESH inside
+// the floor band — it does NOT contribute to the vertical stack.
+// (User directive: roof position should be a function of plinth +
+// floor_heights only.)
 export function computeFloorZBands(
   floors: Array<Record<string, unknown>>,
   plinthHeight: number,
   slabThickness: number,          // house.defaults.slab_thickness ?? GC default
   floorHeight: number,            // house.defaults.floor_height ?? GC default
+  wallHeight: number,             // house.defaults.wall_height ?? GC default
 ): FloorZBounds[] {
   const bands: FloorZBounds[] = [];
   let current = plinthHeight;
   for (const floor of floors) {
     // Per-floor overrides take precedence over the defaults passed in.
     const fhOverride = floor.height as number | undefined;
+    const whOverride = floor.wall_height as number | undefined;
     const slabOverride = floor.slab_thickness as number | undefined;
     const fh = fhOverride ?? floorHeight;
+    const wh = whOverride ?? wallHeight;
     const slab = slabOverride ?? slabThickness;
     const slabZ = current;
-    const wallZ = slabZ + slab;
-    const wallTop = wallZ + fh;
-    bands.push({ slabZ, wallZ, wallTop, floorHeight: fh });
+    const wallZ = slabZ + slab;   // where walls START (above the deck)
+    const wallTop = current + fh; // next floor's bottom = current + fh
+    bands.push({ slabZ, wallZ, wallTop, floorHeight: fh, wallHeight: wh, slabThickness: slab });
     current = wallTop;
   }
   return bands;
@@ -90,7 +101,7 @@ export function readPlotBounds(house: Record<string, unknown>): PlotBounds {
 // Convenience: pull the constants we need from DEFAULT_GLOBAL_CONFIG,
 // with optional house-level overrides layered on top.
 export function readGlobals(
-  houseDefaults?: { floor_height?: number; slab_thickness?: number },
+  houseDefaults?: { floor_height?: number; wall_height?: number; slab_thickness?: number },
 ) {
   const g = DEFAULT_GLOBAL_CONFIG;
   return {
@@ -100,5 +111,6 @@ export function readGlobals(
     roofThickness: g.roof_thickness,
     beamSize: g.beam_size,
     floorHeight: houseDefaults?.floor_height ?? g.floor_height,
+    wallHeight: houseDefaults?.wall_height ?? g.wall_height,
   };
 }

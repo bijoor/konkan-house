@@ -1,0 +1,259 @@
+// Shed (mono-pitch) roof v2 derivation.
+//
+// Per Design decision #10 + the plan's shed pseudocode:
+//   - Segment sits at the centreline of the roof width.
+//   - `shed_high_side` names which side of the segment is HIGH.
+//     If "left" → high edge = offsetLine(seg, +w/2); low = -w/2.
+//     If "right" → high = offsetLine(seg, -w/2);     low = +w/2.
+//   - Overhang extends outward BOTH perpendicular (past low + high
+//     eaves) and along the segment (past both endpoints).
+//   - Low eave outer edge dips below wall_top_z by
+//         eaveDrop = (min_overhang · rise) / run
+//     where run = seg.width. High eave outer edge rises the same
+//     amount past wall_top + rise.
+//   - Open leaf endpoints emit a triangular gable_wall infill
+//     spanning from wall_top_z at the low corner up to
+//     wall_top_z + rise at the high corner (interior wall closes
+//     the open end).
+
+import type {
+  Point2D,
+  Point3D,
+  RoofConfig,
+  RoofPlane,
+  RoofSegment,
+  RoofSpec,
+  SlopeSpec,
+  StraightMember,
+  TrussTriangle,
+} from "./model";
+import {
+  interpolatePoint,
+  isLeafEndpoint,
+  offsetLine,
+  resolveEndpoints,
+  ringBeamMembersForRect,
+  segmentLength,
+  segmentRect,
+  segmentUnitVector,
+} from "./segments";
+
+export interface DeriveShedOptions {
+  wallTopZ: number;
+  defaultOverhang?: number;         // default 20
+  defaultShedHighSide?: "left" | "right";
+}
+
+function resolveRise(
+  slope: SlopeSpec | undefined,
+  run: number,
+): number {
+  if (!slope) throw new Error("shed: slope spec required (ridge_h or angle_deg)");
+  if (slope.by === "height") return slope.ridge_h;
+  return run * Math.tan((slope.angle_deg * Math.PI) / 180);
+}
+
+function to3D(pt: Point2D, z: number): Point3D {
+  return [pt[0], pt[1], z];
+}
+
+function extendSegment(seg: RoofSegment, byEachEnd: number): RoofSegment {
+  if (byEachEnd === 0) return seg;
+  const [ux, uy] = segmentUnitVector(seg);
+  return {
+    ...seg,
+    start: [seg.start[0] - ux * byEachEnd, seg.start[1] - uy * byEachEnd],
+    end: [seg.end[0] + ux * byEachEnd, seg.end[1] + uy * byEachEnd],
+  };
+}
+
+export function deriveShedRoof(
+  cfg: RoofConfig,
+  opts: DeriveShedOptions,
+): RoofSpec {
+  if (cfg.roof_type !== "shed") {
+    throw new Error(`deriveShedRoof: expected roof_type="shed", got "${cfg.roof_type}"`);
+  }
+  const roofOverhang = cfg.min_overhang ?? opts.defaultOverhang ?? 20;
+  if (!(roofOverhang > 0)) {
+    throw new Error("shed: min_overhang must be > 0");
+  }
+  const defaultHigh = opts.defaultShedHighSide ?? "left";
+  const roofSlope = cfg.slope;
+
+  const planes: RoofPlane[] = [];
+  const members: StraightMember[] = [];
+  const trusses: TrussTriangle[] = [];
+  const endpoints = resolveEndpoints(cfg.segments);
+
+  for (const seg of cfg.segments) {
+    if (segmentLength(seg) === 0) continue;
+
+    const slope = seg.slope_override ?? roofSlope;
+    const highSide = seg.shed_high_side ?? defaultHigh;
+    const run = seg.width;                     // perpendicular span low → high
+    const rise = resolveRise(slope, run);
+    if (!(rise > 0)) {
+      throw new Error(`shed segment ${seg.id}: rise must be > 0`);
+    }
+    // Per-segment overhang override.
+    const overhang = seg.min_overhang ?? roofOverhang;
+    const eaveDrop = (overhang * rise) / run;
+
+    // High/low signed perpendicular offsets, INCLUDING overhang.
+    // offsetLine sign convention: +distance = LEFT of segment.
+    const highSign = highSide === "left" ? +1 : -1;
+    const highOffset = highSign * (seg.width / 2 + overhang);
+    const lowOffset = -highSign * (seg.width / 2 + overhang);
+
+    // Extend segment along its axis by overhang at each end.
+    const extended = extendSegment(seg, overhang);
+    const highEdge = offsetLine(extended, highOffset);
+    const lowEdge = offsetLine(extended, lowOffset);
+
+    const zHigh = opts.wallTopZ + rise + eaveDrop;
+    const zLow = opts.wallTopZ - eaveDrop;
+
+    // Slope quad — CCW when viewed from above/outward (normal has
+    // both a horizontal component perpendicular to seg and a
+    // vertical component upward). Order: low.start → low.end →
+    // high.end → high.start.
+    planes.push({
+      id: `${seg.id}.slope`,
+      vertices: [
+        to3D(lowEdge.start, zLow),
+        to3D(lowEdge.end, zLow),
+        to3D(highEdge.end, zHigh),
+        to3D(highEdge.start, zHigh),
+      ],
+      role: "slope",
+      source_segment_id: seg.id,
+      side_of_segment: highSide,
+      rafter_direction: normaliseVec3([
+        highEdge.start[0] - lowEdge.start[0],
+        highEdge.start[1] - lowEdge.start[1],
+        zHigh - zLow,
+      ]),
+      purlin_direction: normaliseVec3([
+        extended.end[0] - extended.start[0],
+        extended.end[1] - extended.start[1],
+        0,
+      ]),
+    });
+
+    // Ridge = high edge as a linear member (top of slope).
+    members.push({
+      id: `${seg.id}.ridge`,
+      start: to3D(highEdge.start, zHigh),
+      end: to3D(highEdge.end, zHigh),
+      role: "ridge",
+      source_segment_id: seg.id,
+    });
+
+    // Ring beam — 4 members around the segment rectangle at wall_top_z.
+    // Same treatment as pitched roofs (see derivePitched).
+    const rect = segmentRect(seg);
+    for (const rb of ringBeamMembersForRect(rect, opts.wallTopZ, seg.id)) {
+      members.push(rb);
+    }
+
+    // Gable-end infill for open LEAF endpoints. Triangle at the
+    // wall (segment endpoint BEFORE along-extension) spanning
+    // wall_top_z along the bottom and following the slope on top.
+    for (const which of ["start", "end"] as const) {
+      if (!isLeafEndpoint(endpoints, seg.id, which)) continue;
+
+      // Bottom corners at wall_top_z, at the WALL positions (NOT
+      // extended by along-overhang; the wall itself doesn't reach
+      // into the eave overhang).
+      const wallSeg = seg;               // clarity alias
+      const wallHigh = offsetLine(wallSeg, highSign * seg.width / 2);
+      const wallLow = offsetLine(wallSeg, -highSign * seg.width / 2);
+
+      const wallCornerHigh = which === "start" ? wallHigh.start : wallHigh.end;
+      const wallCornerLow = which === "start" ? wallLow.start : wallLow.end;
+
+      // Vertices: low-corner @ wall_top, high-corner @ wall_top,
+      // high-corner @ wall_top + rise. The hypotenuse (low→high@rise)
+      // is the underside of the slope at this endpoint.
+      planes.push({
+        id: `${seg.id}.gable_wall.${which}`,
+        vertices: [
+          to3D(wallCornerLow, opts.wallTopZ),
+          to3D(wallCornerHigh, opts.wallTopZ),
+          to3D(wallCornerHigh, opts.wallTopZ + rise),
+        ],
+        role: "gable_wall",
+        source_segment_id: seg.id,
+        side_of_segment: which,
+      });
+    }
+
+    // Mono-pitch trusses along the segment. positions_along = distance
+    // from seg.start. Each truss spans the segment's width from LOW
+    // wall corner to HIGH wall corner (bottom chord), with the apex
+    // directly above the HIGH corner at wall_top + rise.
+    const segTrussEntry = cfg.trusses?.find((t) => t.segment_id === seg.id);
+    if (segTrussEntry) {
+      const highN: Point2D = highSign === +1
+        ? [-segmentUnitVector(seg)[1], segmentUnitVector(seg)[0]]        // leftN
+        : [segmentUnitVector(seg)[1], -segmentUnitVector(seg)[0]];       // rightN
+      const lowN: Point2D = [-highN[0], -highN[1]];
+      for (let ti = 0; ti < segTrussEntry.positions_along.length; ti++) {
+        const along = segTrussEntry.positions_along[ti];
+        const center2D = interpolatePoint(seg, along);
+        const halfW = seg.width / 2;
+        const lowCorner2D: Point2D = [
+          center2D[0] + lowN[0] * halfW,
+          center2D[1] + lowN[1] * halfW,
+        ];
+        const highCorner2D: Point2D = [
+          center2D[0] + highN[0] * halfW,
+          center2D[1] + highN[1] * halfW,
+        ];
+        trusses.push({
+          id: `${seg.id}.truss.${ti}`,
+          bottom_left: to3D(lowCorner2D, opts.wallTopZ),          // LOW wall
+          bottom_right: to3D(highCorner2D, opts.wallTopZ),        // HIGH wall
+          apex: to3D(highCorner2D, opts.wallTopZ + rise),         // above HIGH
+          source_segment_id: seg.id,
+          kind: "mono_pitch",
+        });
+      }
+    }
+  }
+
+  return { members, planes, trusses };
+}
+
+function normaliseVec3(v: [number, number, number]): [number, number, number] {
+  const m = Math.hypot(v[0], v[1], v[2]);
+  return m === 0 ? [0, 0, 0] : [v[0] / m, v[1] / m, v[2] / m];
+}
+
+// Test helpers ------------------------------------------------------
+
+export interface ShedSlopeFootprint {
+  low_z: number;
+  high_z: number;
+  x_min: number;
+  x_max: number;
+  y_min: number;
+  y_max: number;
+}
+
+export function shedSlopeFootprint(spec: RoofSpec): ShedSlopeFootprint | null {
+  const slab = spec.planes.find((p) => p.role === "slope");
+  if (!slab) return null;
+  const xs = slab.vertices.map((v) => v[0]);
+  const ys = slab.vertices.map((v) => v[1]);
+  const zs = slab.vertices.map((v) => v[2]);
+  return {
+    low_z: Math.min(...zs),
+    high_z: Math.max(...zs),
+    x_min: Math.min(...xs),
+    x_max: Math.max(...xs),
+    y_min: Math.min(...ys),
+    y_max: Math.max(...ys),
+  };
+}

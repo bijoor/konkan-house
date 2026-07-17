@@ -11,7 +11,9 @@
     "smoke-validate": "tsx scripts/smoke-validate.ts",
     "dump-svgs": "tsx scripts/dump-svgs.mjs",
     "parity-primitives": "tsx scripts/parity-primitives.mjs",
-    "parity-all": "npm run parity-primitives"
+    "parity-all": "npm run parity-primitives",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -39,6 +41,7 @@
     "tailwindcss": "^4.3.2",
     "tsx": "^4.23.0",
     "typescript": "~6.0.2",
-    "vite": "^8.1.1"
+    "vite": "^8.1.1",
+    "vitest": "^4.1.10"
   }
 }

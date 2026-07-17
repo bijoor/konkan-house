@@ -17,6 +17,9 @@ import { ToneMappingMode } from "postprocessing";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import clsx from "clsx";
 import { House3D } from "./House3D";
+import { V2RoofMesh } from "./V2RoofMesh";
+import { V2TopViewPanel } from "./V2TopViewPanel";
+import { V2_DEMOS, type V2DemoId } from "./v2Demos";
 import { DEFAULT_LAYERS, useLayerStore } from "./layers";
 import { readPlotBounds } from "./coords";
 import { expandRoomWalls, type HouseConfig } from "../svg2d/expand";
@@ -53,6 +56,17 @@ export function ThreePreview({ config }: { config: HouseConfig }) {
   // disables clipping entirely. Range is anchored on the whole-model
   // envelope (plinth height 30 up to typical ridge ~300).
   const [cutZ, setCutZ] = useState<number | null>(null);
+
+  // V2 roof preview toggles. Debug / comparison overlay for the new
+  // segment-based roof pipeline (editor/src/svg2d/roof/v2/). When
+  // any of these are on, the v2 spec renders ON TOP of the legacy
+  // roof meshes so you can compare.
+  const [v2Enabled, setV2Enabled] = useState(false);
+  const [v2ShowPlanes, setV2ShowPlanes] = useState(true);
+  const [v2ShowMembers, setV2ShowMembers] = useState(true);
+  const [v2ShowTrusses, setV2ShowTrusses] = useState(false);
+  const [v2JointsOnly, setV2JointsOnly] = useState(false);
+  const [v2Demo, setV2Demo] = useState<V2DemoId>("house");
   const clippingPlanes = useMemo(() => {
     if (cutZ === null) return [];
     // Plane with normal (0, 1, 0) at height cutZ, oriented so points
@@ -75,6 +89,20 @@ export function ThreePreview({ config }: { config: HouseConfig }) {
           </button>
         ))}
         <SectionCutter cutZ={cutZ} setCutZ={setCutZ} />
+        <V2Toggle
+          enabled={v2Enabled}
+          setEnabled={setV2Enabled}
+          showPlanes={v2ShowPlanes}
+          setShowPlanes={setV2ShowPlanes}
+          showMembers={v2ShowMembers}
+          setShowMembers={setV2ShowMembers}
+          showTrusses={v2ShowTrusses}
+          setShowTrusses={setV2ShowTrusses}
+          jointsOnly={v2JointsOnly}
+          setJointsOnly={setV2JointsOnly}
+          demo={v2Demo}
+          setDemo={setV2Demo}
+        />
         <div className="ml-auto">
           <LayerPanelToggle />
         </div>
@@ -119,6 +147,16 @@ export function ThreePreview({ config }: { config: HouseConfig }) {
             position={[0, -0.02, 0]}
           />
           <House3D config={config} />
+          {v2Enabled && (
+            <V2RoofMesh
+              config={config}
+              showPlanes={v2ShowPlanes}
+              showMembers={v2ShowMembers}
+              showTrusses={v2ShowTrusses}
+              showJointsOnly={v2JointsOnly}
+              demoId={v2Demo}
+            />
+          )}
           <OrbitControls
             ref={controlsRef}
             makeDefault
@@ -142,6 +180,7 @@ export function ThreePreview({ config }: { config: HouseConfig }) {
           <CameraLogger />
         </Canvas>
         <LayerPanel />
+        {v2Enabled && <V2TopViewPanel config={config} demoId={v2Demo} />}
       </div>
     </div>
   );
@@ -230,6 +269,99 @@ function SectionCutter({
           <span className="w-12 text-right font-mono text-[10px] text-slate-500">
             Z={cutZ}
           </span>
+        </>
+      )}
+    </div>
+  );
+}
+
+function V2Toggle({
+  enabled,
+  setEnabled,
+  showPlanes,
+  setShowPlanes,
+  showMembers,
+  setShowMembers,
+  showTrusses,
+  setShowTrusses,
+  jointsOnly,
+  setJointsOnly,
+  demo,
+  setDemo,
+}: {
+  enabled: boolean;
+  setEnabled: (b: boolean) => void;
+  showPlanes: boolean;
+  setShowPlanes: (b: boolean) => void;
+  showMembers: boolean;
+  setShowMembers: (b: boolean) => void;
+  showTrusses: boolean;
+  setShowTrusses: (b: boolean) => void;
+  jointsOnly: boolean;
+  setJointsOnly: (b: boolean) => void;
+  demo: V2DemoId;
+  setDemo: (d: V2DemoId) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 border-l border-slate-800 pl-2">
+      <label className="flex items-center gap-1 text-xs text-slate-400">
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => setEnabled(e.target.checked)}
+          className="accent-fuchsia-500"
+        />
+        <span className="text-fuchsia-400">v2 roof</span>
+      </label>
+      {enabled && (
+        <>
+          <select
+            value={demo}
+            onChange={(e) => setDemo(e.target.value as V2DemoId)}
+            className="rounded border border-slate-700 bg-slate-800 px-1 py-0.5 text-[10px] text-slate-200"
+            title="Data source for the v2 preview"
+          >
+            <option value="house">House config</option>
+            {V2_DEMOS.map((d) => (
+              <option key={d.id} value={d.id}>{d.label}</option>
+            ))}
+          </select>
+          <label className="flex items-center gap-1 text-[10px] text-slate-500">
+            <input
+              type="checkbox"
+              checked={showPlanes}
+              onChange={(e) => setShowPlanes(e.target.checked)}
+              className="accent-sky-500"
+            />
+            planes
+          </label>
+          <label className="flex items-center gap-1 text-[10px] text-slate-500">
+            <input
+              type="checkbox"
+              checked={showMembers}
+              onChange={(e) => setShowMembers(e.target.checked)}
+              className="accent-red-500"
+            />
+            members
+          </label>
+          <label className="flex items-center gap-1 text-[10px] text-slate-500">
+            <input
+              type="checkbox"
+              checked={showTrusses}
+              onChange={(e) => setShowTrusses(e.target.checked)}
+              className="accent-purple-500"
+            />
+            trusses
+          </label>
+          <label className="flex items-center gap-1 text-[10px] text-slate-500">
+            <input
+              type="checkbox"
+              checked={jointsOnly}
+              onChange={(e) => setJointsOnly(e.target.checked)}
+              className="accent-blue-500"
+            />
+            joints only
+          </label>
         </>
       )}
     </div>

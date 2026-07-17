@@ -226,6 +226,14 @@ function buildFrame(
   plotLength: number,
   shellLift: number,
 ): Member[] {
+  // Frame currently only supports ridge_axis='y'. For x-axis hips the
+  // shell (HipRoofMesh) renders both axes correctly, but the truss +
+  // rafter + purlin builder below is Y-only. Writing a correct x-axis
+  // path requires axis-agnostic parameterisation of ~350 lines of
+  // trigonometry — deferred as a separate follow-up.
+  if (g.ridge_axis !== "y") {
+    return [];
+  }
   const members: Member[] = [];
   const eaveZ = g.eave_z;
   // Structural frame Z: where trusses / ring beam / hip-end beams sit.
@@ -731,3 +739,4 @@ function collectHipEndRafterXs(xWest: number, xEast: number, spacing: number): n
   for (let i = 0; i < n; i++) out.push(xWest + first + i * spacing);
   return out;
 }
+

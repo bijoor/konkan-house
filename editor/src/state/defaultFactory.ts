@@ -23,10 +23,12 @@ export type AddableObjectType =
   | "staircase"
   | "door"
   | "window"
+  | "kitchen_platform"
   | "hip_roof"
   | "gable_roof"
   | "flat_roof"
-  | "shed_roof";
+  | "shed_roof"
+  | "roof";
 
 export const ADDABLE_TYPES: AddableObjectType[] = [
   "floor_slab",
@@ -36,10 +38,12 @@ export const ADDABLE_TYPES: AddableObjectType[] = [
   "staircase",
   "door",
   "window",
-  "hip_roof",
-  "gable_roof",
-  "flat_roof",
-  "shed_roof",
+  "kitchen_platform",
+  "roof",         // v2 unified — the ONLY roof type in the "+" menu
+  // Legacy hip_roof / gable_roof / flat_roof / shed_roof are still
+  // parseable by the schema so old configs load, but they're no longer
+  // offered as add options — v2 has full coverage and legacy code
+  // paths will be removed soon.
 ];
 
 export const ADDABLE_TYPE_LABEL: Record<AddableObjectType, string> = {
@@ -50,10 +54,12 @@ export const ADDABLE_TYPE_LABEL: Record<AddableObjectType, string> = {
   staircase: "Staircase",
   door: "Door",
   window: "Window",
-  hip_roof: "Hip roof",
-  gable_roof: "Gable roof",
-  flat_roof: "Flat roof",
-  shed_roof: "Shed roof",
+  kitchen_platform: "Kitchen platform",
+  roof: "Roof",   // v2 unified — the ONLY roof type for new configs
+  hip_roof: "Hip roof (legacy)",
+  gable_roof: "Gable roof (legacy)",
+  flat_roof: "Flat roof (legacy)",
+  shed_roof: "Shed roof (legacy)",
 };
 
 // Build a default object of the given type. `existing` is the current
@@ -190,6 +196,40 @@ export function makeDefault(
         rise: 30,                // 3 ft rise across the longitudinal span
         min_overhang: 20,        // 2 ft
       } as unknown as HouseObject;
+    case "roof":
+      // v2 unified roof. Default is a single-segment pitched (hip) roof
+      // spanning the plot along the Y-axis. Users can add more segments
+      // for L / U / courtyard configs; switch roof_type for flat / shed;
+      // flip per-endpoint styles for dutch gables. See
+      // svg2d/roof/v2/model.ts for the full RoofConfig schema.
+      return {
+        type: "roof",
+        roof_type: "pitched",
+        default_endpoint: "closed",   // hip appearance by default
+        segments: [
+          {
+            id: "seg0",
+            start: [plotW / 2, 0],
+            end: [plotW / 2, plotL],
+            width: plotW,
+          },
+        ],
+        slope: { by: "height", ridge_h: 70 },  // 7 ft rise
+        min_overhang: 25,                       // 2.5 ft
+      } as unknown as HouseObject;
+    case "kitchen_platform":
+      // Simple straight run near the plot's NW corner as a starting
+      // point — user picks it up in the property panel and drags the
+      // path to fit their walls. Depth 24u (~2ft) + height 32u
+      // (~3.2ft) are typical counter dimensions.
+      return {
+        type: "kitchen_platform",
+        name: uniqueName(existing, "KitchenPlatform"),
+        path: [[10, 10], [Math.min(150, plotW - 10), 10]],
+        side: "right",
+        depth: 24,
+        height: 32,
+      };
   }
 }
 
@@ -208,7 +248,8 @@ function uniqueName(existing: HouseObject[], base: string): string {
 
 // Default shape for a fresh floor added via "+ Floor". Includes a
 // full-plot floor_slab so the user has something visible in the 3D
-// scene right away.
+// scene right away. Per-floor heights are omitted so the floor inherits
+// house.defaults.floor_height / .wall_height / .slab_thickness.
 export function makeDefaultFloor(cfg: HouseConfig, floorNumber: number) {
   return {
     floor_number: floorNumber,
@@ -228,3 +269,12 @@ export function makeDefaultFloor(cfg: HouseConfig, floorNumber: number) {
     ],
   };
 }
+
+// Default `defaults` block for a fresh house — the four independent
+// per-floor dimensions with the values documented in
+// project_floor_height_semantics memory.
+export const DEFAULT_HOUSE_DEFAULTS = {
+  floor_height: 98,
+  wall_height: 90,
+  slab_thickness: 8,
+};

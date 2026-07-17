@@ -18,7 +18,7 @@ export function HouseSettingsForm() {
   if (!config) return null;
   const site = config.site;
   const plinth = config.plinth;
-  const defaults = (config as { defaults?: { floor_height?: number; slab_thickness?: number } }).defaults ?? {};
+  const defaults = (config as { defaults?: { floor_height?: number; wall_height?: number; slab_thickness?: number } }).defaults ?? {};
 
   return (
     <div>
@@ -99,8 +99,8 @@ export function HouseSettingsForm() {
           />
         </div>
         <div className="mt-2 text-[11px] text-slate-500">
-          Tip: per-floor wall heights + slab thickness live on each
-          floor — pick a floor in the sidebar, then click{" "}
+          Tip: per-floor heights + slab thickness live on each floor —
+          pick a floor in the sidebar, then click{" "}
           <b>⚙ Floor settings</b>.
         </div>
       </Section>
@@ -109,17 +109,28 @@ export function HouseSettingsForm() {
         <div className="mb-2 text-[11px] text-slate-400">
           House-wide fallbacks used when a floor doesn't specify its own
           <code className="mx-1 rounded bg-slate-800 px-1">height</code> /
+          <code className="mx-1 rounded bg-slate-800 px-1">wall_height</code> /
           <code className="mx-1 rounded bg-slate-800 px-1">slab_thickness</code>.
-          Leave blank to fall back to the built-in defaults
+          Leave blank to fall back to the built-in code defaults
           ({DEFAULT_GLOBAL_CONFIG.floor_height} /{" "}
-          {DEFAULT_GLOBAL_CONFIG.floor_slab_thickness}).
+          {DEFAULT_GLOBAL_CONFIG.wall_height} /{" "}
+          {DEFAULT_GLOBAL_CONFIG.floor_slab_thickness}). All three are
+          independent — no relationship enforced.
         </div>
-        <div className="grid grid-cols-2 gap-x-2">
+        <div className="grid grid-cols-3 gap-x-2">
           <NumberField
             label="Floor height"
             hint={`code default ${DEFAULT_GLOBAL_CONFIG.floor_height}`}
             value={defaults.floor_height}
             onCommit={(v) => updateDefaults({ floor_height: v })}
+            allowEmpty
+            min={0.01}
+          />
+          <NumberField
+            label="Wall height"
+            hint={`code default ${DEFAULT_GLOBAL_CONFIG.wall_height}`}
+            value={defaults.wall_height}
+            onCommit={(v) => updateDefaults({ wall_height: v })}
             allowEmpty
             min={0.01}
           />

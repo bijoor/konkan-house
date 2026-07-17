@@ -479,6 +479,10 @@ export function generateGablePanels(cfg: HouseConfig): GablePanelFile[] {
   }
   gables.forEach((g, idx) => {
     const geom = g.geom;
+    // Panel drawings are Y-axis only for now. For x-axis gables the
+    // shell renders in 3D but the 2D panels are skipped (they would
+    // need a mirrored layout to look right).
+    if (geom.ridge_axis !== "y") return;
     const eaveZ = geom.eave_z;
     const wallTopZ = eaveZ + geom.wall_top_above_eave;
     const suffix = gables.length > 1 ? ` ${idx + 1}` : "";

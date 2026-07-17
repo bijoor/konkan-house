@@ -103,6 +103,11 @@ export function generatePillarSectionView(
 // write to disk map over the returned array.
 export function generateAllPillarSvgs(houseConfig: HouseConfig): PillarSvgFile[] {
   const pillars = collectGroundFloorPillars(houseConfig);
+  // No pillars = no pillar SVGs. Return empty rather than have the
+  // per-view helpers throw "No ground-floor pillars to draw" — houses
+  // without pillars (courtyard configs, flat-roof modern homes) are
+  // legitimate.
+  if (pillars.length === 0) return [];
   const yClusters = clusterPillarsByAxis(pillars, "y", PILLAR_CLUSTER_TOLERANCE);
   const xClusters = clusterPillarsByAxis(pillars, "x", PILLAR_CLUSTER_TOLERANCE);
   const out: PillarSvgFile[] = [];

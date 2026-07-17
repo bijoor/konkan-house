@@ -26,5 +26,10 @@
         }
       ]
     }
-  ]
+  ],
+  "defaults": {
+    "floor_height": 98,
+    "wall_height": 90,
+    "slab_thickness": 8
+  }
 }

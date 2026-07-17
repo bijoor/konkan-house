@@ -50,27 +50,43 @@ export function NumberField({
   }, [value]);
 
   const commit = (next: string) => {
-    if (next === "" || next === "-") {
+    if (next === "" || next === "-" || next === ".") {
       if (allowEmpty) onCommit(undefined);
       return;
     }
     const n = Number(next);
     if (!Number.isFinite(n)) return;
+    if (min !== undefined && n < min) return;
+    if (max !== undefined && n > max) return;
     onCommit(n);
     lastOutward.current = n;
   };
 
+  // step is a legacy prop — with type="text" browsers ignore it. Kept
+  // in the signature so callers don't have to change; consumed here
+  // just to silence unused-var lint.
+  void step;
+
+  // Use type="text" with inputMode="decimal" instead of type="number".
+  // type="number" empties `e.target.value` mid-typing when the string
+  // is briefly not-a-number (e.g. "86." with a lone trailing period),
+  // which appears as a blanking field to the user.
   return (
     <FieldRow label={label} hint={hint} error={error}>
       <div className="flex items-center gap-1">
         <input
-          type="number"
+          type="text"
+          inputMode="decimal"
           disabled={disabled}
-          step={step ?? "any"}
-          min={min}
-          max={max}
           value={buf}
-          onChange={(e) => setBuf(e.target.value)}
+          onChange={(e) => {
+            // Filter to a permissive decimal-string pattern:
+            // optional leading -, digits, single '.', more digits.
+            const v = e.target.value;
+            if (v === "" || /^-?\d*\.?\d*$/.test(v)) {
+              setBuf(v);
+            }
+          }}
           onBlur={(e) => commit(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") (e.target as HTMLInputElement).blur();
