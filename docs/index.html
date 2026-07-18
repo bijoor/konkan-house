@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Wadi — Design a house in 3D</title>
-  <meta name="description" content="Procedurally generate a 3D house model, 2D floor plans, elevations, and a full bill of materials from a single description. Runs in your browser and as a Mac desktop app." />
+  <title>Wadi: Design a house in 3D</title>
+  <meta name="description" content="Design a house in 3D and get floor plans, elevations, dimensioned drawings, and a full bill of materials, all from one model, live in your browser and on the desktop." />
   <link rel="icon" href="/favicon.svg" />
 
   <!-- Legacy share links: older links were wadi.house/#w1=… (before the
@@ -75,7 +75,8 @@
       border-bottom: 1px solid var(--border);
     }
     .nav { display: flex; align-items: center; justify-content: space-between; height: 64px; }
-    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -0.01em; font-size: 1.15rem; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -0.01em; font-size: 1.15rem; text-decoration: none; color: inherit; }
+    .brand .mark { display: block; border-radius: 6px; }
     .brand .mark { width: 28px; height: 28px; }
     .nav-cta { display: flex; align-items: center; gap: 8px; }
 
@@ -113,6 +114,7 @@
       padding: 22px; aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center;
     }
     .art svg { width: 100%; height: auto; }
+    .hero-media { width: 100%; height: auto; display: block; border-radius: calc(var(--radius) - 6px); }
 
     /* Features */
     section.features { padding: 40px 0 24px; }
@@ -131,7 +133,7 @@
     .card code { background: var(--accent-soft); color: var(--accent); padding: 1px 6px; border-radius: 6px; font-size: .85em; }
 
     /* CTA band */
-    .band { margin: 48px 0 0; }
+    .band { margin-top: 48px; }   /* only top; keep .wrap's margin:0 auto for centering */
     .band-inner {
       background: var(--green); color: #fff; border-radius: 22px; padding: 44px 32px; text-align: center;
       box-shadow: var(--shadow);
@@ -142,6 +144,13 @@
     .band-inner p { margin: 0 0 22px; opacity: .9; }
     .band .btn-primary { background: #fff; color: #23201c; }
     .band .btn-primary:hover { background: #f2ede6; }
+    .downloads { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 14px; }
+    .dl { flex-direction: column; gap: 1px; padding: 12px 24px; background: #fff; color: #23201c; align-items: center; }
+    .dl:hover { background: #f2ede6; }
+    .dl-os { font-weight: 700; font-size: 1rem; }
+    .dl-sub { font-size: .76rem; opacity: .55; font-weight: 500; }
+    .dl-note { font-size: .92rem; margin: 4px 0 0; opacity: .95; }
+    .dl-note a { text-decoration: underline; }
 
     /* Footer */
     footer { border-top: 1px solid var(--border); margin-top: 56px; padding: 28px 0 40px; color: var(--muted); font-size: .9rem; }
@@ -160,14 +169,10 @@
 <body>
   <header>
     <div class="wrap nav">
-      <div class="brand">
-        <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <path d="M4 16 L16 5 L28 16" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M7 14 V27 H25 V14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M13 27 V19 H19 V27" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+      <a class="brand" href="/" aria-label="Wadi home">
+        <img class="mark" src="/favicon.svg" alt="" width="28" height="28"/>
         Wadi
-      </div>
+      </a>
       <div class="nav-cta">
         <a class="btn btn-primary" href="/app/">Open the designer</a>
       </div>
@@ -179,16 +184,19 @@
       <div class="hero-grid">
         <div>
           <span class="eyebrow">Procedural house design</span>
-          <h1>Describe a house.<br>Get the <span class="accent">whole set</span>.</h1>
-          <p class="lede">A single description becomes a 3D model, floor plans, elevations, dimensioned drawings, and a full bill of materials — instantly.</p>
+          <h1>Design a house.<br>Get the <span class="accent">whole set</span>.</h1>
+          <p class="lede">Edit one house model and get a 3D view, floor plans, elevations, dimensioned drawings, and a full bill of materials, all updating together, live in your browser.</p>
           <div class="hero-actions">
             <a class="btn btn-primary btn-lg" href="/app/">Open the designer →</a>
             <a class="btn btn-ghost btn-lg" href="#desktop">Get the desktop app</a>
           </div>
-          <p class="hint" style="margin-top:14px;">Runs in your browser — nothing to install to try it.</p>
+          <p class="hint" style="margin-top:14px;">Runs in your browser. Nothing to install to try it.</p>
         </div>
-        <div class="art" aria-hidden="true">
-          <svg viewBox="0 0 400 300" fill="none">
+        <div class="art">
+          <img class="hero-media" src="/hero.gif" alt="A procedurally generated 3D house model, rotating"
+               onload="var f=document.getElementById('hero-fallback'); if (f) f.style.display='none';"
+               onerror="this.remove();"/>
+          <svg id="hero-fallback" viewBox="0 0 400 300" fill="none" aria-hidden="true">
             <defs>
               <linearGradient id="roof" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0" stop-color="var(--accent)"/>
@@ -216,7 +224,7 @@
         <div class="card">
           <div class="ic">🏠</div>
           <h3>3D model</h3>
-          <p>Walls, floors, roofs, doors, windows, staircases and pillars generated procedurally — viewable in the browser.</p>
+          <p>Walls, floors, roofs, doors, windows, staircases and pillars generated procedurally, viewable in the browser.</p>
         </div>
         <div class="card">
           <div class="ic">📐</div>
@@ -236,7 +244,7 @@
         <div class="card">
           <div class="ic">🔗</div>
           <h3>Share a link</h3>
-          <p>Send a house as a link — the whole design travels in the URL, no account and no upload.</p>
+          <p>Send a house as a link. The whole design travels in the URL, with no account and no upload.</p>
         </div>
         <div class="card">
           <div class="ic">📦</div>
@@ -248,16 +256,27 @@
 
     <section class="wrap band" id="desktop">
       <div class="band-inner">
-        <h2>Start designing in seconds</h2>
-        <p>Open the designer in your browser now — the Mac desktop app is on the way.</p>
-        <a class="btn btn-primary btn-lg" href="/app/">Open the designer →</a>
+        <h2>Get the desktop app</h2>
+        <p>Open and live-edit <code>.wadi</code> files natively. Choose your platform.</p>
+        <div class="downloads">
+          <a class="btn dl" href="https://github.com/bijoor/wadi/releases">
+            <span class="dl-os">macOS</span><span class="dl-sub">.dmg</span>
+          </a>
+          <a class="btn dl" href="https://github.com/bijoor/wadi/releases">
+            <span class="dl-os">Windows</span><span class="dl-sub">.msi</span>
+          </a>
+          <a class="btn dl" href="https://github.com/bijoor/wadi/releases">
+            <span class="dl-os">Linux</span><span class="dl-sub">.AppImage</span>
+          </a>
+        </div>
+        <p class="dl-note">Or <a href="/app/">open the designer in your browser</a>. No install needed.</p>
       </div>
     </section>
   </main>
 
   <footer>
     <div class="wrap foot">
-      <div>Wadi — procedural house design.</div>
+      <div>Wadi. Procedural house design.</div>
       <div><a href="/app/">Open the designer</a> · <a href="https://github.com/bijoor/wadi">GitHub</a></div>
     </div>
   </footer>

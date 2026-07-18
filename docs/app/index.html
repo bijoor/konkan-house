@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Wadi — 3D Home Designer</title>
+    <title>Wadi: 3D Home Designer</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
     <link rel="apple-touch-icon" href="favicon.svg"/>
     <meta name="theme-color" content="#B85028"/>
@@ -1188,7 +1188,7 @@
         <div class="header-row">
             <div>
                 <h1>
-                    <img src="favicon.svg" alt="" class="hdr-logo" width="28" height="28"/>
+                    <a href="/" title="Home" aria-label="Home"><img src="./favicon.svg" alt="" class="hdr-logo" width="28" height="28"/></a>
                     Wadi
                 </h1>
                 <div class="subtitle">3D Home Designer</div>
@@ -1952,7 +1952,7 @@
             if (typeof window.exportCurrentSvg === 'function') {
                 window.exportCurrentSvg(defaultName);
             } else {
-                alert('Export helper not available yet — reload the app and try again.');
+                alert('Export helper not available yet. Reload the app and try again.');
             }
         }
 
