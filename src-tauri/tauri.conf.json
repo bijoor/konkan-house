@@ -7,7 +7,7 @@
     "frontendDist": "../docs",
     "devUrl": "http://localhost:1420",
     "beforeDevCommand": "python3 ../scripts/tauri-dev-serve.py 1420",
-    "beforeBuildCommand": "cd ../editor && npm run build:tauri"
+    "beforeBuildCommand": "npm run build:tauri"
   },
   "app": {
     "windows": [
