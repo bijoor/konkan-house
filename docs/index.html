@@ -193,9 +193,12 @@
           <p class="hint" style="margin-top:14px;">Runs in your browser. Nothing to install to try it.</p>
         </div>
         <div class="art">
-          <img class="hero-media" src="/hero.gif" alt="A procedurally generated 3D house model, rotating"
-               onload="var f=document.getElementById('hero-fallback'); if (f) f.style.display='none';"
-               onerror="this.remove();"/>
+          <video class="hero-media" autoplay loop muted playsinline
+                 aria-label="A procedurally generated 3D house model, rotating"
+                 onloadeddata="var f=document.getElementById('hero-fallback'); if (f) f.style.display='none';">
+            <source src="/hero.webm" type="video/webm" />
+            <source src="/hero.mp4" type="video/mp4" />
+          </video>
           <svg id="hero-fallback" viewBox="0 0 400 300" fill="none" aria-hidden="true">
             <defs>
               <linearGradient id="roof" x1="0" y1="0" x2="0" y2="1">
