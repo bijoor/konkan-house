@@ -17,18 +17,31 @@ model live** as you save. The user watches and steers with follow-up messages.
 
 ## The live loop (read this first, every session)
 
-1. The user has the **Wadi desktop app open** with their working
-   `house_config.json` loaded (File → Load, which sets the watched absolute path).
-   If they haven't, ask them to open the app and Load the file you'll edit.
-2. You edit **that exact file**. On save, the app's file watcher re-reads it and
-   rebuilds the model within ~1 s — no manual reload. (Details:
-   `reference/live-workflow.md` if present, or just: edit → save → they see it.)
-3. **Always tell the user which file path you are editing**, and edit only that
-   path. In `cargo tauri dev` it is usually the repo's `house_config.json` (a
-   symlink to `docs/house_config.json`); in the installed app it is whatever
-   external file they opened.
-4. Save **complete, valid** JSON each time (no partial writes) — the watcher
-   ignores unparseable/invalid states, so a broken save just shows nothing new.
+You edit a file on disk; the Wadi desktop app watches it and rebuilds the 3D
+model within ~1 s of every save — no manual reload.
+
+**Starting a NEW model — set it up yourself, no manual steps for the user:**
+1. Write a valid starter config to a `.wadi` file (use `examples/blank.json` as the
+   base) at a path the user wants, e.g. `~/Documents/<name>.wadi`.
+2. Open it in the installed app so it becomes the watched file:
+   ```bash
+   open -a Wadi "<ABS_PATH>.wadi"
+   ```
+   The app's file association loads it — into the running window if the app is
+   open, otherwise it launches with it. Either way, that file is now the
+   live-watched one.
+3. Build the house into **that same file**. Each save updates the model live.
+
+**Editing an EXISTING model:** the user has their `.wadi`/`house_config.json` open
+in the app (or you `open -a Wadi` it). Edit that exact file.
+
+**Always:**
+- **Tell the user which file path you are editing**, and edit only that path.
+- Save **complete, valid** JSON each time — the watcher ignores unparseable/invalid
+  saves, so a broken write just shows nothing new (it won't corrupt the model).
+- `open -a Wadi` targets the **installed** `/Applications/Wadi.app`. If the user is
+  running a dev build instead, ask them to Load the file once via the app's Load
+  button (that also sets the watched path).
 
 ## Two ways users work with you
 
