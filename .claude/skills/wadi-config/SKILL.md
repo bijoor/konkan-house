@@ -70,6 +70,24 @@ cd editor && npx tsx ../.claude/skills/wadi-config/scripts/validate.mjs <ABS_PAT
 Exit 0 = valid; non-zero prints the exact `/path: message` errors. Fix and re-run
 before telling the user it's ready. See `prompts/validation-loop.md` if present.
 
+## See your work (don't author blind)
+
+You can't see the app's live render, but you CAN render the config to images and
+**Read them** to check your own edit — the layout, sizes, openings, and roof are
+exactly where you make mistakes:
+
+```bash
+.claude/skills/wadi-config/scripts/preview.sh <ABS_PATH_TO_config.json>
+```
+
+It writes (and prints paths to) `plans.png` (floor plans — room layout + sizes),
+`elevations.png` (front/back/left/right — heights + roof profile), and `roof.png`
+(roof top view), plus all SVGs under `.../2d/`. **Read the PNGs** after a
+non-trivial edit and confirm what you built matches the request (rooms in the
+right place, not overlapping, correct sizes in feet, roof over the plinth). It
+reuses the app's own generators, so it matches the app's 2D tabs byte-for-byte.
+See `prompts/verify-visually.md`.
+
 ## Top pitfalls (memorize)
 
 - **Y is DOWN.** A room "to the north" has a *smaller* Y. Never treat Y as up.
