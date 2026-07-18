@@ -46,13 +46,20 @@ import { computeMergedV2Spec } from "../svg2d/roof/v2/computeFromHouse";
 import { ridgeRunFt, slopeAreaSft } from "../svg2d/roof/v2/bom";
 import { expandRoomWalls } from "../svg2d/expand";
 import { generateAllPillarSvgs } from "../svg2d/pillar/index";
-import { pickAndLoadConfig, saveConfig, saveText } from "../io/fileIO";
+import {
+  pickAndLoadConfig,
+  loadConfigFromPath,
+  saveConfig,
+  saveAsWadi,
+  saveText,
+} from "../io/fileIO";
 import {
   encodeConfigToHash,
   decodeConfigFromHash,
   buildShareUrl,
 } from "../io/shareLink";
-import { isTauri } from "@tauri-apps/api/core";
+import { isTauri, invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { writeText as tauriClipboardWrite } from "@tauri-apps/plugin-clipboard-manager";
 import { Sidebar } from "../components/Sidebar";
 import { PropertyPanel } from "../components/PropertyPanel";
@@ -75,6 +82,29 @@ async function bootViewer(): Promise<void> {
     .then((r) => (r.ok ? r.text() : ""))
     .catch(() => "");
 
+  // Native file open (desktop app): if the OS launched us with a .wadi
+  // file (double-click / file association) or hands us one while running,
+  // load THAT — it's the most explicit user intent, so it outranks both
+  // the share-link fragment and the repo auto-load. Setting the path via
+  // loadConfig makes the live watcher attach to the opened file.
+  let loadedFromOpenFile = false;
+  if (isTauri()) {
+    // Warm opens (app already running) arrive as an event; load live.
+    void listen<string>("wadi://open-file", (e) => {
+      if (e.payload) void openWadiPath(e.payload);
+    });
+    // Cold start: drain any path captured before the webview was ready.
+    try {
+      const pending = await invoke<string | null>("take_pending_open");
+      if (pending) {
+        await openWadiPath(pending);
+        loadedFromOpenFile = true;
+      }
+    } catch (err) {
+      console.warn("viewer: take_pending_open failed", err);
+    }
+  }
+
   // Share-link handoff: if the URL carries a packed config in the '#'
   // fragment (…/#w1=…), load THAT house instead of the repo copy. This
   // is how a shared link opens a specific design on the static web app —
@@ -82,7 +112,7 @@ async function bootViewer(): Promise<void> {
   // stale fragment decodes to null / fails validation and we quietly
   // fall through to the normal auto-load.
   let loadedFromHash = false;
-  if (location.hash.length > 1) {
+  if (!loadedFromOpenFile && location.hash.length > 1) {
     const raw = await decodeConfigFromHash(location.hash);
     if (raw) {
       const parsed = validate(raw);
@@ -99,7 +129,7 @@ async function bootViewer(): Promise<void> {
   // — unless a shared link already provided one. We validate and stuff
   // into useConfigStore so both the edit UI and the SVG generators pick
   // it up.
-  if (!loadedFromHash) {
+  if (!loadedFromOpenFile && !loadedFromHash) {
     try {
       const raw = await (await fetch(CONFIG_URL)).json();
       const parsed = validate(raw);
@@ -154,6 +184,21 @@ async function bootViewer(): Promise<void> {
   // reload the model when an external editor (Claude Code / MCP) writes
   // it. No-op in a plain browser tab.
   startConfigWatcher();
+}
+
+// Load a .wadi/.json file the desktop app was asked to open (cold start
+// or warm via the wadi://open-file event). Passing the path to loadConfig
+// makes the live watcher track the opened file.
+async function openWadiPath(path: string): Promise<void> {
+  try {
+    const res = await loadConfigFromPath(path);
+    useConfigStore.getState().loadConfig(res.config, res.filename, res.filePath);
+  } catch (e) {
+    console.error("viewer: failed to open file", path, e);
+    alert(
+      `Couldn't open ${path}:\n${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
 }
 
 function rebuildSvgMap(): void {
@@ -527,6 +572,7 @@ function wireHeaderButtons(): void {
   const btnSave = document.getElementById("btn-save");
   const btnSaveAs = document.getElementById("btn-save-as");
   const btnShare = document.getElementById("btn-share");
+  const btnExportWadi = document.getElementById("btn-export-wadi");
   const btnUndo = document.getElementById("btn-undo");
   const btnRedo = document.getElementById("btn-redo");
   const fileInput = document.getElementById("file-input-json") as HTMLInputElement | null;
@@ -551,6 +597,20 @@ function wireHeaderButtons(): void {
       }
     } catch (e) {
       alert(`Share failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  });
+
+  // Export the current house as a .wadi file (native document that opens
+  // in the desktop app). Payload is plain house_config JSON.
+  btnExportWadi?.addEventListener("click", async () => {
+    const cfg = useConfigStore.getState().config;
+    if (!cfg) return;
+    try {
+      const saved = await saveAsWadi(cfg);
+      if (saved) flashSaved(btnExportWadi, "✓ Saved .wadi");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg !== "Cancelled") alert(`Export failed: ${msg}`);
     }
   });
 

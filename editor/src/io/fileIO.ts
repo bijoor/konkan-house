@@ -18,7 +18,7 @@ export async function pickAndLoadConfig(): Promise<LoadResult> {
       title: "Open house config",
       multiple: false,
       directory: false,
-      filters: [{ name: "House config", extensions: ["json"] }],
+      filters: [{ name: "Wadi house", extensions: ["wadi", "json"] }],
     });
     if (!selected || typeof selected !== "string") {
       throw new Error("Cancelled");
@@ -29,6 +29,15 @@ export async function pickAndLoadConfig(): Promise<LoadResult> {
   const file = await pickJsonFile();
   const text = await file.text();
   return parseAndValidate(text, file.name, null);
+}
+
+// Load a config from a KNOWN absolute path (no picker) — used by the
+// native file-association flow when the OS launches us with a .wadi file.
+// Tauri-only (reads through the fs plugin). Sets filePath so the live
+// watcher attaches to the opened file.
+export async function loadConfigFromPath(path: string): Promise<LoadResult> {
+  const text = await readTextFile(path);
+  return parseAndValidate(text, basename(path), path);
 }
 
 function parseAndValidate(
@@ -63,7 +72,7 @@ function pickJsonFile(): Promise<File> {
   return new Promise((resolve, reject) => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = "application/json,.json";
+    input.accept = "application/json,.json,.wadi";
     input.addEventListener("change", () => {
       const file = input.files?.[0];
       if (!file) {
@@ -113,6 +122,22 @@ export async function saveConfig(
   }
   downloadBlob(text, defaultName);
   return null;
+}
+
+// Export the current house as a `.wadi` file — the shareable native
+// document that double-clicks open in the desktop app. The payload is
+// plain house_config JSON (same bytes as Save), so the app's existing
+// load/validate/watch path handles it unchanged; only the extension +
+// OS file association make it special. Tauri: native save dialog. Browser:
+// Blob download. Returns the saved path (Tauri) or null (browser).
+export async function saveAsWadi(config: HouseConfig): Promise<string | null> {
+  return saveText(
+    serializeConfig(config),
+    "house.wadi",
+    "Wadi House",
+    ["wadi"],
+    "application/json",
+  );
 }
 
 // Kept as an alias so any lingering call sites that only care about
