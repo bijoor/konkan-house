@@ -47,6 +47,11 @@ import { ridgeRunFt, slopeAreaSft } from "../svg2d/roof/v2/bom";
 import { expandRoomWalls } from "../svg2d/expand";
 import { generateAllPillarSvgs } from "../svg2d/pillar/index";
 import { pickAndLoadConfig, saveConfig, saveText } from "../io/fileIO";
+import {
+  encodeConfigToHash,
+  decodeConfigFromHash,
+  buildShareUrl,
+} from "../io/shareLink";
 import { Sidebar } from "../components/Sidebar";
 import { PropertyPanel } from "../components/PropertyPanel";
 import { mountViewer3D, mountViewerLayerPanel } from "./mount3D";
@@ -68,22 +73,45 @@ async function bootViewer(): Promise<void> {
     .then((r) => (r.ok ? r.text() : ""))
     .catch(() => "");
 
-  // Auto-load the JSON if it's next to the viewer (docs/house_config.json).
-  // We validate and stuff into useConfigStore so both the edit UI and
-  // the SVG generators pick it up.
-  try {
-    const raw = await (await fetch(CONFIG_URL)).json();
-    const parsed = validate(raw);
-    if (parsed.ok && parsed.data) {
-      useConfigStore.getState().loadConfig(
-        parsed.data,
-        "house_config.json (from repo)",
-      );
-    } else {
-      console.error("viewer: house_config.json failed validation", parsed.errors);
+  // Share-link handoff: if the URL carries a packed config in the '#'
+  // fragment (…/#w1=…), load THAT house instead of the repo copy. This
+  // is how a shared link opens a specific design on the static web app —
+  // no backend, and the fragment never reaches a server. A malformed or
+  // stale fragment decodes to null / fails validation and we quietly
+  // fall through to the normal auto-load.
+  let loadedFromHash = false;
+  if (location.hash.length > 1) {
+    const raw = await decodeConfigFromHash(location.hash);
+    if (raw) {
+      const parsed = validate(raw);
+      if (parsed.ok && parsed.data) {
+        useConfigStore.getState().loadConfig(parsed.data, "shared link");
+        loadedFromHash = true;
+      } else {
+        console.warn("viewer: shared-link config failed validation", parsed.errors);
+      }
     }
-  } catch (err) {
-    console.warn("viewer: no house_config.json auto-load", err);
+  }
+
+  // Auto-load the JSON if it's next to the viewer (docs/house_config.json)
+  // — unless a shared link already provided one. We validate and stuff
+  // into useConfigStore so both the edit UI and the SVG generators pick
+  // it up.
+  if (!loadedFromHash) {
+    try {
+      const raw = await (await fetch(CONFIG_URL)).json();
+      const parsed = validate(raw);
+      if (parsed.ok && parsed.data) {
+        useConfigStore.getState().loadConfig(
+          parsed.data,
+          "house_config.json (from repo)",
+        );
+      } else {
+        console.error("viewer: house_config.json failed validation", parsed.errors);
+      }
+    } catch (err) {
+      console.warn("viewer: no house_config.json auto-load", err);
+    }
   }
 
   eaveSvg = (await eavePromise) || undefined;
@@ -435,10 +463,10 @@ function reloadActiveTab(): void {
 // path writes silently on success, so this is the only signal the user
 // gets. Captures the real label once (so rapid re-clicks don't freeze
 // the checkmark in) and resets the revert timer on each click.
-function flashSaved(btn: HTMLElement | null): void {
+function flashSaved(btn: HTMLElement | null, text = "✓ Saved"): void {
   if (!btn) return;
   if (!btn.dataset.label) btn.dataset.label = btn.textContent ?? "";
-  btn.textContent = "✓ Saved";
+  btn.textContent = text;
   window.clearTimeout(Number(btn.dataset.flashTimer));
   const t = window.setTimeout(() => {
     btn.textContent = btn.dataset.label ?? "";
@@ -454,9 +482,31 @@ function wireHeaderButtons(): void {
   const btnLoad = document.getElementById("btn-load");
   const btnSave = document.getElementById("btn-save");
   const btnSaveAs = document.getElementById("btn-save-as");
+  const btnShare = document.getElementById("btn-share");
   const btnUndo = document.getElementById("btn-undo");
   const btnRedo = document.getElementById("btn-redo");
   const fileInput = document.getElementById("file-input-json") as HTMLInputElement | null;
+
+  // Share: pack the current house into a '#'-fragment link and copy it.
+  // Anyone opening the link loads this exact design on the web app (no
+  // backend); if they have the desktop app we can later offer to hand
+  // off to it. Falls back to a manual-copy prompt where the async
+  // clipboard API is blocked (e.g. non-secure / file:// contexts).
+  btnShare?.addEventListener("click", async () => {
+    const cfg = useConfigStore.getState().config;
+    if (!cfg) return;
+    try {
+      const url = buildShareUrl(await encodeConfigToHash(cfg));
+      try {
+        await navigator.clipboard.writeText(url);
+        flashSaved(btnShare, "✓ Link copied");
+      } catch {
+        window.prompt("Copy this shareable link:", url);
+      }
+    } catch (e) {
+      alert(`Share failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  });
 
   btnEdit?.addEventListener("click", () => {
     const next = document.body.dataset.editMode === "on" ? "off" : "on";
