@@ -57,6 +57,14 @@ The floor deck. `x`, `y` (top-left), `width` (>0, along X), `length` (>0, along 
 The main building block. A rectangle with four walls.
 - `name` (required string), `x`, `y` (top-left corner), `width` (>0, along X),
   `length` (>0, along Y).
+- **Coordinates are the OUTSIDE face of the walls** (the outer footprint), not the
+  centerline or the interior. The four walls are drawn INWARD from the rectangle
+  edges by `wall_thickness` (default **8** units = 0.8 ft). So the interior/usable
+  space = `(width − 2·wall_thickness) × (length − 2·wall_thickness)`, and two rooms
+  sharing a partition should have their rectangles **abut** at that edge (each
+  draws its own wall inward → a back-to-back partition).
+  (NOTE: a standalone `wall` object below is different — its `start`/`end` are the
+  wall **centerline**, not the outer face.)
 - `height` (≥0, optional; 0 or absent = "use floor default"), `material` (optional).
 - `walls` (optional): the **nested form** (canonical) is an object with any of
   `north`/`south`/`east`/`west`, each `{ height?, height_end?, openings?: [...] }`.

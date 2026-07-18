@@ -112,6 +112,11 @@ See `prompts/verify-visually.md`.
 - **Y is DOWN.** A room "to the north" has a *smaller* Y. Never treat Y as up.
 - **Dimensions are project units, not feet.** `width: 120` is 12 ft. Multiply feet
   by 10.
+- **A room's `x,y,width,length` are the OUTSIDE face of the walls** (outer
+  footprint), not the interior or centerline. Walls inset inward by `wall_thickness`
+  (default 8 units ≈ 0.8 ft), so interior = `dims − 2·wall_thickness`; adjacent
+  rooms should **abut** at their shared outer edge. (A standalone `wall`'s
+  `start`/`end` are the **centerline** instead.)
 - **The roof footprint must cover the plinth footprint.** Roof segment widths and
   positions come from the walls they sit on, not arbitrary numbers.
 - **The roof lives on its OWN top floor** (`floor_number` ABOVE the floors it
