@@ -1172,7 +1172,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-CwjxZY5s.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-CJuB5MTr.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/viewer-Db2tdhkk.css">
 </head>
 <body>
@@ -1288,6 +1288,10 @@
                 <h3 style="margin-top: 0; color: #333; font-size: 1rem; margin-bottom: 1rem;">Lighting</h3>
                 <div id="viewer-lighting-list"></div>
             </div>
+            <!-- Interior walk-through room picker — mounted by main.ts.
+                 Sits top-centre so it clears the 📚 / ⚙️ corner toggles. -->
+            <div id="viewer-interior-panel"
+                 style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 11;"></div>
             <!-- Three.js Canvas mounted here by src/viewer/main.ts. Uses
                  the same House3D scene the editor renders, minus the
                  editor's toolbar / section cutter / preset row. Orbit

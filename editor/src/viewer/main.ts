@@ -66,7 +66,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { writeText as tauriClipboardWrite } from "@tauri-apps/plugin-clipboard-manager";
 import { Sidebar } from "../components/Sidebar";
 import { PropertyPanel } from "../components/PropertyPanel";
-import { mountViewer3D, mountViewerLayerPanel, mountViewerLightingPanel } from "./mount3D";
+import { mountViewer3D, mountViewerLayerPanel, mountViewerLightingPanel, mountViewerInteriorPanel } from "./mount3D";
 import { startConfigWatcher } from "./configWatcher";
 
 // Root-absolute so they resolve to the site root no matter where the app
@@ -171,6 +171,8 @@ async function bootViewer(): Promise<void> {
   if (layerContainer) mountViewerLayerPanel(layerContainer);
   const lightingContainer = document.getElementById("viewer-lighting-list");
   if (lightingContainer) mountViewerLightingPanel(lightingContainer);
+  const interiorContainer = document.getElementById("viewer-interior-panel");
+  if (interiorContainer) mountViewerInteriorPanel(interiorContainer);
 
   // Mount the editor's Sidebar (object tree) and PropertyPanel
   // (per-object form) into the two edit slots. React state via

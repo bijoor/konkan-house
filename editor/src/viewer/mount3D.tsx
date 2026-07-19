@@ -4,10 +4,11 @@
 // scene that fills its container. The viewer's own HTML/CSS shell
 // wraps this canvas.
 
-import { Suspense, useMemo } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import { createRoot } from "react-dom/client";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, OrbitControls, Grid, Text, Billboard } from "@react-three/drei";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import {
   EffectComposer,
   N8AO,
@@ -20,8 +21,10 @@ import { readPlotBounds } from "../three/coords";
 import { expandRoomWalls, type HouseConfig } from "../svg2d/expand";
 import { ViewerLayerPanel } from "./LayerPanel";
 import { ViewerLightingPanel } from "./LightingPanel";
+import { ViewerInteriorPanel } from "./InteriorPanel";
 import { useConfigStore } from "../state/configStore";
 import { useLightingStore } from "../three/lighting";
+import { useInteriorStore } from "../three/interiorView";
 
 // Optional camera auto-rotate, for recording a smooth turntable GIF of the
 // model (the hero on the landing page). Off by default so it never affects
@@ -45,6 +48,10 @@ function ViewerScene() {
   const sun = useLightingStore((s) => s.sun);
   const env = useLightingStore((s) => s.env);
   const background = useLightingStore((s) => s.background);
+  // Interior walk-through: when a room is chosen, the camera drops to eye
+  // level inside it and OrbitControls hands off to the first-person rig.
+  const interior = useInteriorStore((s) => s.target);
+  const controlsRef = useRef<OrbitControlsImpl | null>(null);
   if (!config) return null;
   // expandRoomWalls throws on invalid openings; falls back to reading
   // the plot directly from the raw config so the scene camera stays
@@ -124,13 +131,22 @@ function ViewerScene() {
       />
       <House3D config={config} />
       <OrientationGizmo plot={plot} />
-      <OrbitControls
-        makeDefault
-        enableDamping
-        dampingFactor={0.1}
-        target={[0, targetY, 0]}
-        autoRotate={AUTO_ROTATE}
-        autoRotateSpeed={AUTO_ROTATE_SPEED}
+      {!interior && (
+        <OrbitControls
+          ref={controlsRef}
+          makeDefault
+          enableDamping
+          dampingFactor={0.1}
+          target={[0, targetY, 0]}
+          autoRotate={AUTO_ROTATE}
+          autoRotateSpeed={AUTO_ROTATE_SPEED}
+        />
+      )}
+      <InteriorController
+        exteriorPos={[cx, cy, cz]}
+        exteriorTarget={[0, targetY, 0]}
+        exteriorFov={FOV}
+        controlsRef={controlsRef}
       />
       <EffectComposer multisampling={0} enableNormalPass>
         <N8AO
@@ -144,6 +160,136 @@ function ViewerScene() {
       </EffectComposer>
     </Canvas>
   );
+}
+
+// First-person "walk-through" rig. Active only when a room is selected in
+// the interior store: the camera drops to eye level in the room, drag
+// rotates the view (yaw/pitch), and WASD / arrow keys walk on the floor
+// plane (hold Shift to move faster). On exit it restores the exterior
+// orbit camera + target + FOV.
+function InteriorController({
+  exteriorPos,
+  exteriorTarget,
+  exteriorFov,
+  controlsRef,
+}: {
+  exteriorPos: [number, number, number];
+  exteriorTarget: [number, number, number];
+  exteriorFov: number;
+  controlsRef: React.MutableRefObject<OrbitControlsImpl | null>;
+}) {
+  const target = useInteriorStore((s) => s.target);
+  const { camera, gl } = useThree();
+  const yaw = useRef(Math.PI); // look toward -Z (north) by default
+  const pitch = useRef(-0.05);
+  const pos = useRef<[number, number, number]>([0, 0, 0]);
+  const keys = useRef<Record<string, boolean>>({});
+
+  const setFov = (f: number) => {
+    const c = camera as unknown as { fov?: number; updateProjectionMatrix: () => void };
+    if (typeof c.fov === "number") {
+      c.fov = f;
+      c.updateProjectionMatrix();
+    }
+  };
+
+  // Enter / exit transitions.
+  useEffect(() => {
+    if (target) {
+      pos.current = [...target.eye] as [number, number, number];
+      yaw.current = Math.PI;
+      pitch.current = -0.05;
+      camera.position.set(target.eye[0], target.eye[1], target.eye[2]);
+      setFov(72);
+    } else {
+      camera.position.set(exteriorPos[0], exteriorPos[1], exteriorPos[2]);
+      setFov(exteriorFov);
+      const c = controlsRef.current;
+      if (c) {
+        c.target.set(exteriorTarget[0], exteriorTarget[1], exteriorTarget[2]);
+        c.update();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target]);
+
+  // Input listeners — only while a room is active.
+  useEffect(() => {
+    if (!target) return;
+    const el = gl.domElement;
+    let dragging = false;
+    let lx = 0;
+    let ly = 0;
+    const down = (e: PointerEvent) => {
+      dragging = true;
+      lx = e.clientX;
+      ly = e.clientY;
+      el.style.cursor = "grabbing";
+    };
+    const move = (e: PointerEvent) => {
+      if (!dragging) return;
+      yaw.current -= (e.clientX - lx) * 0.0045;
+      pitch.current = Math.max(-1.45, Math.min(1.45, pitch.current - (e.clientY - ly) * 0.0045));
+      lx = e.clientX;
+      ly = e.clientY;
+    };
+    const up = () => {
+      dragging = false;
+      el.style.cursor = "grab";
+    };
+    const isField = (t: EventTarget | null) => {
+      const n = t as HTMLElement | null;
+      return !!n && (n.tagName === "INPUT" || n.tagName === "TEXTAREA" || n.isContentEditable);
+    };
+    const kd = (e: KeyboardEvent) => {
+      if (isField(e.target)) return;
+      keys.current[e.key.toLowerCase()] = true;
+    };
+    const ku = (e: KeyboardEvent) => {
+      keys.current[e.key.toLowerCase()] = false;
+    };
+    el.style.cursor = "grab";
+    el.addEventListener("pointerdown", down);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("keydown", kd);
+    window.addEventListener("keyup", ku);
+    return () => {
+      el.style.cursor = "";
+      el.removeEventListener("pointerdown", down);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("keydown", kd);
+      window.removeEventListener("keyup", ku);
+      keys.current = {};
+    };
+  }, [target, gl]);
+
+  useFrame((_, delta) => {
+    if (!target) return;
+    const k = keys.current;
+    const run = k["shift"] ? 2.4 : 1;
+    const speed = 55 * run * Math.min(delta, 0.05);
+    const fwd = (k["w"] || k["arrowup"] ? 1 : 0) - (k["s"] || k["arrowdown"] ? 1 : 0);
+    const strafe = (k["d"] || k["arrowright"] ? 1 : 0) - (k["a"] || k["arrowleft"] ? 1 : 0);
+    if (fwd || strafe) {
+      const fx = Math.sin(yaw.current);
+      const fz = Math.cos(yaw.current); // horizontal forward
+      const rx = Math.cos(yaw.current);
+      const rz = -Math.sin(yaw.current); // right
+      pos.current[0] += (fx * fwd + rx * strafe) * speed;
+      pos.current[2] += (fz * fwd + rz * strafe) * speed;
+    }
+    camera.position.set(pos.current[0], pos.current[1], pos.current[2]);
+    const cp = Math.cos(pitch.current);
+    camera.lookAt(
+      pos.current[0] + Math.sin(yaw.current) * cp,
+      pos.current[1] + Math.sin(pitch.current),
+      pos.current[2] + Math.cos(yaw.current) * cp,
+    );
+  });
+
+  return null;
 }
 
 // Simple orientation gizmo sitting just OUTSIDE the NW corner of the
@@ -247,4 +393,11 @@ export function mountViewerLayerPanel(container: HTMLElement): void {
 export function mountViewerLightingPanel(container: HTMLElement): void {
   const root = createRoot(container);
   root.render(<ViewerLightingPanel />);
+}
+
+// Mount the interior-walk-through room picker. Shares useInteriorStore with
+// the scene's first-person rig.
+export function mountViewerInteriorPanel(container: HTMLElement): void {
+  const root = createRoot(container);
+  root.render(<ViewerInteriorPanel />);
 }
