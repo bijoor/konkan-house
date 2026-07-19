@@ -32,7 +32,7 @@ export interface LightingState {
 
 // Match the values that were hard-coded in mount3D before this control
 // existed (ambient 0.35, sun 1.0, env intensity 1.0, sky background on).
-const DEFAULTS = { ambient: 0.35, sun: 1.0, env: 0.3, background: true };
+const DEFAULTS = { ambient: 0.35, sun: 1.0, env: 0.5, background: true };
 
 // Persisted to localStorage so the user's lighting preferences survive
 // reloads / app restarts. Only the values are stored (not the actions);
