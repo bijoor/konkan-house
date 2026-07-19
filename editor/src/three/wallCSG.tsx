@@ -25,7 +25,9 @@ export interface WallOpening {
 }
 
 interface Props {
-  // Wall centre in Three-space (Y is up).
+  // Wall centre in Three-space (Y is up). `cy` is anchored to `height`
+  // (the START height) — see buildWallGeometry — so a sloped wall keeps
+  // the same bottom as a flat one of that height.
   cx: number;
   cy: number;
   cz: number;
@@ -33,6 +35,10 @@ interface Props {
   length: number;
   depth: number;
   height: number;
+  // Optional END height for a sloped top. When present and != height, the
+  // top slants from `height` at the start end (local -X) to `heightEnd` at
+  // the end (local +X). Omitted / equal ⇒ a plain flat-top box.
+  heightEnd?: number;
   // Wall's orientation as a rotation around the Y axis, in radians.
   // 0 = wall runs along X (east-west); Math.PI/2 = along Z (north-south).
   rotY: number;
@@ -45,11 +51,11 @@ const evaluator = new Evaluator();
 evaluator.useGroups = false;
 
 export function WallWithOpenings(props: Props) {
-  const { cx, cy, cz, length, depth, height, rotY, color, openings } = props;
+  const { cx, cy, cz, length, depth, height, heightEnd, rotY, color, openings } = props;
 
   const geometry = useMemo(() => {
-    return buildWallGeometry(length, depth, height, openings);
-  }, [length, depth, height, openings]);
+    return buildWallGeometry(length, depth, height, heightEnd, openings);
+  }, [length, depth, height, heightEnd, openings]);
 
   return (
     <mesh
@@ -71,9 +77,17 @@ function buildWallGeometry(
   length: number,
   depth: number,
   height: number,
+  heightEnd: number | undefined,
   openings: WallOpening[],
 ): THREE.BufferGeometry {
-  const wallGeom = new THREE.BoxGeometry(length, height, depth);
+  // Flat top (box) unless a distinct end height is given, in which case
+  // build a sloped-top prism. Both share the same bottom (local Y =
+  // -height/2), so the caller's `cy` and the opening-cutter maths (which
+  // use `height`) are identical for either.
+  const wallGeom =
+    heightEnd === undefined || heightEnd === height
+      ? new THREE.BoxGeometry(length, height, depth)
+      : buildSlopedWall(length, depth, height, heightEnd);
   if (openings.length === 0) return wallGeom;
 
   let brush = new Brush(wallGeom);
@@ -107,6 +121,30 @@ function buildWallGeometry(
   const outGeom = brush.geometry.clone();
   wallGeom.dispose();
   return outGeom;
+}
+
+// A wall with a sloped top: same bottom (local Y = -heightStart/2) as the
+// equivalent flat box of `heightStart`, with the top edge running from
+// `heightStart` at the start end (local -X) to `heightEnd` at the end
+// (+X). Built as an extruded trapezoidal profile (XY), depth along Z.
+function buildSlopedWall(
+  length: number,
+  depth: number,
+  heightStart: number,
+  heightEnd: number,
+): THREE.BufferGeometry {
+  const bottom = -heightStart / 2;
+  const s = new THREE.Shape();
+  s.moveTo(-length / 2, bottom);               // start-bottom
+  s.lineTo(length / 2, bottom);                // end-bottom
+  s.lineTo(length / 2, bottom + heightEnd);    // end-top
+  s.lineTo(-length / 2, bottom + heightStart); // start-top
+  s.closePath();
+  const g = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: false });
+  // ExtrudeGeometry runs Z from 0..depth; recentre across the wall thickness.
+  g.translate(0, 0, -depth / 2);
+  g.computeVertexNormals();
+  return g;
 }
 
 // Openings render as empty holes cut through the wall — no glass, no

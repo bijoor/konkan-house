@@ -772,6 +772,10 @@ function emitStandaloneWall(
   // Standalone walls use the floor's WALL height (independent of
   // floor_height); the wall's own `height` field overrides both.
   const h = (obj.height as number | undefined) ?? band.wallHeight;
+  // Optional sloped top: end height (at start_x/y → end_x/y). Defaults to a
+  // flat top when absent. The start end (h) anchors the bottom, so cy/opening
+  // maths below are unchanged.
+  const hEnd = (obj.height_end as number | undefined) ?? h;
   const dx = ex - sx, dy = ey - sy;
   const wallLen = Math.hypot(dx, dy);
   if (wallLen < 1e-6) return;
@@ -795,6 +799,7 @@ function emitStandaloneWall(
       length={wallLen}
       depth={t}
       height={h}
+      heightEnd={hEnd}
       rotY={rotY}
       color="#f5c9a0"
       openings={matched}

@@ -109,8 +109,10 @@ The main building block. A rectangle with four walls.
 ### `wall`
 A standalone (non-room-enclosing) wall segment.
 - `name` (required), `start_x`, `start_y`, `end_x`, `end_y`, `height` (>0, optional),
-  `height_end` (optional, for a sloping top), `material` (optional),
-  `facing` (optional side), `openings` (optional array of Openings).
+  `height_end` (optional — sloping top: `height` at the start end, `height_end`
+  at the end end; the 3D model and 2D elevations both render the slope),
+  `material` (optional), `facing` (optional side), `openings` (optional array of
+  Openings).
 
 ### `pillar`
 `name` (required), `x`, `y`, `height` (>0). `width` and `length` are **both
