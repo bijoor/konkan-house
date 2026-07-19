@@ -219,10 +219,11 @@ function CompassRose({ plot }: { plot: { width: number; length: number } }) {
 
   return (
     <group position={[cx, y, cz]}>
-      {/* Backing disc so the rose reads against any ground colour. */}
+      {/* Backing disc so the rose reads against any ground colour.
+          Opaque so the grid doesn't show through it. */}
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[R * 1.35, 48]} />
-        <meshBasicMaterial color="#0f172a" transparent opacity={0.7} />
+        <meshBasicMaterial color="#0f172a" />
       </mesh>
       {/* Outer ring. */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
