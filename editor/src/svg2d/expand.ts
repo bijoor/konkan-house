@@ -104,7 +104,7 @@ export function expandRoomWalls(
 
 function expandObject(obj: Obj, wallThickness: number): [Obj, Obj[]] {
   if (obj.type === "room") return expandRoom(obj as Room, wallThickness);
-  if (obj.type === "wall") return expandWall(obj as Wall);
+  if (obj.type === "wall") return expandWall(obj as Wall, wallThickness);
   return [obj, []];
 }
 
@@ -249,7 +249,7 @@ function roomOpeningToFlat(
   return flat;
 }
 
-function expandWall(wall: Wall): [Obj, Obj[]] {
+function expandWall(wall: Wall, wallThickness: number): [Obj, Obj[]] {
   const openings = wall.openings;
   if (!openings || openings.length === 0) {
     if ("openings" in wall) {
@@ -275,8 +275,12 @@ function expandWall(wall: Wall): [Obj, Obj[]] {
   const defaultFacing = inferDefaultFacing(dx, dy, wallName, wall.facing);
   validateOpenings(openings, `Wall '${wallName}'`, length);
 
+  // Use the house's resolved wall thickness (not the code default) so the
+  // opening's normal-shift matches how the 3D renderer un-shifts it — a
+  // mismatch pushes the opening off the wall past the match tolerance and
+  // it silently fails to render. A per-wall `thickness` still overrides.
   const wallT = ((wall as { thickness?: number }).thickness ??
-    DEFAULT_GLOBAL_CONFIG.wall_thickness) as number;
+    wallThickness) as number;
 
   const { openings: _drop, ...rest } = wall;
   const newWall: Obj = rest as Obj;
