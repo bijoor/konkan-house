@@ -24,7 +24,7 @@ import { ViewerLightingPanel } from "./LightingPanel";
 import { ViewerInteriorPanel } from "./InteriorPanel";
 import { useConfigStore } from "../state/configStore";
 import { useLightingStore } from "../three/lighting";
-import { useInteriorStore } from "../three/interiorView";
+import { useInteriorStore, interiorMove } from "../three/interiorView";
 
 // Optional camera auto-rotate, for recording a smooth turntable GIF of the
 // model (the hero on the landing page). Off by default so it never affects
@@ -217,25 +217,30 @@ function InteriorController({
   useEffect(() => {
     if (!target) return;
     const el = gl.domElement;
-    let dragging = false;
+    // Track the look-drag by pointerId so a second finger (e.g. on the
+    // joystick) doesn't hijack it — enables look + move at once on touch.
+    let lookId: number | null = null;
     let lx = 0;
     let ly = 0;
     const down = (e: PointerEvent) => {
-      dragging = true;
+      if (lookId !== null) return; // already looking with another pointer
+      lookId = e.pointerId;
       lx = e.clientX;
       ly = e.clientY;
       el.style.cursor = "grabbing";
     };
     const move = (e: PointerEvent) => {
-      if (!dragging) return;
+      if (e.pointerId !== lookId) return;
       yaw.current -= (e.clientX - lx) * 0.0045;
       pitch.current = Math.max(-1.45, Math.min(1.45, pitch.current - (e.clientY - ly) * 0.0045));
       lx = e.clientX;
       ly = e.clientY;
     };
-    const up = () => {
-      dragging = false;
-      el.style.cursor = "grab";
+    const up = (e: PointerEvent) => {
+      if (e.pointerId === lookId) {
+        lookId = null;
+        el.style.cursor = "grab";
+      }
     };
     const isField = (t: EventTarget | null) => {
       const n = t as HTMLElement | null;
@@ -249,16 +254,24 @@ function InteriorController({
       keys.current[e.key.toLowerCase()] = false;
     };
     el.style.cursor = "grab";
+    // Stop the browser turning touch-drags into scroll/zoom gestures so
+    // drag-to-look works on touch devices (OrbitControls normally does this,
+    // but it's unmounted in interior mode).
+    const prevTouch = el.style.touchAction;
+    el.style.touchAction = "none";
     el.addEventListener("pointerdown", down);
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
     window.addEventListener("keydown", kd);
     window.addEventListener("keyup", ku);
     return () => {
       el.style.cursor = "";
+      el.style.touchAction = prevTouch;
       el.removeEventListener("pointerdown", down);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
       window.removeEventListener("keydown", kd);
       window.removeEventListener("keyup", ku);
       keys.current = {};
@@ -270,8 +283,12 @@ function InteriorController({
     const k = keys.current;
     const run = k["shift"] ? 2.4 : 1;
     const speed = 55 * run * Math.min(delta, 0.05);
-    const fwd = (k["w"] || k["arrowup"] ? 1 : 0) - (k["s"] || k["arrowdown"] ? 1 : 0);
-    const strafe = (k["d"] || k["arrowright"] ? 1 : 0) - (k["a"] || k["arrowleft"] ? 1 : 0);
+    // Keyboard (digital) blended with the on-screen joystick (analog),
+    // each clamped to [-1, 1].
+    const kf = (k["w"] || k["arrowup"] ? 1 : 0) - (k["s"] || k["arrowdown"] ? 1 : 0);
+    const ks = (k["d"] || k["arrowright"] ? 1 : 0) - (k["a"] || k["arrowleft"] ? 1 : 0);
+    const fwd = Math.max(-1, Math.min(1, kf + interiorMove.y));
+    const strafe = Math.max(-1, Math.min(1, ks + interiorMove.x));
     if (fwd || strafe) {
       const fx = Math.sin(yaw.current);
       const fz = Math.cos(yaw.current); // horizontal forward

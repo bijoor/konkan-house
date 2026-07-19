@@ -27,6 +27,13 @@ export const useInteriorStore = create<InteriorState>((set) => ({
   exit: () => set({ target: null }),
 }));
 
+// Analog movement input from the on-screen joystick, each component in
+// [-1, 1]: x = strafe (right +), y = forward (up on the stick = +). A plain
+// mutable object (not store state) so the joystick can update it every
+// pointer-move without triggering React re-renders — the scene's useFrame
+// reads it directly and blends it with the WASD keys.
+export const interiorMove = { x: 0, y: 0 };
+
 export interface RoomEntry {
   key: string;
   floorIdx: number;
