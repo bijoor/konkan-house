@@ -45,6 +45,7 @@ interface ConfigState {
     floor_height?: number | undefined;
     wall_height?: number | undefined;
     slab_thickness?: number | undefined;
+    wall_thickness?: number | undefined;
   }) => void;
   // Patches a floor's top-level fields (name, height, slab_thickness).
   // The `objects` array is edited via updateObject / insertObject etc.

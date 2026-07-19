@@ -303,6 +303,10 @@ const houseDefaults = z
     floor_height: z.number().positive().optional(),
     wall_height: z.number().positive().optional(),
     slab_thickness: z.number().nonnegative().optional(),
+    // House-wide wall thickness (project units). Per-object
+    // `wall_thickness`/`thickness` overrides still win. Falls back to the
+    // code default (DEFAULT_GLOBAL_CONFIG.wall_thickness = 8) when omitted.
+    wall_thickness: z.number().positive().optional(),
   })
   .strict();
 

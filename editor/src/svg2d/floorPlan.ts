@@ -46,10 +46,13 @@ export function generateFloorPlanSvg(
   floorConfig: FloorConfig,
   scale = 2.0,
   roofOverlay?: FloorPlanRoofOverlay,
+  // House-wide wall thickness (from config.defaults.wall_thickness); the
+  // caller resolves it. Per-object overrides still win below. Defaults to
+  // the code constant when the caller doesn't pass one.
+  wallThickness: number = DEFAULT_GLOBAL_CONFIG.wall_thickness,
 ): string {
   const floorNum = floorConfig.floor_number ?? 0;
   const floorName = floorConfig.name ?? `Floor ${floorNum}`;
-  const wallThickness = DEFAULT_GLOBAL_CONFIG.wall_thickness;
   const dim = DEFAULT_GLOBAL_CONFIG.dimensions;
 
   // -----------------------------------------------------------------

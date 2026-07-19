@@ -101,11 +101,11 @@ export function readPlotBounds(house: Record<string, unknown>): PlotBounds {
 // Convenience: pull the constants we need from DEFAULT_GLOBAL_CONFIG,
 // with optional house-level overrides layered on top.
 export function readGlobals(
-  houseDefaults?: { floor_height?: number; wall_height?: number; slab_thickness?: number },
+  houseDefaults?: { floor_height?: number; wall_height?: number; slab_thickness?: number; wall_thickness?: number },
 ) {
   const g = DEFAULT_GLOBAL_CONFIG;
   return {
-    wallThickness: g.wall_thickness,
+    wallThickness: houseDefaults?.wall_thickness ?? g.wall_thickness,
     plinthHeight: g.plinth_height,
     slabThickness: houseDefaults?.slab_thickness ?? g.floor_slab_thickness,
     roofThickness: g.roof_thickness,

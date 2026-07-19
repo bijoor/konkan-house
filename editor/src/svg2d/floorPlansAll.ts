@@ -22,8 +22,9 @@ export interface FloorPlanFile {
 
 export function generateAllFloorPlans(houseConfig: HouseConfig): FloorPlanFile[] {
   const hc = expandRoomWalls(houseConfig);
-  const houseDefaults = (hc as { defaults?: { floor_height?: number; slab_thickness?: number } })
+  const houseDefaults = (hc as { defaults?: { floor_height?: number; slab_thickness?: number; wall_thickness?: number } })
     .defaults;
+  const wallThickness = houseDefaults?.wall_thickness ?? DEFAULT_GLOBAL_CONFIG.wall_thickness;
   const out: FloorPlanFile[] = [];
   for (let fi = 0; fi < (hc.floors ?? []).length; fi++) {
     const floor = hc.floors![fi];
@@ -32,7 +33,7 @@ export function generateAllFloorPlans(houseConfig: HouseConfig): FloorPlanFile[]
     const filename = `floor_plan_${floorNum}_${floorName.replace(/ /g, "_")}.svg`;
     // Compute a merged v2 roof spec for THIS floor's roof objects only.
     const roofOverlay = computeFloorRoofOverlay(hc, fi, houseDefaults);
-    const content = generateFloorPlanSvg(floor, 2.0, roofOverlay ?? undefined);
+    const content = generateFloorPlanSvg(floor, 2.0, roofOverlay ?? undefined, wallThickness);
     // Match Python: floors with no bounded 2D objects (e.g. loft with
     // only a hip_roof) return '' and Python skips writing them, so we
     // omit them from the output list too — but with a v2 roof overlay,

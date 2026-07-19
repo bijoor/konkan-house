@@ -22,8 +22,11 @@ coordinates use the **X-right / Y-down** frame (see `coordinate-system.md`).
   `length` (>0), `width` (>0), `height` (>0). The raised base. **Length runs along
   X, width along Y.** The roof footprint should cover this rectangle.
 - **`defaults`** (optional, strict): house-wide fallbacks —
-  `floor_height` (>0), `wall_height` (>0), `slab_thickness` (≥0). Any floor
-  without its own value uses these; if absent, built-in code defaults apply.
+  `floor_height` (>0), `wall_height` (>0), `slab_thickness` (≥0),
+  `wall_thickness` (>0). Any floor without its own value uses the first three; if
+  absent, built-in code defaults apply. **`wall_thickness` sets the house-wide wall
+  thickness** (project units; default 8 = 0.8 ft) — a per-object
+  `wall_thickness`/`thickness` still overrides it.
 - **`floors`** (required): array, **min 1**.
 
 ## Floor

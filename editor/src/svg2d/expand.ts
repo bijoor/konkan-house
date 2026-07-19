@@ -78,7 +78,10 @@ export function expandRoomWalls(
   wallThickness?: number,
 ): HouseConfig {
   if (houseConfig._walls_expanded) return houseConfig;
-  const t = wallThickness ?? DEFAULT_GLOBAL_CONFIG.wall_thickness;
+  const t =
+    (houseConfig.defaults as { wall_thickness?: number } | undefined)?.wall_thickness ??
+    wallThickness ??
+    DEFAULT_GLOBAL_CONFIG.wall_thickness;
 
   const hc = structuredClone(houseConfig);
   for (const floor of hc.floors ?? []) {

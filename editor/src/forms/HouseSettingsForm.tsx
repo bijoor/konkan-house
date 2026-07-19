@@ -18,7 +18,7 @@ export function HouseSettingsForm() {
   if (!config) return null;
   const site = config.site;
   const plinth = config.plinth;
-  const defaults = (config as { defaults?: { floor_height?: number; wall_height?: number; slab_thickness?: number } }).defaults ?? {};
+  const defaults = (config as { defaults?: { floor_height?: number; wall_height?: number; slab_thickness?: number; wall_thickness?: number } }).defaults ?? {};
 
   return (
     <div>
@@ -110,14 +110,17 @@ export function HouseSettingsForm() {
           House-wide fallbacks used when a floor doesn't specify its own
           <code className="mx-1 rounded bg-slate-800 px-1">height</code> /
           <code className="mx-1 rounded bg-slate-800 px-1">wall_height</code> /
-          <code className="mx-1 rounded bg-slate-800 px-1">slab_thickness</code>.
+          <code className="mx-1 rounded bg-slate-800 px-1">slab_thickness</code> /
+          <code className="mx-1 rounded bg-slate-800 px-1">wall_thickness</code>.
           Leave blank to fall back to the built-in code defaults
           ({DEFAULT_GLOBAL_CONFIG.floor_height} /{" "}
           {DEFAULT_GLOBAL_CONFIG.wall_height} /{" "}
-          {DEFAULT_GLOBAL_CONFIG.floor_slab_thickness}). All three are
-          independent — no relationship enforced.
+          {DEFAULT_GLOBAL_CONFIG.floor_slab_thickness} /{" "}
+          {DEFAULT_GLOBAL_CONFIG.wall_thickness}). All are independent — no
+          relationship enforced. Wall thickness is house-wide; a room or wall
+          can still override it per-object.
         </div>
-        <div className="grid grid-cols-3 gap-x-2">
+        <div className="grid grid-cols-2 gap-x-2">
           <NumberField
             label="Floor height"
             hint={`code default ${DEFAULT_GLOBAL_CONFIG.floor_height}`}
@@ -141,6 +144,14 @@ export function HouseSettingsForm() {
             onCommit={(v) => updateDefaults({ slab_thickness: v })}
             allowEmpty
             min={0}
+          />
+          <NumberField
+            label="Wall thickness"
+            hint={`house-wide · code default ${DEFAULT_GLOBAL_CONFIG.wall_thickness}`}
+            value={defaults.wall_thickness}
+            onCommit={(v) => updateDefaults({ wall_thickness: v })}
+            allowEmpty
+            min={0.01}
           />
         </div>
       </Section>
