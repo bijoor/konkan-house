@@ -323,17 +323,6 @@
             border-radius: 10px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
-        /* Interior walk-through room picker container. Desktop: pinned
-           top-centre, clearing the 📚 / ⚙️ corner toggles. The mobile
-           @media block re-flows it (drops it below the toggle row and
-           caps its width). */
-        .interior-panel {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 11;
-        }
         .settings-panel {
             position: absolute;
             top: 20px;
@@ -371,11 +360,13 @@
             transform: rotate(90deg);
             box-shadow: 0 6px 25px rgba(0,0,0,0.2);
         }
-        /* Layers list — a click-to-open popup on ALL screen widths,
-           revealed by the 📚 toggle below. Hidden until `.active`. */
-        .layers-panel {
+        /* Layers list + walk-through room list — click-to-open popups on
+           ALL screen widths, revealed by the 📚 / 🎥 toggles below. Both
+           sit below the two-button top-left toggle stack. Hidden until
+           `.active`. */
+        .layers-panel, .camera-panel {
             position: absolute;
-            top: 72px;                 /* just below the 📚 toggle (20 + 42 + gap) */
+            top: 124px;                /* below the 🎥 + 📚 toggle stack (20 + 42 + 10 + 42 + 10) */
             left: 20px;
             background: rgba(255, 255, 255, 0.95);
             padding: 0.9rem 1.1rem;
@@ -383,15 +374,15 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.15);
             z-index: 10;
             font-size: 0.9rem;
-            display: none;             /* opened via the 📚 toggle */
+            display: none;             /* opened via the matching toggle */
             max-width: 260px;
             max-height: calc(100vh - 200px);
             overflow-y: auto;
         }
-        .layers-panel.active {
+        .layers-panel.active, .camera-panel.active {
             display: block;
         }
-        .layers-panel h4 {
+        .layers-panel h4, .camera-panel h4 {
             margin: 0 0 0.5rem 0;
             font-size: 0.9rem;
             color: #333;
@@ -413,11 +404,10 @@
             width: 12px; height: 12px; border-radius: 3px;
             border: 1px solid rgba(0,0,0,0.15);
         }
-        /* Layers toggle — the 📚 button that opens the layers popup. Now
-           the default on every screen width (was mobile/edit-mode only). */
-        .layers-toggle {
+        /* Top-left toggle stack — 🎥 walk-through camera on top, 📚 layers
+           below it. Both open a popup on every screen width. */
+        .camera-toggle, .layers-toggle {
             position: absolute;
-            top: 20px;
             left: 20px;
             background: rgba(255, 255, 255, 0.95);
             padding: 0.5rem;
@@ -431,6 +421,8 @@
             justify-content: center;
             font-size: 1.2rem;
         }
+        .camera-toggle { top: 20px; }
+        .layers-toggle { top: 72px; }   /* 20 + 42 + 10 gap */
         .setting-item {
             margin-bottom: 1rem;
         }
@@ -1035,33 +1027,36 @@
                 display: none;       /* icon-only tabs on mobile */
             }
 
-            /* Layer panel becomes a slide-in drawer triggered by the
-               floating 📚 button on the top-left. */
-            .layers-panel {
+            /* Layer + walk-through panels become slide-in drawers below the
+               floating 🎥 / 📚 toggle stack on the top-left. Both sit below
+               BOTH toggle buttons (they share the slot; only one opens at a
+               time). */
+            .layers-panel, .camera-panel {
                 display: none;
-                /* Sit just below the floating 📚 toggle (60 px + button + gap). */
-                top: calc(max(env(safe-area-inset-top, 0px), 60px) + 52px);
+                /* Below the two-button stack: base + 2×(40 button + 12 gap). */
+                top: calc(max(env(safe-area-inset-top, 0px), 60px) + 104px);
                 left: max(env(safe-area-inset-left, 0px), 12px);
                 right: auto;
                 max-width: 220px;
                 /* Leave room for the fixed footer + safe area. */
-                max-height: calc(100vh - max(env(safe-area-inset-top, 0px), 60px) - 132px - env(safe-area-inset-bottom, 0px));
+                max-height: calc(100vh - max(env(safe-area-inset-top, 0px), 60px) - 184px - env(safe-area-inset-bottom, 0px));
                 overflow-y: auto;
             }
-            .layers-panel.active {
+            .layers-panel.active, .camera-panel.active {
                 display: block;
             }
             /* iPad Safari overlays a floating URL/toolbar chrome that
                isn't reflected in `env(safe-area-inset-top)`. Pin the
-               toggle far enough down that it clears the typical toolbar
+               toggles far enough down that they clear the typical toolbar
                height (~55 px) while still respecting the safe area when
-               the browser does publish one. */
-            .layers-toggle {
+               the browser does publish one. 🎥 on top, 📚 below it. */
+            .camera-toggle, .layers-toggle {
                 display: flex;
-                top: max(env(safe-area-inset-top, 0px), 60px);
                 left: max(env(safe-area-inset-left, 0px), 12px);
                 width: 40px; height: 40px;
             }
+            .camera-toggle { top: max(env(safe-area-inset-top, 0px), 60px); }
+            .layers-toggle { top: calc(max(env(safe-area-inset-top, 0px), 60px) + 52px); }
 
             /* Shrink the settings gear so it doesn't crowd the model */
             .settings-toggle {
@@ -1077,17 +1072,6 @@
                 min-width: 220px;
                 max-width: calc(100vw - 24px);
                 padding: 1rem;
-            }
-
-            /* Interior walk-through picker: on phones the top-centre row
-               (🚶 + dropdown + hint) is too wide and crashes into the
-               📚 / ⚙️ corner toggles. Drop it below the toggle row and
-               cap its width so its contents wrap (dropdown on top, hint
-               beneath) instead of overlapping. The React panel is set to
-               flex-wrap + centre so this reflow is clean. */
-            .interior-panel {
-                top: calc(max(env(safe-area-inset-top, 0px), 60px) + 52px);
-                max-width: min(320px, calc(100vw - 24px));
             }
 
             /* Camera-preset bar: tighter, plus lifted above the fixed
@@ -1194,7 +1178,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-yEok4Y6T.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-JJ-RVBNK.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/viewer-Db2tdhkk.css">
 </head>
 <body>
@@ -1294,10 +1278,18 @@
         <div id="viewer-views">
         <!-- 3D Model View -->
         <div id="view-3d" class="view-container active">
-            <!-- Layer toggles (top-left) — populated by React on load.
-                 On mobile the panel is hidden by default; the toggle
-                 button below reveals it. Positioning + styling come
-                 from the .layers-panel / .layers-toggle CSS rules. -->
+            <!-- Walk-through camera (top-left, top of the stack). The 🎥
+                 button opens a room list (mounted by React into
+                 #viewer-interior-panel) — pick a room to drop the camera
+                 inside it, or "Overview" to return to orbit. -->
+            <div class="camera-toggle" onclick="toggleCamera()" title="Walk-through camera">🎥</div>
+            <div class="camera-panel" id="viewer-camera-panel">
+                <h4>Walk into a room</h4>
+                <div id="viewer-interior-panel"></div>
+            </div>
+            <!-- Layer toggles (top-left, below 🎥) — populated by React on
+                 load. The 📚 button reveals the panel. Positioning +
+                 styling come from the .layers-panel / .layers-toggle CSS. -->
             <div class="layers-toggle" onclick="toggleLayers('viewer-layer-panel')" title="Show layers">📚</div>
             <div class="layers-panel" id="viewer-layer-panel">
                 <h4>Show layers</h4>
@@ -1310,11 +1302,6 @@
                 <h3 style="margin-top: 0; color: #333; font-size: 1rem; margin-bottom: 1rem;">Lighting</h3>
                 <div id="viewer-lighting-list"></div>
             </div>
-            <!-- Interior walk-through room picker — mounted by main.ts.
-                 Sits top-centre so it clears the 📚 / ⚙️ corner toggles.
-                 Positioning lives in the .interior-panel CSS rule so the
-                 mobile @media block can re-flow it (see below). -->
-            <div id="viewer-interior-panel" class="interior-panel"></div>
             <!-- Three.js Canvas mounted here by src/viewer/main.ts. Uses
                  the same House3D scene the editor renders, minus the
                  editor's toolbar / section cutter / preset row. Orbit
@@ -1413,6 +1400,17 @@
         function toggleLayers(panelId) {
             const panel = document.getElementById(panelId);
             if (panel) panel.classList.toggle('active');
+            // Only one top-left popup open at a time (they share a slot).
+            document.getElementById('viewer-camera-panel')?.classList.remove('active');
+        }
+
+        // Walk-through camera (🎥) panel — the room list is mounted by
+        // React; this just shows/hides the panel and closes the layers
+        // popup so the two don't overlap.
+        function toggleCamera() {
+            const panel = document.getElementById('viewer-camera-panel');
+            if (panel) panel.classList.toggle('active');
+            document.getElementById('viewer-layer-panel')?.classList.remove('active');
         }
 
         // Lighting (⚙️) panel — sliders are mounted by React; this just

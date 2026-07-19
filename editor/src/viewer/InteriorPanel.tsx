@@ -1,13 +1,19 @@
-// Room picker for the interior walk-through. Pick a room → the 3D camera
-// drops to eye level inside it (drag to look, WASD/arrows to walk, Shift to
-// go faster). "Overview" returns to the orbit camera. Rendered into
-// #viewer-interior-panel by mount3D.tsx; shares useInteriorStore with the
-// scene's first-person rig.
+// Room list for the interior walk-through. Mounted into the 🎥 camera
+// panel (#viewer-interior-panel, inside #viewer-camera-panel) by
+// mount3D.tsx. Pick a room → the 3D camera drops to eye level inside it
+// (drag to look, joystick/WASD to walk); "Overview" returns to orbit.
+// Shares useInteriorStore with the scene's first-person rig.
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useConfigStore } from "../state/configStore";
 import { interiorMove, listRooms, useInteriorStore } from "../three/interiorView";
+
+// Close the 🎥 popup after a selection (mirrors the vanilla toggleCamera
+// in viewer.html — the panel's open/closed state is a CSS `.active` class).
+function closeCameraPanel() {
+  document.getElementById("viewer-camera-panel")?.classList.remove("active");
+}
 
 export function ViewerInteriorPanel() {
   const config = useConfigStore((s) => s.config);
@@ -16,68 +22,128 @@ export function ViewerInteriorPanel() {
   const exit = useInteriorStore((s) => s.exit);
   const rooms = useMemo(() => listRooms(config), [config]);
 
-  if (rooms.length === 0) return null;
+  if (rooms.length === 0) {
+    return <div style={{ fontSize: "0.85rem", color: "#666" }}>No rooms to walk into.</div>;
+  }
 
-  const select: React.CSSProperties = {
-    border: "1px solid rgba(0,0,0,0.15)",
-    borderRadius: "8px",
-    background: "rgba(255,255,255,0.95)",
+  // Group rooms by floor, preserving the order listRooms returns.
+  const floors: { name: string; rooms: typeof rooms }[] = [];
+  for (const r of rooms) {
+    let g = floors.find((f) => f.name === r.floorName);
+    if (!g) {
+      g = { name: r.floorName, rooms: [] };
+      floors.push(g);
+    }
+    g.rooms.push(r);
+  }
+
+  const rowBase: React.CSSProperties = {
+    display: "block",
+    width: "100%",
+    textAlign: "left",
+    background: "none",
+    border: "none",
+    borderRadius: "6px",
+    padding: "0.35rem 0.5rem",
+    margin: "0.1rem 0",
     color: "#333",
     fontSize: "0.85rem",
-    padding: "0.35rem 0.5rem",
     cursor: "pointer",
-    boxShadow: "0 2px 10px rgba(0,0,0,0.12)",
+    whiteSpace: "nowrap",
+  };
+  const rowActive: React.CSSProperties = {
+    ...rowBase,
+    background: "#eef0ff",
+    color: "#4348c9",
+    fontWeight: 600,
   };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "0.4rem",
-        pointerEvents: "auto",
-      }}
-    >
-      <span title="Walk inside a room" style={{ fontSize: "1.1rem" }}>🚶</span>
-      <select
-        value={target?.key ?? ""}
-        title="Stand inside a room and look around"
-        style={select}
-        onChange={(e) => {
-          const v = e.target.value;
-          if (!v) {
-            exit();
-            return;
-          }
-          const r = rooms.find((x) => x.key === v);
-          if (r) enter({ key: r.key, label: `${r.floorName}: ${r.name}`, eye: r.eye });
+    <>
+      <button
+        style={!target ? rowActive : rowBase}
+        onClick={() => {
+          exit();
+          closeCameraPanel();
         }}
       >
-        <option value="">Overview (orbit)</option>
-        {rooms.map((r) => (
-          <option key={r.key} value={r.key}>
-            {r.floorName}: {r.name}
-          </option>
-        ))}
-      </select>
-      {target && (
-        <span
-          style={{
-            fontSize: "0.72rem",
-            color: "#475569",
-            background: "rgba(255,255,255,0.9)",
-            borderRadius: "6px",
-            padding: "0.25rem 0.5rem",
-            boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-          }}
-        >
-          drag to look · joystick or WASD to walk
-        </span>
-      )}
+        Overview (orbit)
+      </button>
+      {floors.map((f) => (
+        <div key={f.name} style={{ marginTop: "0.4rem" }}>
+          <div
+            style={{
+              fontSize: "0.68rem",
+              color: "#999",
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+              margin: "0.25rem 0.5rem 0.1rem",
+            }}
+          >
+            {f.name}
+          </div>
+          {f.rooms.map((r) => (
+            <button
+              key={r.key}
+              style={target?.key === r.key ? rowActive : rowBase}
+              onClick={() => {
+                enter({ key: r.key, label: `${f.name}: ${r.name}`, eye: r.eye });
+                closeCameraPanel();
+              }}
+            >
+              {r.name}
+            </button>
+          ))}
+        </div>
+      ))}
+      {target && <HintBanner targetKey={target.key} />}
       {target && <MoveJoystick />}
-    </div>
+    </>
+  );
+}
+
+// Transient "how to move" hint. Shows when a room is entered and fades
+// itself out after a few seconds so it doesn't sit over the model. Re-shows
+// each time a different room is selected. Portaled to <body>, top-centre,
+// click-through.
+function HintBanner({ targetKey }: { targetKey: string }) {
+  const [show, setShow] = useState(true);
+
+  useEffect(() => {
+    setShow(true);
+    const t = window.setTimeout(() => setShow(false), 5000);
+    return () => window.clearTimeout(t);
+  }, [targetKey]);
+
+  if (!show) return null;
+
+  // Anchor to the 3-D scene container (position: relative) so the banner
+  // sits just inside the top of the model view — clear of the tab strip on
+  // desktop and the header on mobile — rather than over the viewport chrome.
+  const host = document.getElementById("viewer-3d-scene") ?? document.body;
+
+  return createPortal(
+    <div
+      style={{
+        position: "absolute",
+        top: "14px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        maxWidth: "min(90%, 360px)",
+        textAlign: "center",
+        background: "rgba(255,255,255,0.92)",
+        color: "#475569",
+        fontSize: "0.75rem",
+        padding: "0.3rem 0.7rem",
+        borderRadius: "8px",
+        boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
+        pointerEvents: "none",
+        zIndex: 15,
+      }}
+    >
+      drag to look · joystick or WASD to walk
+    </div>,
+    host,
   );
 }
 
