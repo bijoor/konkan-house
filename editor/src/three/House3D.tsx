@@ -597,6 +597,17 @@ function matchOpeningToRoomWall(
   const kind = op.type as "door" | "window";
   const sill = kind === "window" ? ((op.sill_height as number | undefined) ?? 0) : 0;
 
+  // Orientation guard: an opening belongs to walls of ONE orientation
+  // (direction north/south → horizontal wall, east/west → vertical). Without
+  // this, an opening at a shared corner (offset 0) sits exactly on the
+  // PERPENDICULAR wall's line too and would be drawn on it as a phantom.
+  const dir = (op.direction as string | undefined)?.toLowerCase();
+  if (dir === "north" || dir === "south") {
+    if (side === "east" || side === "west") return null;
+  } else if (dir === "east" || dir === "west") {
+    if (side === "north" || side === "south") return null;
+  }
+
   if (side === "north") {
     // Wall at y ~ ry
     if (Math.abs(y - ry) > POS_TOL) return null;
@@ -631,6 +642,16 @@ function matchOpeningToStandaloneWall(
   const w = op.width as number, h = op.height as number;
   const kind = op.type as "door" | "window";
   const sill = kind === "window" ? ((op.sill_height as number | undefined) ?? 0) : 0;
+
+  // Orientation guard (see matchOpeningToRoomWall): an opening's `direction`
+  // (north/south → horizontal wall, east/west → vertical) must match this
+  // wall's axis, so a corner opening isn't drawn on a perpendicular wall.
+  const dir = (op.direction as string | undefined)?.toLowerCase();
+  if (dir === "north" || dir === "south" || dir === "east" || dir === "west") {
+    const opHorizontal = dir === "north" || dir === "south";
+    const wallHorizontal = Math.abs(dx) >= Math.abs(dy);
+    if (opHorizontal !== wallHorizontal) return null;
+  }
 
   // Project (x, y) onto the wall's line.
   // The expander shifts the opening's world coord by -t/2 along the
