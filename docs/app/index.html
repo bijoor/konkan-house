@@ -360,9 +360,11 @@
             transform: rotate(90deg);
             box-shadow: 0 6px 25px rgba(0,0,0,0.2);
         }
+        /* Layers list — a click-to-open popup on ALL screen widths,
+           revealed by the 📚 toggle below. Hidden until `.active`. */
         .layers-panel {
             position: absolute;
-            top: 20px;
+            top: 72px;                 /* just below the 📚 toggle (20 + 42 + gap) */
             left: 20px;
             background: rgba(255, 255, 255, 0.95);
             padding: 0.9rem 1.1rem;
@@ -370,6 +372,13 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.15);
             z-index: 10;
             font-size: 0.9rem;
+            display: none;             /* opened via the 📚 toggle */
+            max-width: 260px;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+        .layers-panel.active {
+            display: block;
         }
         .layers-panel h4 {
             margin: 0 0 0.5rem 0;
@@ -393,8 +402,8 @@
             width: 12px; height: 12px; border-radius: 3px;
             border: 1px solid rgba(0,0,0,0.15);
         }
-        /* Mobile-only toggle for the layers panel — mirrors .settings-toggle
-           but sits on the top-LEFT and is hidden on desktop. */
+        /* Layers toggle — the 📚 button that opens the layers popup. Now
+           the default on every screen width (was mobile/edit-mode only). */
         .layers-toggle {
             position: absolute;
             top: 20px;
@@ -406,27 +415,10 @@
             cursor: pointer;
             z-index: 11;
             width: 42px; height: 42px;
-            display: none;                  /* shown only on narrow viewports */
+            display: flex;
             align-items: center;
             justify-content: center;
             font-size: 1.2rem;
-        }
-        /* When edit mode is on the 3D viewport shrinks (sidebar +
-           property panel eat width). Collapse the layers list into the
-           same 📚 popup we use on mobile so it doesn't crowd the scene. */
-        body[data-edit-mode="on"] .layers-panel {
-            display: none;
-            top: 72px;       /* just below the toggle */
-            left: 20px;
-            max-width: 240px;
-            max-height: calc(100vh - 200px);
-            overflow-y: auto;
-        }
-        body[data-edit-mode="on"] .layers-panel.active {
-            display: block;
-        }
-        body[data-edit-mode="on"] .layers-toggle {
-            display: flex;
         }
         .setting-item {
             margin-bottom: 1rem;
@@ -1180,7 +1172,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-CDA9DDnM.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-DLdCf4RK.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/viewer-LnRM_42_.css">
 </head>
 <body>
@@ -1289,13 +1281,13 @@
                 <h4>Show layers</h4>
                 <div class="layers-list" id="viewer-layer-list"></div>
             </div>
-            <!-- Debug badge — shows roof compute status. Toggle via the
-                 🐞 button; auto-refreshes from window.__roofDebug. -->
-            <div class="debug-badge-wrapper" style="position: absolute; top: 20px; right: 20px; z-index: 12;">
-                <button id="debug-badge-toggle" class="settings-toggle" onclick="toggleRoofDebug()" title="Show roof debug info" style="width: 42px; height: 42px; font-size: 1.1rem;">🐞</button>
-                <pre id="debug-badge-panel" style="display: none; position: absolute; top: 52px; right: 0; background: rgba(15,23,42,0.95); color: #e2e8f0; padding: 0.75rem; border-radius: 8px; font-size: 0.72rem; line-height: 1.4; max-width: 340px; max-height: 60vh; overflow: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3); white-space: pre-wrap;"></pre>
+            <!-- Lighting controls (top-right) — the ⚙️ button opens a panel
+                 of sliders populated by React (src/viewer/mount3D.tsx). -->
+            <div class="settings-toggle" onclick="toggleSettings()" title="Lighting">⚙️</div>
+            <div class="settings-panel" id="viewer-settings-panel">
+                <h3 style="margin-top: 0; color: #333; font-size: 1rem; margin-bottom: 1rem;">Lighting</h3>
+                <div id="viewer-lighting-list"></div>
             </div>
-
             <!-- Three.js Canvas mounted here by src/viewer/main.ts. Uses
                  the same House3D scene the editor renders, minus the
                  editor's toolbar / section cutter / preset row. Orbit
@@ -1393,6 +1385,13 @@
         // always visible (see the media queries at the top).
         function toggleLayers(panelId) {
             const panel = document.getElementById(panelId);
+            if (panel) panel.classList.toggle('active');
+        }
+
+        // Lighting (⚙️) panel — sliders are mounted by React; this just
+        // shows/hides the panel.
+        function toggleSettings() {
+            const panel = document.getElementById('viewer-settings-panel');
             if (panel) panel.classList.toggle('active');
         }
 
@@ -2012,41 +2011,6 @@
                 catch (e) { console.warn('[svg lightbox] could not restore tab', e); }
             }
             svgLightboxReturnTab = null;
-        }
-
-        // Roof debug panel — shows window.__roofDebug (published by
-        // House3D on every render) so the user can see WHY the roof
-        // isn't drawing (no hip_roof, compute error, footprint mismatch,
-        // etc.) without opening DevTools.
-        function toggleRoofDebug() {
-            const panel = document.getElementById('debug-badge-panel');
-            if (!panel) return;
-            const visible = panel.style.display !== 'none';
-            if (visible) {
-                panel.style.display = 'none';
-                return;
-            }
-            renderRoofDebug();
-            panel.style.display = 'block';
-            // Refresh every 500 ms while open so config edits show up live.
-            if (!window.__roofDebugTimer) {
-                window.__roofDebugTimer = setInterval(renderRoofDebug, 500);
-            }
-        }
-        function renderRoofDebug() {
-            const panel = document.getElementById('debug-badge-panel');
-            if (!panel || panel.style.display === 'none') {
-                if (window.__roofDebugTimer) {
-                    clearInterval(window.__roofDebugTimer);
-                    window.__roofDebugTimer = null;
-                }
-                return;
-            }
-            const d = window.__roofDebug;
-            const b = window.__roofBomDebug;
-            panel.textContent =
-                'Roof 3D compute:\n' + JSON.stringify(d ?? 'not run yet', null, 2) +
-                '\n\nRoof 2D/BOM compute:\n' + JSON.stringify(b ?? 'not run yet', null, 2);
         }
 
         // HTML lightbox — used by the BOM cards. Simpler than the SVG

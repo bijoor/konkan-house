@@ -20,7 +20,9 @@ import { House3D } from "../three/House3D";
 import { readPlotBounds } from "../three/coords";
 import { expandRoomWalls, type HouseConfig } from "../svg2d/expand";
 import { ViewerLayerPanel } from "./LayerPanel";
+import { ViewerLightingPanel } from "./LightingPanel";
 import { useConfigStore } from "../state/configStore";
+import { useLightingStore } from "../three/lighting";
 
 // Optional camera auto-rotate, for recording a smooth turntable GIF of the
 // model (the hero on the landing page). Off by default so it never affects
@@ -39,6 +41,11 @@ function ViewerScene() {
   // scene without any external glue. If the store is empty (initial
   // load), render nothing until the config arrives.
   const config = useConfigStore((s) => s.config) as HouseConfig | null;
+  // Runtime lighting (⚙️ panel). Defaults reproduce the previous look.
+  const ambient = useLightingStore((s) => s.ambient);
+  const sun = useLightingStore((s) => s.sun);
+  const env = useLightingStore((s) => s.env);
+  const background = useLightingStore((s) => s.background);
   if (!config) return null;
   // expandRoomWalls throws on invalid openings; falls back to reading
   // the plot directly from the raw config so the scene camera stays
@@ -86,20 +93,22 @@ function ViewerScene() {
       gl={{ antialias: true }}
       style={{ width: "100%", height: "100%", display: "block" }}
     >
-      <ambientLight intensity={0.35} />
+      <ambientLight intensity={ambient} />
       <directionalLight
         position={[camDist * 0.6, camDist * 0.85, camDist * 0.35]}
-        intensity={1.0}
+        intensity={sun}
         castShadow
         shadow-mapSize={[2048, 2048]}
       />
       {/* Same HDRI the original <model-viewer> used for the skybox +
           image-based lighting. Loaded from Poly Haven's CDN so we
-          don't have to bundle the ~1 MB file. */}
+          don't have to bundle the ~1 MB file. `environmentIntensity`
+          and `background` are driven by the ⚙️ lighting panel. */}
       <Suspense fallback={null}>
         <Environment
           files="https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/citrus_orchard_road_puresky_1k.hdr"
-          background
+          environmentIntensity={env}
+          background={background}
         />
       </Suspense>
       <Grid
@@ -250,4 +259,12 @@ export function mountViewer3D(container: HTMLElement): void {
 export function mountViewerLayerPanel(container: HTMLElement): void {
   const root = createRoot(container);
   root.render(<ViewerLayerPanel />);
+}
+
+// Mount the lighting sliders into the ⚙️ settings panel. Shares the
+// useLightingStore with ViewerScene, so dragging a slider re-lights the
+// scene live.
+export function mountViewerLightingPanel(container: HTMLElement): void {
+  const root = createRoot(container);
+  root.render(<ViewerLightingPanel />);
 }
