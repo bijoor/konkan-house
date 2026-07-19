@@ -6,8 +6,9 @@
 // plinth: raised base rectangle + height
 
 import { useConfigStore } from "../state/configStore";
-import { NumberField, SelectField, Section } from "./fields";
+import { NumberField, SelectField, TextField, Section } from "./fields";
 import { DEFAULT_GLOBAL_CONFIG } from "../svg2d/config";
+import { resolveLayers } from "../three/layers";
 
 type UnitSystem =
   | "feet_inches"
@@ -210,6 +211,100 @@ export function HouseSettingsForm() {
           />
         </div>
       </Section>
+
+      <LayersSection />
     </div>
+  );
+}
+
+// -------------------------------------------------------------------
+// Layers editor — manage the house's 3D visibility layers. Objects are
+// assigned to a layer via the per-object "Layer" dropdown; the layers
+// menu in the 3D view toggles whole layers. When the house has no custom
+// list yet, this shows the built-in defaults and materializes them into
+// the config on the first edit.
+// -------------------------------------------------------------------
+function LayersSection() {
+  const config = useConfigStore((s) => s.config);
+  const updateLayers = useConfigStore((s) => s.updateLayers);
+  const layers = resolveLayers(config);
+
+  const commit = (next: { id: string; label: string; color?: string }[]) =>
+    updateLayers(next);
+
+  const patchAt = (
+    i: number,
+    patch: Partial<{ id: string; label: string; color: string }>,
+  ) => commit(layers.map((l, j) => (j === i ? { ...l, ...patch } : l)));
+
+  const removeAt = (i: number) => commit(layers.filter((_, j) => j !== i));
+
+  const add = () => {
+    // Unique id: layerN not already taken.
+    const taken = new Set(layers.map((l) => l.id));
+    let n = layers.length + 1;
+    while (taken.has(`layer${n}`)) n++;
+    commit([...layers, { id: `layer${n}`, label: `Layer ${n}`, color: "#888888" }]);
+  };
+
+  return (
+    <Section title="Layers (3D visibility)">
+      <div className="mb-2 text-[11px] text-slate-400">
+        Toggle-able groups in the 3D view's 📚 layers menu. Assign an object
+        to a layer with the <b>Layer</b> dropdown at the top of its editor;
+        unassigned objects fall back to an automatic mapping. Editing here
+        overrides the built-in defaults for this house.
+      </div>
+      <div className="space-y-1">
+        {layers.map((l, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <input
+              type="color"
+              value={l.color ?? "#888888"}
+              onChange={(e) => patchAt(i, { color: e.target.value })}
+              className="h-6 w-6 shrink-0 cursor-pointer rounded border border-slate-700 bg-transparent"
+              title="Layer colour"
+            />
+            <div className="flex-1">
+              <TextField
+                label=""
+                value={l.label}
+                onCommit={(v) => patchAt(i, { label: v || l.id })}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => removeAt(i)}
+              className="shrink-0 rounded bg-slate-800 px-2 py-1 text-[10px] text-red-300 hover:bg-red-900"
+              title="Remove layer"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={add}
+          className="rounded bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
+        >
+          + Add layer
+        </button>
+        <button
+          type="button"
+          onClick={() => updateLayers(undefined)}
+          className="rounded bg-slate-800 px-2 py-1 text-xs text-slate-300 hover:bg-slate-700"
+          title="Clear the custom list and use the built-in default layers"
+        >
+          Reset to defaults
+        </button>
+      </div>
+      <div className="mt-1 text-[10px] text-slate-500">
+        Removing a layer that objects are assigned to leaves those objects
+        pointing at a missing id — they'll appear under that id in the menu
+        until reassigned.
+      </div>
+    </Section>
   );
 }

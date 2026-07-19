@@ -13,6 +13,7 @@ coordinates use the **X-right / Y-down** frame (see `coordinate-system.md`).
   "plinth":   { … },        // required
   "defaults": { … },        // optional — house-wide height defaults
   "units":    { … },        // optional — how dimensions are LABELLED (display-only)
+  "layers":   [ … ],        // optional — configurable 3D visibility layers
   "floors":   [ … ]         // required, at least 1
 }
 ```
@@ -41,6 +42,13 @@ coordinates use the **X-right / Y-down** frame (see `coordinate-system.md`).
   - `precision` — decimal places for the decimal systems (default `2`; ignored by
     `feet_inches`).
   Omit the whole block to keep the historical feet-&-inches labels.
+- **`layers`** (optional): the toggle-able visibility groups in the 3D view's
+  layers menu. Each is `{ id, label, color? }` (`id` required + unique; `color`
+  is a CSS hex like `"#e88968"`). Any object can opt into a layer via its own
+  optional **`layer`** field (set to a layer `id`). Objects **without** a `layer`
+  fall back to an automatic per-type/floor mapping, so existing houses need no
+  changes. Display-only — never affects geometry. Omit `layers` entirely to use
+  the built-in default set (roof shell, walls, slabs, pillars, plinth, …).
 - **`floors`** (required): array, **min 1**.
 
 ## Floor

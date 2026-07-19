@@ -56,6 +56,7 @@ const roomWallSide = z
 const floorSlab = z
   .object({
     type: z.literal("floor_slab"),
+    layer: z.string().optional(),
     x: z.number(),
     y: z.number(),
     width: positive(),
@@ -70,6 +71,7 @@ const floorSlab = z
 const pillar = z
   .object({
     type: z.literal("pillar"),
+    layer: z.string().optional(),
     name: z.string(),
     x: z.number(),
     y: z.number(),
@@ -83,6 +85,7 @@ const pillar = z
 const beam = z
   .object({
     type: z.literal("beam"),
+    layer: z.string().optional(),
     x: z.number(),
     y: z.number(),
     width: positive(),
@@ -112,6 +115,7 @@ const wallHeightsEntry = z.union([
 const room = z
   .object({
     type: z.literal("room"),
+    layer: z.string().optional(),
     name: z.string(),
     x: z.number(),
     y: z.number(),
@@ -144,6 +148,7 @@ export type Room = z.infer<typeof room>;
 const wall = z
   .object({
     type: z.literal("wall"),
+    layer: z.string().optional(),
     name: z.string(),
     start_x: z.number(),
     start_y: z.number(),
@@ -161,6 +166,7 @@ export type Wall = z.infer<typeof wall>;
 const staircase = z
   .object({
     type: z.literal("staircase"),
+    layer: z.string().optional(),
     start_x: z.number(),
     start_y: z.number(),
     num_steps: z.number().int().positive(),
@@ -177,6 +183,7 @@ const staircase = z
 const door = z
   .object({
     type: z.literal("door"),
+    layer: z.string().optional(),
     name: z.string(),
     x: z.number(),
     y: z.number(),
@@ -191,6 +198,7 @@ const door = z
 const windowObj = z
   .object({
     type: z.literal("window"),
+    layer: z.string().optional(),
     name: z.string(),
     x: z.number(),
     y: z.number(),
@@ -248,6 +256,7 @@ const roofV2 = z
 const kitchenPlatform = z
   .object({
     type: z.literal("kitchen_platform"),
+    layer: z.string().optional(),
     name: z.string().optional(),
     path: z.array(z.tuple([z.number(), z.number()])).min(2),
     side: z.enum(["left", "right"]),
@@ -328,12 +337,29 @@ const houseUnits = z
   })
   .strict();
 
+// A visibility layer for the 3D view. Each object may reference a layer
+// by `id` (via its `layer` field); the layers menu toggles whole layers
+// on/off. Display-only — never affects geometry. Optional: when absent,
+// a built-in default layer set is used, and objects fall back to an
+// automatic per-type/floor mapping.
+export const layerDef = z
+  .object({
+    id: z.string().min(1),
+    label: z.string(),
+    color: z.string().optional(),
+  })
+  .strict();
+export type LayerDef = z.infer<typeof layerDef>;
+
 export const HouseConfig = z
   .object({
     site,
     plinth,
     defaults: houseDefaults.optional(),
     units: houseUnits.optional(),
+    // Configurable 3D visibility layers (optional; defaults applied when
+    // absent). Objects opt in via their own `layer` field.
+    layers: z.array(layerDef).optional(),
     floors: z.array(floor).min(1),
     _walls_expanded: z.boolean().optional(),
   })

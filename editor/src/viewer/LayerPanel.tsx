@@ -7,19 +7,29 @@
 // Rendered into #viewer-layer-list by mount3D.tsx. The surrounding
 // #viewer-layer-panel div + CSS live in the viewer's HTML shell.
 
-import { DEFAULT_LAYERS, useLayerStore } from "../three/layers";
+import { useMemo } from "react";
+import { effectiveLayers, useLayerStore } from "../three/layers";
+import { useConfigStore } from "../state/configStore";
 
 export function ViewerLayerPanel() {
+  // Layer list derived from the config (same helper the 3D scene uses), so
+  // adding/removing layers or reassigning objects updates the menu live.
+  const config = useConfigStore((s) => s.config);
+  const layers = useMemo(() => effectiveLayers(config), [config]);
   const visible = useLayerStore((s) => s.visible);
   const toggle = useLayerStore((s) => s.toggle);
 
+  if (layers.length === 0) {
+    return <div style={{ fontSize: "0.8rem", color: "#888" }}>No layers.</div>;
+  }
+
   return (
     <>
-      {DEFAULT_LAYERS.map((l) => (
+      {layers.map((l) => (
         <label key={l.id}>
           <input
             type="checkbox"
-            checked={visible[l.id] ?? true}
+            checked={visible[l.id] !== false}
             onChange={() => toggle(l.id)}
           />
           <span

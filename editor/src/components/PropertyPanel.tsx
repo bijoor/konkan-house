@@ -1,5 +1,6 @@
 import { useConfigStore, selectSelectedObject, type Selection } from "../state/configStore";
 import type { HouseObject } from "../schema/houseConfig";
+import { resolveLayers } from "../three/layers";
 import { validate } from "../schema/houseConfig";
 import { RoomForm } from "../forms/RoomForm";
 import { WallForm } from "../forms/WallForm";
@@ -100,6 +101,7 @@ export function PropertyPanel() {
           <div className="mb-3 text-base font-medium text-slate-100">
             {objectDisplayName(selectedObject) ?? `#${selection.object}`}
           </div>
+          <LayerAssignField object={selectedObject} selection={selection} />
           <FormFor object={selectedObject} selection={selection} />
         </div>
       ) : (
@@ -129,6 +131,49 @@ export function PropertyPanel() {
         </div>
       )}
     </aside>
+  );
+}
+
+// Shared "Layer" dropdown shown for every object type (above its type
+// form). Assigns the object to one of the configured 3D layers; blank =
+// "Auto", which falls back to the built-in per-type/floor mapping.
+function LayerAssignField({
+  object,
+  selection,
+}: {
+  object: HouseObject;
+  selection: Selection;
+}) {
+  const config = useConfigStore((s) => s.config);
+  const updateObject = useConfigStore((s) => s.updateObject);
+  const layers = resolveLayers(config);
+  const current = (object as { layer?: string }).layer ?? "";
+  return (
+    <div className="mb-3">
+      <label className="mb-0.5 block text-xs font-medium text-slate-300">
+        Layer
+      </label>
+      <select
+        value={current}
+        onChange={(e) =>
+          updateObject(selection, {
+            layer: e.target.value || undefined,
+          } as Partial<HouseObject>)
+        }
+        className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100 outline-none focus:border-emerald-500"
+      >
+        <option value="">— Auto (by type / floor) —</option>
+        {layers.map((l) => (
+          <option key={l.id} value={l.id}>
+            {l.label}
+          </option>
+        ))}
+      </select>
+      <div className="mt-0.5 text-[10px] text-slate-500">
+        Which 3D layer this object toggles with. Manage the list in{" "}
+        <b>🏠 House settings → Layers</b>.
+      </div>
+    </div>
   );
 }
 

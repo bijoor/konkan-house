@@ -38,7 +38,7 @@ import { RoofFrameMesh, computeShellLift, type RoofFraming, type RoofFrameGeom, 
 import { V2RoofFrame, V2RoofSolid, V2RoofSurface } from "./V2RoofSolid";
 import { StaircaseMesh } from "./staircase";
 import { OpeningPane, WallWithOpenings, type WallOpening } from "./wallCSG";
-import { DEFAULT_LAYERS, useLayerStore } from "./layers";
+import { effectiveLayers, useLayerStore } from "./layers";
 
 interface Obj {
   type: string;
@@ -379,7 +379,7 @@ export function House3D({ config }: { config: HouseConfig }) {
           const slabT = (obj.thickness as number | undefined) ?? band.slabThickness;
           const c = toThreePos(x + w / 2, y + l / 2, 0, plot.width, plot.length);
           push(
-            slabLayer,
+            (obj.layer as string | undefined) ?? slabLayer,
             <FloorSlabBox
               key={key}
               cx={c.x}
@@ -402,7 +402,7 @@ export function House3D({ config }: { config: HouseConfig }) {
           const zOffsetU = (obj.z_offset as number | undefined) ?? 0;
           const c = toThreePos(x + w / 2, y + l / 2, 0, plot.width, plot.length);
           push(
-            "f1_beam",
+            (obj.layer as string | undefined) ?? "f1_beam",
             <BeamBox
               key={key}
               cx={c.x}
@@ -420,7 +420,7 @@ export function House3D({ config }: { config: HouseConfig }) {
           const h = (obj.height as number | undefined) ?? band.floorHeight;
           const c = toThreePos(x, y, 0, plot.width, plot.length);
           push(
-            "pillars",
+            (obj.layer as string | undefined) ?? "pillars",
             <PillarBox
               key={key}
               cx={c.x}
@@ -436,9 +436,9 @@ export function House3D({ config }: { config: HouseConfig }) {
             />,
           );
         } else if (obj.type === "room") {
-          emitRoomWalls(obj, band, globals, plot, key, openings, push, roomLayer);
+          emitRoomWalls(obj, band, globals, plot, key, openings, push, (obj.layer as string | undefined) ?? roomLayer);
         } else if (obj.type === "wall") {
-          emitStandaloneWall(obj, band, globals, plot, key, openings, push, roomLayer);
+          emitStandaloneWall(obj, band, globals, plot, key, openings, push, (obj.layer as string | undefined) ?? roomLayer);
         } else if (obj.type === "staircase") {
           // Supports the "new" schema (start_x/start_y + step_* +
           // compass direction). Legacy format (x/y/width/length) can be
@@ -452,7 +452,7 @@ export function House3D({ config }: { config: HouseConfig }) {
           const direction =
             (obj.direction as "north" | "south" | "east" | "west" | undefined) ?? "north";
           push(
-            slabLayer,
+            (obj.layer as string | undefined) ?? slabLayer,
             <StaircaseMesh
               key={key}
               startX={startX}
@@ -499,7 +499,7 @@ export function House3D({ config }: { config: HouseConfig }) {
             // depth direction (into room), local Y = up.
             const angleY = Math.atan2(-uy, ux);   // three.js z inverted from world y
             push(
-              slabLayer,
+              (obj.layer as string | undefined) ?? slabLayer,
               <mesh
                 key={`${key}-${i}`}
                 position={[centre.x, baseZ + height / 2, centre.z]}
@@ -523,12 +523,18 @@ export function House3D({ config }: { config: HouseConfig }) {
 
   const plot = useMemo(() => readPlotBounds(expandRoomWalls(config)), [config]);
 
+  // Layers to render, derived purely from the config (same helper the menu
+  // uses) so scene + menu stay in lockstep. Any group id present in byLayer
+  // is guaranteed to be in here by effectiveLayers (it replicates the push
+  // fallbacks), so nothing is dropped.
+  const displayLayers = useMemo(() => effectiveLayers(config), [config]);
+
   return (
     <>
       {visible.ground !== false && (
         <GroundPlane width={plot.width} length={plot.length} />
       )}
-      {DEFAULT_LAYERS.map((l) => (
+      {displayLayers.map((l) => (
         <group key={l.id} visible={visible[l.id] !== false}>
           {byLayer[l.id]}
         </group>

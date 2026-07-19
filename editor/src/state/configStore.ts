@@ -58,6 +58,9 @@ interface ConfigState {
     per_unit?: number | undefined;
     precision?: number | undefined;
   }) => void;
+  // Replaces the house-level 3D visibility layer list. Pass an empty array
+  // or undefined to clear it (falls back to the built-in default layers).
+  updateLayers: (layers: NonNullable<HouseConfig["layers"]> | undefined) => void;
   // Patches a floor's top-level fields (name, height, slab_thickness).
   // The `objects` array is edited via updateObject / insertObject etc.
   updateFloor: (floorIdx: number, patch: Partial<HouseConfig["floors"][number]>) => void;
@@ -206,6 +209,16 @@ export const useConfigStore = create<ConfigState>()(
             Object.keys(next).length === 0 ? undefined : next;
           return {
             config: { ...state.config, units: cleaned } as HouseConfig,
+            dirty: true,
+          };
+        }),
+
+      updateLayers: (layers) =>
+        set((state) => {
+          if (!state.config) return state;
+          const cleaned = layers && layers.length > 0 ? layers : undefined;
+          return {
+            config: { ...state.config, layers: cleaned } as HouseConfig,
             dirty: true,
           };
         }),

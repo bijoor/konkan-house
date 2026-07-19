@@ -20,7 +20,7 @@ import { House3D } from "./House3D";
 import { V2RoofMesh } from "./V2RoofMesh";
 import { V2TopViewPanel } from "./V2TopViewPanel";
 import { V2_DEMOS, type V2DemoId } from "./v2Demos";
-import { DEFAULT_LAYERS, useLayerStore } from "./layers";
+import { effectiveLayers, useLayerStore } from "./layers";
 import { readPlotBounds } from "./coords";
 import { expandRoomWalls, type HouseConfig } from "../svg2d/expand";
 
@@ -104,7 +104,7 @@ export function ThreePreview({ config }: { config: HouseConfig }) {
           setDemo={setV2Demo}
         />
         <div className="ml-auto">
-          <LayerPanelToggle />
+          <LayerPanelToggle config={config} />
         </div>
       </div>
 
@@ -179,7 +179,7 @@ export function ThreePreview({ config }: { config: HouseConfig }) {
           {import.meta.env.DEV && <Stats />}
           <CameraLogger />
         </Canvas>
-        <LayerPanel />
+        <LayerPanel config={config} />
         {v2Enabled && <V2TopViewPanel config={config} demoId={v2Demo} />}
       </div>
     </div>
@@ -368,20 +368,21 @@ function V2Toggle({
   );
 }
 
-function LayerPanelToggle() {
+function LayerPanelToggle({ config }: { config: HouseConfig }) {
   const setAll = useLayerStore((s) => s.setAll);
+  const ids = useMemo(() => effectiveLayers(config).map((l) => l.id), [config]);
   return (
     <div className="flex gap-2">
       <button
         type="button"
-        onClick={() => setAll(true)}
+        onClick={() => setAll(ids, true)}
         className="rounded bg-slate-800 px-2 py-1 text-xs text-slate-300 hover:bg-slate-700"
       >
         Show all
       </button>
       <button
         type="button"
-        onClick={() => setAll(false)}
+        onClick={() => setAll(ids, false)}
         className="rounded bg-slate-800 px-2 py-1 text-xs text-slate-300 hover:bg-slate-700"
       >
         Hide all
@@ -390,13 +391,14 @@ function LayerPanelToggle() {
   );
 }
 
-function LayerPanel() {
+function LayerPanel({ config }: { config: HouseConfig }) {
+  const layers = useMemo(() => effectiveLayers(config), [config]);
   const visible = useLayerStore((s) => s.visible);
   const toggle = useLayerStore((s) => s.toggle);
   return (
     <div className="pointer-events-auto absolute right-3 top-3 max-h-[85%] w-52 overflow-y-auto rounded border border-slate-700 bg-slate-900/85 p-2 backdrop-blur">
       <div className="mb-1 text-xs font-semibold text-slate-400">Layers</div>
-      {DEFAULT_LAYERS.map((l) => {
+      {layers.map((l) => {
         const on = visible[l.id] !== false;
         return (
           <label
