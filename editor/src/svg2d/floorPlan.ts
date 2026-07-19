@@ -6,7 +6,7 @@
 // Callers should pass a floor already run through expandRoomWalls so
 // nested-form rooms are flattened.
 
-import { DEFAULT_GLOBAL_CONFIG } from "./config";
+import { DEFAULT_GLOBAL_CONFIG, scaledTextSize } from "./config";
 import { formatDimension, f, fFloat } from "./format";
 import {
   svgDrawWall, svgDrawRoom, svgDrawDoor, svgDrawWindow, svgDrawFloorSlab,
@@ -343,7 +343,7 @@ export function generateFloorPlanSvg(
     const openingLevels = assignOpeningOffsetLevels(openingsForLevels);
 
     const openingOffset = dim.opening_dimension_offset;
-    const openingTextSize = dim.opening_text_size;
+    const openingTextSize = scaledTextSize(dim.opening_text_size);
 
     for (const [wallName, ops] of Object.entries(openingsByWall)) {
       const wallInfo = wallBounds[wallName];
@@ -507,7 +507,13 @@ export function generateFloorPlanSvg(
   // Room labels
   // -----------------------------------------------------------------
   if (dim.show_room_dimensions) {
-    const roomTextSize = dim.room_text_size;
+    const roomTextSize = scaledTextSize(dim.room_text_size);
+    const roomSubTextSize = scaledTextSize(dim.room_text_size - 2);
+    // Vertical gap between the room name and its sub-dimension line. Scales
+    // with the fonts so the two lines don't collide on large houses (was a
+    // hardcoded ±8; scaledTextSize(8) === 8 at factor 1, so default output
+    // is unchanged).
+    const roomLabelDy = scaledTextSize(8);
     for (const obj of objects) {
       if (obj.type === "room") {
         const centerX = (obj.x as number) + (obj.width as number) / 2;
@@ -521,8 +527,8 @@ export function generateFloorPlanSvg(
 
         // centerX and centerY are both Python-float (from `/ 2`), and
         // centerY ± 8 inherits float-ness.
-        svg += `<text x="${fFloat(centerX)}" y="${fFloat(centerY - 8)}" text-anchor="middle" font-size="${roomTextSize}" font-weight="bold" fill="#333">${roomName}</text>\n`;
-        svg += `<text x="${fFloat(centerX)}" y="${fFloat(centerY + 8)}" text-anchor="middle" font-size="${roomTextSize - 2}" fill="#666">${widthDim} × ${lengthDim}</text>\n`;
+        svg += `<text x="${fFloat(centerX)}" y="${fFloat(centerY - roomLabelDy)}" text-anchor="middle" font-size="${roomTextSize}" font-weight="bold" fill="#333">${roomName}</text>\n`;
+        svg += `<text x="${fFloat(centerX)}" y="${fFloat(centerY + roomLabelDy)}" text-anchor="middle" font-size="${roomSubTextSize}" fill="#666">${widthDim} × ${lengthDim}</text>\n`;
       }
     }
   }
@@ -605,7 +611,7 @@ export function generateFloorPlanSvg(
   // for future edits.)
   void titleWidthIsFloat;
   svg += `</g>
-<text x="${titleXStr}" y="30" text-anchor="middle" font-size="16" font-weight="bold">${floorName}</text>
+<text x="${titleXStr}" y="30" text-anchor="middle" font-size="${scaledTextSize(16)}" font-weight="bold">${floorName}</text>
 </svg>`;
 
   return svg;

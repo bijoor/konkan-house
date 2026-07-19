@@ -7,6 +7,7 @@
 
 import { expandRoomWalls, type HouseConfig } from "./expand";
 import { generateElevationView } from "./elevationView";
+import { scaledTextSize } from "./config";
 import { f, fFloat } from "./format";
 
 interface ElevationEntry {
@@ -124,13 +125,13 @@ export function generateCombinedElevations(houseConfig: HouseConfig): string {
 <defs>
     <style>
         text { font-family: Arial, sans-serif; }
-        .view-label { font-size: 16px; font-weight: bold; fill: #333; }
+        .view-label { font-size: ${scaledTextSize(16)}px; font-weight: bold; fill: #333; }
     </style>
 </defs>
 `;
 
   const titleY = titleSpace - 10;
-  svg += `<text x="${fFloat(canvasWidth / 2)}" y="${f(titleY)}" text-anchor="middle" font-size="20" font-weight="bold" fill="#333">All Elevations</text>\n`;
+  svg += `<text x="${fFloat(canvasWidth / 2)}" y="${f(titleY)}" text-anchor="middle" font-size="${scaledTextSize(20)}" font-weight="bold" fill="#333">All Elevations</text>\n`;
 
   const labelY = titleSpace + topMargin + maxHeight + labelOffset;
   let currentX = leftRightMargin;

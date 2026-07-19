@@ -47,6 +47,7 @@ import { ridgeRunFt, slopeAreaSft } from "../svg2d/roof/v2/bom";
 import { expandRoomWalls } from "../svg2d/expand";
 import { generateAllPillarSvgs } from "../svg2d/pillar/index";
 import { setDimensionUnits } from "../svg2d/format";
+import { setTextScale, computeTextScale, houseSpanUnits } from "../svg2d/config";
 import {
   pickAndLoadConfig,
   loadConfigFromPath,
@@ -214,6 +215,10 @@ function rebuildSvgMap(): void {
   // Apply the config's display units (feet & inches / metric) before
   // generating any dimensioned SVG — formatDimension reads these.
   setDimensionUnits((cfg as { units?: Parameters<typeof setDimensionUnits>[0] }).units);
+
+  // Scale dimension/label fonts to the house's physical span so text stays
+  // legible at fit-to-view regardless of how big or small the house is.
+  setTextScale(computeTextScale(houseSpanUnits(cfg)));
 
   // Each generator wrapped independently so a bad opening (which
   // makes expandRoomWalls throw) doesn't take down every SVG. The

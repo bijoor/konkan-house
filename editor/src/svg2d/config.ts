@@ -113,3 +113,65 @@ export const DEFAULT_GLOBAL_CONFIG: GlobalConfig = {
     opening_text_size: 8,
   },
 };
+
+// --- Legibility text scaling ------------------------------------------
+// The dimension/label font sizes above are authored in PROJECT UNITS for
+// a reference drawing whose physical span (larger of plinth length/width)
+// is REF_SPAN. All plan/elevation text is drawn inside the scaled group,
+// so with a fixed font-size the on-screen text (when the whole drawing is
+// fit to view) is ∝ fontModel / span — i.e. it shrinks as the house grows
+// and balloons for tiny houses. To keep legibility roughly constant we
+// scale the font sizes with the house's physical span.
+//
+// Mirrors the setDimensionUnits() pattern: a module-level "active" factor
+// set once per render pass by the entry point (rebuildSvgMap / dump-svgs)
+// before generating a batch of SVGs. Default 1 — standalone callers that
+// never set it (e.g. the parity harness) keep the historical sizes.
+export const TEXT_SCALE_REF_SPAN = 450;
+
+let activeTextScale = 1;
+
+// Physical span of a house config, used as the scaling input. The plinth
+// footprint is the stable "how big is this house" proxy; falls back to
+// the site plot if the plinth is missing.
+export function houseSpanUnits(hc: unknown): number {
+  const o = hc as {
+    plinth?: { length?: number; width?: number };
+    site?: { plot_length?: number; plot_width?: number };
+  } | null;
+  const pl = o?.plinth;
+  const l = typeof pl?.length === "number" ? pl.length : 0;
+  const w = typeof pl?.width === "number" ? pl.width : 0;
+  const span = Math.max(l, w);
+  if (span > 0) return span;
+  const s = o?.site;
+  return Math.max(
+    typeof s?.plot_length === "number" ? s.plot_length : 0,
+    typeof s?.plot_width === "number" ? s.plot_width : 0,
+  );
+}
+
+// Factor from a physical span (project units). Clamped so tiny houses
+// don't get illegibly small text and huge ones don't explode.
+export function computeTextScale(spanUnits: number): number {
+  if (!(spanUnits > 0)) return 1;
+  return Math.min(Math.max(spanUnits / TEXT_SCALE_REF_SPAN, 0.6), 6);
+}
+
+// Set the active factor for the current render pass. `undefined`/0 resets
+// to 1 (historical sizes).
+export function setTextScale(factor: number | undefined): void {
+  activeTextScale = factor && factor > 0 ? factor : 1;
+}
+
+export function getTextScale(): number {
+  return activeTextScale;
+}
+
+// Scale a base font size by the active factor. Whole results stay whole
+// (so factor === 1 is byte-identical); others round to 1 decimal to keep
+// the SVG tidy.
+export function scaledTextSize(base: number): number {
+  const v = base * activeTextScale;
+  return Number.isInteger(v) ? v : Math.round(v * 10) / 10;
+}

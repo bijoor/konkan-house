@@ -69,6 +69,15 @@ coordinates you write stay in project units either way:
 So a 120-unit wall labels as `12'` by default, or `1.20 m` with the block above.
 Never change coordinates to switch units — only add/edit this block.
 
+### Label font sizes auto-scale (no config needed)
+
+Dimension and room-label font sizes are **derived automatically** from the house's
+physical span (larger of `plinth.length`/`plinth.width`), so text stays legible at
+fit-to-view whether the house is tiny or huge. There is **no font-size field** to
+set — don't try to add one. A house at the reference span (450 units ≈ 45 ft)
+renders at the baseline sizes; larger/smaller houses scale proportionally (clamped
+0.6×–6×).
+
 ## Vertical (Z) fields recap
 
 - `plinth.height` — how high the base sits above ground.

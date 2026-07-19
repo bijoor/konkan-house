@@ -13,7 +13,7 @@
 // The Python debug-dump of `objects_debug_*.json` is intentionally NOT
 // reproduced — that side effect is disk I/O we don't want in the browser.
 
-import { DEFAULT_GLOBAL_CONFIG } from "./config";
+import { DEFAULT_GLOBAL_CONFIG, scaledTextSize } from "./config";
 import { f, fFloat } from "./format";
 import { svgDrawDimensionLine } from "./dimensions";
 import { deriveAllHipRoofs } from "./roofGeometry";
@@ -1295,7 +1295,7 @@ export function generateElevationView(
 
   // Title
   const titleY = titleSpace / 2 + 10;
-  svg += `<text x="${fFloat(svgWidth / 2)}" y="${fFloat(titleY)}" text-anchor="middle" font-size="18" font-weight="bold" fill="#333">${viewName}</text>\n`;
+  svg += `<text x="${fFloat(svgWidth / 2)}" y="${fFloat(titleY)}" text-anchor="middle" font-size="${scaledTextSize(18)}" font-weight="bold" fill="#333">${viewName}</text>\n`;
   svg += "</svg>";
 
   return svg;

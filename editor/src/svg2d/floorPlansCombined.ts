@@ -1,4 +1,5 @@
 import { generateFloorPlanSvg } from "./floorPlan";
+import { scaledTextSize } from "./config";
 import { f, fFloat } from "./format";
 import { expandRoomWalls, type HouseConfig } from "./expand";
 
@@ -133,13 +134,13 @@ export function generateCombinedFloorPlans(
 <defs>
     <style>
         text { font-family: Arial, sans-serif; }
-        .floor-label { font-size: 16px; font-weight: bold; fill: #333; }
+        .floor-label { font-size: ${scaledTextSize(16)}px; font-weight: bold; fill: #333; }
     </style>
 </defs>
 `;
 
   const titleY = titleSpace - 10;
-  svg += `<text x="${fFloat(canvasWidth / 2)}" y="${titleY}" text-anchor="middle" font-size="20" font-weight="bold" fill="#333">All Floor Plans</text>\n`;
+  svg += `<text x="${fFloat(canvasWidth / 2)}" y="${titleY}" text-anchor="middle" font-size="${scaledTextSize(20)}" font-weight="bold" fill="#333">All Floor Plans</text>\n`;
 
   // In Python, max_height is float (canvas_height is derived from a
   // multiplication with scale=2.0 through the per-floor generator) so

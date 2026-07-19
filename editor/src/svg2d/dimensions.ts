@@ -1,4 +1,4 @@
-import { DEFAULT_GLOBAL_CONFIG } from "./config";
+import { DEFAULT_GLOBAL_CONFIG, scaledTextSize } from "./config";
 import { formatDimension, f, fFloat } from "./format";
 
 // Port of svg_2d.py::svg_draw_dimension_line. Produces the same nested
@@ -30,7 +30,7 @@ export function svgDrawDimensionLine(
   y2IsFloat = false,
 ): string {
   const dim = DEFAULT_GLOBAL_CONFIG.dimensions;
-  const textSize = dim.text_size;
+  const textSize = scaledTextSize(dim.text_size);
   const minLength = dim.min_dimension_length;
   const wallThickness = DEFAULT_GLOBAL_CONFIG.wall_thickness;
 
@@ -175,7 +175,7 @@ export function svgDrawOpeningDimensions(
   const baseOffset = dim.opening_dimension_offset;
   // Python: opening_dimension_offset_increment = dimension_offset_increment * 0.5
   const offsetIncrement = dim.dimension_offset_increment * 0.5;
-  const textSize = dim.opening_text_size;
+  const textSize = scaledTextSize(dim.opening_text_size);
   const offset = baseOffset + offsetLevel * offsetIncrement;
 
   const d = direction.toLowerCase();
