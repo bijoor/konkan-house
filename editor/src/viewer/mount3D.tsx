@@ -168,7 +168,11 @@ function CompassRose({ plot }: { plot: { width: number; length: number } }) {
   const groundHalfL = plot.length * 0.75;
   const cx = -(groundHalfW + R * 1.35 + R * 0.5);
   const cz = -(groundHalfL + R * 1.35 + R * 0.5);
-  const y = 0.02;
+  // Lift the rose clearly above the grid (y=-0.02) so it doesn't z-fight
+  // with it. 0.04 units apart was far too little at this distance from the
+  // camera; a small fraction of R (with a floor) separates them cleanly
+  // while staying visually flat on the ground at model scale.
+  const y = Math.max(3, R * 0.06);
   const letterSize = R * 0.45;
 
   // A single triangular "arrow" pointing along +Z (south) in local
