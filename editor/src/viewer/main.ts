@@ -182,6 +182,8 @@ async function bootViewer(): Promise<void> {
 
   // Header buttons: Edit toggle, Load, Save, Undo, Redo.
   wireHeaderButtons();
+  // Standard keyboard shortcuts (⌘/Ctrl + S / ⇧S / O / N / Z / ⇧Z, ⌘Y).
+  wireKeyboardShortcuts();
   // Expose window.exportCurrentSvg for the inline lightbox toolbar.
   wireExports();
   applyStoredEditMode();
@@ -704,6 +706,64 @@ function wireHeaderButtons(): void {
   void fileInput;
 
   updateHistoryButtons();
+}
+
+// Standard app keyboard shortcuts. These dispatch a click on the matching
+// header button so the shortcut path is identical to the button path (same
+// dialogs, error handling, "✓ Saved" flash). Works in the browser and the
+// Tauri webview; we preventDefault so the browser's own ⌘S/⌘O/⌘N don't fire.
+//
+//   ⌘/Ctrl + S        Save (write in place / prompt if new)
+//   ⌘/Ctrl + ⇧ + S    Save As
+//   ⌘/Ctrl + O        Open / Load
+//   ⌘/Ctrl + N        New
+//   ⌘/Ctrl + Z        Undo        ⌘/Ctrl + ⇧ + Z  Redo
+//   ⌘/Ctrl + Y        Redo (Windows convention)
+function wireKeyboardShortcuts(): void {
+  const click = (id: string) => document.getElementById(id)?.click();
+
+  window.addEventListener("keydown", (e) => {
+    // Only mod-key combos; ignore plain typing.
+    const mod = e.metaKey || e.ctrlKey;
+    if (!mod || e.altKey) return;
+
+    // Whether focus is in a text field / editable — undo/redo there should
+    // stay native (undo the typing), and we shouldn't steal them.
+    const el = e.target as HTMLElement | null;
+    const inField =
+      !!el &&
+      (el.isContentEditable ||
+        el.tagName === "INPUT" ||
+        el.tagName === "TEXTAREA" ||
+        el.tagName === "SELECT");
+
+    switch (e.key.toLowerCase()) {
+      case "s":
+        e.preventDefault();
+        click(e.shiftKey ? "btn-save-as" : "btn-save");
+        break;
+      case "o":
+        e.preventDefault();
+        click("btn-load");
+        break;
+      case "n":
+        e.preventDefault();
+        click("btn-new");
+        break;
+      case "z":
+        if (inField) return; // let the field do its own undo/redo
+        e.preventDefault();
+        click(e.shiftKey ? "btn-redo" : "btn-undo");
+        break;
+      case "y":
+        if (inField) return;
+        e.preventDefault();
+        click("btn-redo");
+        break;
+      default:
+        return;
+    }
+  });
 }
 
 function updateHistoryButtons(): void {

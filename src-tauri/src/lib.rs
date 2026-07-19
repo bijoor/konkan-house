@@ -28,6 +28,48 @@ pub fn run() {
     .plugin(tauri_plugin_clipboard_manager::init())
     .manage(PendingOpen(Mutex::new(initial)))
     .invoke_handler(tauri::generate_handler![take_pending_open])
+    // Custom menu on macOS: the default Edit menu claims Cmd+Z / Shift+Cmd+Z
+    // for native undo/redo, which would shadow the app's model-level
+    // undo/redo (handled in the webview via the standard keyboard shortcuts).
+    // Rebuild the Edit menu WITHOUT undo/redo — keeping the clipboard items
+    // for text fields — so those accelerators fall through to the frontend.
+    // Save/Open/New (Cmd+S/O/N) aren't in the default menu, so they already
+    // reach the webview unshadowed.
+    .menu(|handle| {
+      #[cfg(target_os = "macos")]
+      {
+        use tauri::menu::{MenuBuilder, SubmenuBuilder};
+        let app_menu = SubmenuBuilder::new(handle, "Wadi")
+          .about(None)
+          .separator()
+          .services()
+          .separator()
+          .hide()
+          .hide_others()
+          .show_all()
+          .separator()
+          .quit()
+          .build()?;
+        let edit_menu = SubmenuBuilder::new(handle, "Edit")
+          .cut()
+          .copy()
+          .paste()
+          .select_all()
+          .build()?;
+        let window_menu = SubmenuBuilder::new(handle, "Window")
+          .minimize()
+          .separator()
+          .close_window()
+          .build()?;
+        MenuBuilder::new(handle)
+          .items(&[&app_menu, &edit_menu, &window_menu])
+          .build()
+      }
+      #[cfg(not(target_os = "macos"))]
+      {
+        tauri::menu::Menu::default(handle)
+      }
+    })
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
