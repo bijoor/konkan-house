@@ -6,19 +6,37 @@
 // plinth: raised base rectangle + height
 
 import { useConfigStore } from "../state/configStore";
-import { NumberField, Section } from "./fields";
+import { NumberField, SelectField, Section } from "./fields";
 import { DEFAULT_GLOBAL_CONFIG } from "../svg2d/config";
+
+type UnitSystem =
+  | "feet_inches"
+  | "feet"
+  | "meters"
+  | "centimeters"
+  | "millimeters";
+
+const UNIT_SYSTEM_OPTIONS: { value: UnitSystem; label: string }[] = [
+  { value: "feet_inches", label: "Feet & inches (12' 6\")" },
+  { value: "feet", label: "Feet (decimal, 12.5')" },
+  { value: "meters", label: "Meters (3.81 m)" },
+  { value: "centimeters", label: "Centimeters (381 cm)" },
+  { value: "millimeters", label: "Millimeters (3810 mm)" },
+];
 
 export function HouseSettingsForm() {
   const config = useConfigStore((s) => s.config);
   const updateSite = useConfigStore((s) => s.updateSite);
   const updatePlinth = useConfigStore((s) => s.updatePlinth);
   const updateDefaults = useConfigStore((s) => s.updateDefaults);
+  const updateUnits = useConfigStore((s) => s.updateUnits);
 
   if (!config) return null;
   const site = config.site;
   const plinth = config.plinth;
   const defaults = (config as { defaults?: { floor_height?: number; wall_height?: number; slab_thickness?: number; wall_thickness?: number } }).defaults ?? {};
+  const units = (config as { units?: { system?: UnitSystem; per_unit?: number; precision?: number } }).units ?? {};
+  const unitSystem: UnitSystem = units.system ?? "feet_inches";
 
   return (
     <div>
@@ -152,6 +170,43 @@ export function HouseSettingsForm() {
             onCommit={(v) => updateDefaults({ wall_thickness: v })}
             allowEmpty
             min={0.01}
+          />
+        </div>
+      </Section>
+
+      <Section title="Dimension units (drawing labels)">
+        <div className="mb-2 text-[11px] text-slate-400">
+          How lengths are <b>labelled</b> on the plans, elevations and
+          sections. Display-only — the geometry always stays in project
+          units. <b>Units per display unit</b> is how many project units
+          equal one label unit (10 → 10 units = 1 ft; 100 → 100 units = 1 m).
+        </div>
+        <div className="grid grid-cols-2 gap-x-2">
+          <div className="col-span-2">
+            <SelectField<UnitSystem>
+              label="System"
+              hint="default: feet & inches"
+              value={unitSystem}
+              options={UNIT_SYSTEM_OPTIONS}
+              onChange={(v) => updateUnits({ system: v })}
+            />
+          </div>
+          <NumberField
+            label="Units per display unit"
+            hint={`default ${DEFAULT_GLOBAL_CONFIG.dimensions.unit_conversion}`}
+            value={units.per_unit}
+            onCommit={(v) => updateUnits({ per_unit: v })}
+            allowEmpty
+            min={0.0001}
+          />
+          <NumberField
+            label="Precision"
+            hint="decimals · decimal systems only"
+            value={units.precision}
+            onCommit={(v) => updateUnits({ precision: v })}
+            allowEmpty
+            min={0}
+            disabled={unitSystem === "feet_inches"}
           />
         </div>
       </Section>

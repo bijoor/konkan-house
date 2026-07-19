@@ -34,6 +34,7 @@ import { generateCombinedElevations } from "../src/svg2d/elevationsCombined.ts";
 import { generateRoofSectionsSvg } from "../src/svg2d/roof/index.ts";
 import { generateAllPillarSvgs } from "../src/svg2d/pillar/index.ts";
 import { validate } from "../src/schema/houseConfig.ts";
+import { setDimensionUnits } from "../src/svg2d/format.ts";
 
 const here = path.dirname(url.fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "../..");
@@ -75,6 +76,8 @@ if (!result.ok) {
   process.exit(1);
 }
 const cfg = raw;
+// Apply the config's display units before generating dimensioned SVGs.
+setDimensionUnits(cfg.units);
 
 console.log(`↳ input:  ${path.relative(process.cwd(), inputPath)}`);
 console.log(`↳ output: ${path.relative(process.cwd(), outDir)}\n`);

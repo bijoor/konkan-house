@@ -1,17 +1,60 @@
 import { DEFAULT_GLOBAL_CONFIG } from "./config";
 
-// Port of svg_2d.py::format_dimension. Byte-identical output for the
-// feet-inches path used by the current house config (unit_display='feet',
-// use_feet_inches=true, unit_conversion=10.0). The decimal-format path
-// mirrors the Python `f"{v:.{precision}f}"` format.
-export function formatDimension(length: number): string {
-  const dim = DEFAULT_GLOBAL_CONFIG.dimensions;
-  const converted = length / dim.unit_conversion;
-  const precision = dim.precision;
-  const unit = dim.unit_display;
-  const useFeetInches = dim.use_feet_inches;
+export type UnitSystem =
+  | "feet_inches"
+  | "feet"
+  | "meters"
+  | "centimeters"
+  | "millimeters";
 
-  if (unit === "feet" && useFeetInches) {
+interface DimensionUnits {
+  system: UnitSystem;
+  perUnit: number; // project units that equal ONE display unit
+  precision: number; // decimals for the non-feet_inches systems
+}
+
+// Default reproduces the historical behaviour exactly: feet & inches,
+// 10 project units = 1 ft. (precision only affects decimal systems.)
+const DEFAULT_UNITS: DimensionUnits = {
+  system: "feet_inches",
+  perUnit: DEFAULT_GLOBAL_CONFIG.dimensions.unit_conversion,
+  precision: 2,
+};
+
+// Module-level "active" units, set from config.units by the render entry
+// point (rebuildSvgMap / dump-svgs) before generating SVGs. SVG generation
+// is synchronous, so a single set-then-render pass is safe.
+let activeUnits: DimensionUnits = { ...DEFAULT_UNITS };
+
+// Set the display units from a config's `units` block (any field omitted
+// falls back to the default). Call once before generating a batch of SVGs.
+export function setDimensionUnits(u?: {
+  system?: UnitSystem;
+  per_unit?: number;
+  precision?: number;
+}): void {
+  activeUnits = {
+    system: u?.system ?? DEFAULT_UNITS.system,
+    perUnit: u?.per_unit ?? DEFAULT_UNITS.perUnit,
+    precision: u?.precision ?? DEFAULT_UNITS.precision,
+  };
+}
+
+const SUFFIX: Record<Exclude<UnitSystem, "feet_inches">, string> = {
+  feet: "'",
+  meters: " m",
+  centimeters: " cm",
+  millimeters: " mm",
+};
+
+// Port of svg_2d.py::format_dimension. Byte-identical output for the default
+// feet-inches path; the decimal systems render `converted.toFixed(precision)`
+// plus a unit suffix.
+export function formatDimension(length: number): string {
+  const { system, perUnit, precision } = activeUnits;
+  const converted = length / perUnit;
+
+  if (system === "feet_inches") {
     let feet = Math.trunc(converted);
     const inches = (converted - feet) * 12;
     let inchesRounded = Math.round(inches);
@@ -24,8 +67,7 @@ export function formatDimension(length: number): string {
     return `${inchesRounded}"`;
   }
 
-  const formatted = converted.toFixed(precision);
-  return `${formatted}'${unit === "feet" ? "" : " " + unit}`;
+  return `${converted.toFixed(precision)}${SUFFIX[system]}`;
 }
 
 // Python's default `f"{v}"` for floats emits `.0` for whole values

@@ -47,6 +47,15 @@ interface ConfigState {
     slab_thickness?: number | undefined;
     wall_thickness?: number | undefined;
   }) => void;
+  // Patches the house-level display-units block (system / per_unit /
+  // precision). Display-only — geometry stays in project units. Passing
+  // undefined for a field deletes it (falls back to feet & inches,
+  // 10 units = 1 ft).
+  updateUnits: (patch: {
+    system?: NonNullable<HouseConfig["units"]>["system"] | undefined;
+    per_unit?: number | undefined;
+    precision?: number | undefined;
+  }) => void;
   // Patches a floor's top-level fields (name, height, slab_thickness).
   // The `objects` array is edited via updateObject / insertObject etc.
   updateFloor: (floorIdx: number, patch: Partial<HouseConfig["floors"][number]>) => void;
@@ -175,6 +184,24 @@ export const useConfigStore = create<ConfigState>()(
             Object.keys(next).length === 0 ? undefined : next;
           return {
             config: { ...state.config, defaults: cleaned } as HouseConfig,
+            dirty: true,
+          };
+        }),
+
+      updateUnits: (patch) =>
+        set((state) => {
+          if (!state.config) return state;
+          const cur =
+            (state.config as { units?: Record<string, unknown> }).units ?? {};
+          const next: Record<string, unknown> = { ...cur };
+          for (const [k, v] of Object.entries(patch)) {
+            if (v === undefined) delete next[k];
+            else next[k] = v;
+          }
+          const cleaned =
+            Object.keys(next).length === 0 ? undefined : next;
+          return {
+            config: { ...state.config, units: cleaned } as HouseConfig,
             dirty: true,
           };
         }),

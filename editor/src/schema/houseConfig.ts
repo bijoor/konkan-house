@@ -310,11 +310,30 @@ const houseDefaults = z
   })
   .strict();
 
+// How dimensions are LABELLED on the drawings. Display-only — geometry
+// always stays in project units; this just controls the text on the
+// dimension lines. Omitted = the built-in default (feet & inches, 10
+// project units = 1 ft).
+const houseUnits = z
+  .object({
+    // feet_inches → 12' 6" ; the rest → decimal with a unit suffix.
+    system: z
+      .enum(["feet_inches", "feet", "meters", "centimeters", "millimeters"])
+      .optional(),
+    // Project units that equal ONE display unit (10 → 10 units = 1 ft;
+    // 100 → 100 units = 1 m). Default 10.
+    per_unit: z.number().positive().optional(),
+    // Decimal places for the non-feet_inches systems.
+    precision: z.number().int().nonnegative().optional(),
+  })
+  .strict();
+
 export const HouseConfig = z
   .object({
     site,
     plinth,
     defaults: houseDefaults.optional(),
+    units: houseUnits.optional(),
     floors: z.array(floor).min(1),
     _walls_expanded: z.boolean().optional(),
   })

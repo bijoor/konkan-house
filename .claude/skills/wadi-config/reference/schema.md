@@ -12,6 +12,7 @@ coordinates use the **X-right / Y-down** frame (see `coordinate-system.md`).
   "site":     { … },        // required
   "plinth":   { … },        // required
   "defaults": { … },        // optional — house-wide height defaults
+  "units":    { … },        // optional — how dimensions are LABELLED (display-only)
   "floors":   [ … ]         // required, at least 1
 }
 ```
@@ -27,6 +28,19 @@ coordinates use the **X-right / Y-down** frame (see `coordinate-system.md`).
   absent, built-in code defaults apply. **`wall_thickness` sets the house-wide wall
   thickness** (project units; default 8 = 0.8 ft) — a per-object
   `wall_thickness`/`thickness` still overrides it.
+- **`units`** (optional, strict): controls **only how dimension text is labelled** on
+  the plans/elevations/sections — geometry always stays in project units, so this
+  never moves anything. Fields (all optional):
+  - `system` — one of `"feet_inches"` (default; renders `12' 6"`), `"feet"`,
+    `"meters"`, `"centimeters"`, `"millimeters"` (the last four render a decimal +
+    suffix, e.g. `3.81 m`).
+  - `per_unit` — project units that equal **one** display unit. Default `10`
+    (10 units = 1 ft). For metric authored at 10-units-per-foot, use `100` for
+    meters (≈100 units = 1 m is only right if you author in metric; pick the value
+    that matches how you laid out coordinates).
+  - `precision` — decimal places for the decimal systems (default `2`; ignored by
+    `feet_inches`).
+  Omit the whole block to keep the historical feet-&-inches labels.
 - **`floors`** (required): array, **min 1**.
 
 ## Floor

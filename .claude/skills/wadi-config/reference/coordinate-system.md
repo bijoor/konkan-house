@@ -52,6 +52,23 @@ Always **multiply feet by 10**. `plot_length: 450` displays as `45'`.
 > `450` is treated as 45 m in Blender. The two constants serve different pipelines;
 > for authoring the config, **only the 10-units-per-foot rule matters.**
 
+### Changing how dimensions are *labelled*
+
+The `10-units-per-foot` rule above is only the **default label**. The optional
+top-level `units` block changes the drawing labels **without touching geometry** —
+coordinates you write stay in project units either way:
+
+```jsonc
+"units": { "system": "meters", "per_unit": 100, "precision": 2 }
+```
+
+- `system` ∈ `feet_inches` (default), `feet`, `meters`, `centimeters`, `millimeters`.
+- `per_unit` = project units per one display unit (the label divisor). Default `10`.
+- `precision` = decimals for the decimal systems (default `2`; `feet_inches` ignores it).
+
+So a 120-unit wall labels as `12'` by default, or `1.20 m` with the block above.
+Never change coordinates to switch units — only add/edit this block.
+
 ## Vertical (Z) fields recap
 
 - `plinth.height` — how high the base sits above ground.
