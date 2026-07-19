@@ -147,8 +147,9 @@ function ViewerScene() {
   );
 }
 
-// Flat compass rose laid on the ground just outside the plot's NW
-// corner. Standard map convention: N points to Three's -Z axis (which
+// Flat compass rose laid on the ground just OUTSIDE the NW corner of the
+// GROUND plane (not just the plot) so it doesn't overlap / clutter the
+// green lawn. Standard map convention: N points to Three's -Z axis (which
 // corresponds to Inkscape Y=0, the top of the floor plan). N arrow is
 // coloured red; the other three are white/grey. Everything sits on
 // the XZ plane at y=0.01 so it renders just above the grid without
@@ -157,11 +158,16 @@ function CompassRose({ plot }: { plot: { width: number; length: number } }) {
   const halfW = plot.width / 2;
   const halfL = plot.length / 2;
   // Radius sized to a fraction of the plot so it's readable but not
-  // dominant. Position: offset outside the NW corner of the plot.
+  // dominant.
   const R = Math.max(20, Math.min(halfW, halfL) * 0.22);
-  const pad = R * 1.3;
-  const cx = -halfW - pad;
-  const cz = -halfL - pad;
+  // The GroundPlane spans plot × 1.5 centred on the origin, so its
+  // half-extent is 0.75 × plot. Place the rose fully beyond that corner
+  // (outer disc radius R*1.35 + a small gap) so it sits on the neutral
+  // grid rather than the green.
+  const groundHalfW = plot.width * 0.75;
+  const groundHalfL = plot.length * 0.75;
+  const cx = -(groundHalfW + R * 1.35 + R * 0.5);
+  const cz = -(groundHalfL + R * 1.35 + R * 0.5);
   const y = 0.02;
   const letterSize = R * 0.45;
 
