@@ -1,4 +1,4 @@
-import { DEFAULT_GLOBAL_CONFIG, scaledTextSize } from "./config";
+import { DEFAULT_GLOBAL_CONFIG, scaledTextSize, scaledSpacing } from "./config";
 import { formatDimension, f, fFloat } from "./format";
 
 // Port of svg_2d.py::svg_draw_dimension_line. Produces the same nested
@@ -65,11 +65,11 @@ export function svgDrawDimensionLine(
     svg += `  <line x1="${fx1(x1)}" y1="${fy1(y1)}" x2="${fx1(x1)}" y2="${dimYFmt(dimY)}" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>\n`;
     svg += `  <line x1="${fx2(x2)}" y1="${fy2(y2)}" x2="${fx2(x2)}" y2="${dimYFmt(dimY)}" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>\n`;
 
-    const arrow = 3;
+    const arrow = scaledSpacing(3);
     svg += `  <polygon points="${fx1(x1)},${dimYFmt(dimY)} ${fx1(x1 + arrow)},${dimYFmt(dimY - arrow)} ${fx1(x1 + arrow)},${dimYFmt(dimY + arrow)}" fill="#000"/>\n`;
     svg += `  <polygon points="${fx2(x2)},${dimYFmt(dimY)} ${fx2(x2 - arrow)},${dimYFmt(dimY - arrow)} ${fx2(x2 - arrow)},${dimYFmt(dimY + arrow)}" fill="#000"/>\n`;
 
-    const textY = offset < 0 ? dimY - 5 : dimY + textSize + 3;
+    const textY = offset < 0 ? dimY - scaledSpacing(5) : dimY + textSize + scaledSpacing(3);
     // Text x is (x1+x2)/2 which is always float in Py3 (division).
     // Text y is dim_y ± offset — float if dim_y is float, else int.
     svg += `  <text x="${fFloat((x1 + x2) / 2)}" y="${dimYFmt(textY)}" text-anchor="middle" font-size="${textSize}" fill="#000">${dimText}</text>\n`;
@@ -79,11 +79,11 @@ export function svgDrawDimensionLine(
     svg += `  <line x1="${fx1(x1)}" y1="${fy1(y1)}" x2="${dimXFmt(dimX)}" y2="${fy1(y1)}" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>\n`;
     svg += `  <line x1="${fx2(x2)}" y1="${fy2(y2)}" x2="${dimXFmt(dimX)}" y2="${fy2(y2)}" stroke="#000" stroke-width="0.3" stroke-dasharray="2,2"/>\n`;
 
-    const arrow = 3;
+    const arrow = scaledSpacing(3);
     svg += `  <polygon points="${dimXFmt(dimX)},${fy1(y1)} ${dimXFmt(dimX - arrow)},${fy1(y1 + arrow)} ${dimXFmt(dimX + arrow)},${fy1(y1 + arrow)}" fill="#000"/>\n`;
     svg += `  <polygon points="${dimXFmt(dimX)},${fy2(y2)} ${dimXFmt(dimX - arrow)},${fy2(y2 - arrow)} ${dimXFmt(dimX + arrow)},${fy2(y2 - arrow)}" fill="#000"/>\n`;
 
-    const textX = offset < 0 ? dimX - textSize - 3 : dimX + textSize + 3;
+    const textX = offset < 0 ? dimX - textSize - scaledSpacing(3) : dimX + textSize + scaledSpacing(3);
     svg += `  <text x="${dimXFmt(textX)}" y="${fFloat((y1 + y2) / 2)}" text-anchor="middle" font-size="${textSize}" fill="#000" transform="rotate(-90 ${dimXFmt(textX)} ${fFloat((y1 + y2) / 2)})">${dimText}</text>\n`;
   }
 
@@ -172,9 +172,9 @@ export function svgDrawOpeningDimensions(
   referencePoint?: number,
 ): string {
   const dim = DEFAULT_GLOBAL_CONFIG.dimensions;
-  const baseOffset = dim.opening_dimension_offset;
+  const baseOffset = scaledSpacing(dim.opening_dimension_offset);
   // Python: opening_dimension_offset_increment = dimension_offset_increment * 0.5
-  const offsetIncrement = dim.dimension_offset_increment * 0.5;
+  const offsetIncrement = scaledSpacing(dim.dimension_offset_increment) * 0.5;
   const textSize = scaledTextSize(dim.opening_text_size);
   const offset = baseOffset + offsetLevel * offsetIncrement;
 
@@ -196,11 +196,11 @@ export function svgDrawOpeningDimensions(
       svg += `  <line x1="${f(refPoint)}" y1="${f(y)}" x2="${f(refPoint)}" y2="${fFloat(posDimY)}" stroke="#666" stroke-width="0.2" stroke-dasharray="1,1"/>\n`;
       svg += `  <line x1="${f(x)}" y1="${f(y)}" x2="${f(x)}" y2="${fFloat(posDimY)}" stroke="#666" stroke-width="0.2" stroke-dasharray="1,1"/>\n`;
 
-      const arrow = 2;
+      const arrow = scaledSpacing(2);
       svg += `  <polygon points="${f(refPoint)},${fFloat(posDimY)} ${f(refPoint + arrow)},${fFloat(posDimY - arrow / 2)} ${f(refPoint + arrow)},${fFloat(posDimY + arrow / 2)}" fill="#666"/>\n`;
       svg += `  <polygon points="${f(x)},${fFloat(posDimY)} ${f(x - arrow)},${fFloat(posDimY - arrow / 2)} ${f(x - arrow)},${fFloat(posDimY + arrow / 2)}" fill="#666"/>\n`;
 
-      const textY = d === "north" ? posDimY - 3 : posDimY + textSize + 1;
+      const textY = d === "north" ? posDimY - scaledSpacing(3) : posDimY + textSize + scaledSpacing(1);
       svg += `  <text x="${fFloat((refPoint + x) / 2)}" y="${fFloat(textY)}" text-anchor="middle" font-size="${textSize}" fill="#666">${posDimText}</text>\n`;
     }
 
@@ -213,11 +213,11 @@ export function svgDrawOpeningDimensions(
     svg += `  <line x1="${f(x)}" y1="${f(y)}" x2="${f(x)}" y2="${fFloat(widthDimY)}" stroke="#000" stroke-width="0.2" stroke-dasharray="1,1"/>\n`;
     svg += `  <line x1="${f(x + width)}" y1="${f(y)}" x2="${f(x + width)}" y2="${fFloat(widthDimY)}" stroke="#000" stroke-width="0.2" stroke-dasharray="1,1"/>\n`;
 
-    const arrow = 2;
+    const arrow = scaledSpacing(2);
     svg += `  <polygon points="${f(x)},${fFloat(widthDimY)} ${f(x + arrow)},${fFloat(widthDimY - arrow / 2)} ${f(x + arrow)},${fFloat(widthDimY + arrow / 2)}" fill="#000"/>\n`;
     svg += `  <polygon points="${f(x + width)},${fFloat(widthDimY)} ${f(x + width - arrow)},${fFloat(widthDimY - arrow / 2)} ${f(x + width - arrow)},${fFloat(widthDimY + arrow / 2)}" fill="#000"/>\n`;
 
-    const textY = d === "north" ? widthDimY - 3 : widthDimY + textSize + 1;
+    const textY = d === "north" ? widthDimY - scaledSpacing(3) : widthDimY + textSize + scaledSpacing(1);
     svg += `  <text x="${fFloat(x + width / 2)}" y="${fFloat(textY)}" text-anchor="middle" font-size="${textSize}" font-weight="bold" fill="#000">${widthDimText}</text>\n`;
   } else {
     // Vertical wall (east/west)
@@ -232,11 +232,11 @@ export function svgDrawOpeningDimensions(
       svg += `  <line x1="${f(x)}" y1="${f(refPoint)}" x2="${fFloat(posDimX)}" y2="${f(refPoint)}" stroke="#666" stroke-width="0.2" stroke-dasharray="1,1"/>\n`;
       svg += `  <line x1="${f(x)}" y1="${f(y)}" x2="${fFloat(posDimX)}" y2="${f(y)}" stroke="#666" stroke-width="0.2" stroke-dasharray="1,1"/>\n`;
 
-      const arrow = 2;
+      const arrow = scaledSpacing(2);
       svg += `  <polygon points="${fFloat(posDimX)},${f(refPoint)} ${fFloat(posDimX - arrow / 2)},${f(refPoint + arrow)} ${fFloat(posDimX + arrow / 2)},${f(refPoint + arrow)}" fill="#666"/>\n`;
       svg += `  <polygon points="${fFloat(posDimX)},${f(y)} ${fFloat(posDimX - arrow / 2)},${f(y - arrow)} ${fFloat(posDimX + arrow / 2)},${f(y - arrow)}" fill="#666"/>\n`;
 
-      const textX = d === "west" ? posDimX - textSize - 2 : posDimX + textSize + 2;
+      const textX = d === "west" ? posDimX - textSize - scaledSpacing(2) : posDimX + textSize + scaledSpacing(2);
       svg += `  <text x="${fFloat(textX)}" y="${fFloat((refPoint + y) / 2)}" text-anchor="middle" font-size="${textSize}" fill="#666" transform="rotate(-90 ${fFloat(textX)} ${fFloat((refPoint + y) / 2)})">${posDimText}</text>\n`;
     }
 
@@ -248,11 +248,11 @@ export function svgDrawOpeningDimensions(
     svg += `  <line x1="${f(x)}" y1="${f(y)}" x2="${fFloat(widthDimX)}" y2="${f(y)}" stroke="#000" stroke-width="0.2" stroke-dasharray="1,1"/>\n`;
     svg += `  <line x1="${f(x)}" y1="${f(y + width)}" x2="${fFloat(widthDimX)}" y2="${f(y + width)}" stroke="#000" stroke-width="0.2" stroke-dasharray="1,1"/>\n`;
 
-    const arrow = 2;
+    const arrow = scaledSpacing(2);
     svg += `  <polygon points="${fFloat(widthDimX)},${f(y)} ${fFloat(widthDimX - arrow / 2)},${f(y + arrow)} ${fFloat(widthDimX + arrow / 2)},${f(y + arrow)}" fill="#000"/>\n`;
     svg += `  <polygon points="${fFloat(widthDimX)},${f(y + width)} ${fFloat(widthDimX - arrow / 2)},${f(y + width - arrow)} ${fFloat(widthDimX + arrow / 2)},${f(y + width - arrow)}" fill="#000"/>\n`;
 
-    const textX = d === "west" ? widthDimX - textSize - 2 : widthDimX + textSize + 2;
+    const textX = d === "west" ? widthDimX - textSize - scaledSpacing(2) : widthDimX + textSize + scaledSpacing(2);
     svg += `  <text x="${fFloat(textX)}" y="${fFloat(y + width / 2)}" text-anchor="middle" font-size="${textSize}" font-weight="bold" fill="#000" transform="rotate(-90 ${fFloat(textX)} ${fFloat(y + width / 2)})">${widthDimText}</text>\n`;
   }
 

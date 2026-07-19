@@ -214,3 +214,17 @@ export function scaledTextSize(base: number): number {
   const v = base * activeTextScale;
   return Number.isInteger(v) ? v : Math.round(v * 10) / 10;
 }
+
+// Scale a spacing constant (dimension-line offset, level increment, the
+// gap between a dimension line and its label, arrowhead size, …) by the
+// SAME active factor as the fonts. These constants are authored in the
+// reference drawing's project units, so when the text grows with the house
+// span but the offsets stay fixed, the enlarged labels collide with the
+// geometry and with each other. Scaling spacing in lockstep keeps the whole
+// annotation layer's proportions constant. Identical math to scaledTextSize
+// — named separately for intent — so scaledSpacing(k) === k at factor 1 and
+// the output stays byte-identical to the historical (and Python-parity)
+// drawings.
+export function scaledSpacing(base: number): number {
+  return scaledTextSize(base);
+}

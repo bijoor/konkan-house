@@ -6,7 +6,7 @@
 // Callers should pass a floor already run through expandRoomWalls so
 // nested-form rooms are flattened.
 
-import { DEFAULT_GLOBAL_CONFIG, scaledTextSize } from "./config";
+import { DEFAULT_GLOBAL_CONFIG, scaledTextSize, scaledSpacing } from "./config";
 import { formatDimension, f, fFloat } from "./format";
 import {
   svgDrawWall, svgDrawRoom, svgDrawDoor, svgDrawWindow, svgDrawFloorSlab,
@@ -98,11 +98,11 @@ export function generateFloorPlanSvg(
   // -----------------------------------------------------------------
   const baseMargin = 20;
   let dimMargin = 0;
-  const offsetIncrement = dim.dimension_offset_increment;
+  const offsetIncrement = scaledSpacing(dim.dimension_offset_increment);
   if (dim.show_outer_dimensions) {
     const maxOffset =
-      dim.dimension_offset + 3 * offsetIncrement + offsetIncrement * 1.5 + 10;
-    dimMargin = (maxOffset + 20) * scale;
+      scaledSpacing(dim.dimension_offset) + 3 * offsetIncrement + offsetIncrement * 1.5 + scaledSpacing(10);
+    dimMargin = (maxOffset + scaledSpacing(20)) * scale;
   }
   const margin = baseMargin + dimMargin;
   const topMargin = 50 + dimMargin;
@@ -342,7 +342,7 @@ export function generateFloorPlanSvg(
     }
     const openingLevels = assignOpeningOffsetLevels(openingsForLevels);
 
-    const openingOffset = dim.opening_dimension_offset;
+    const openingOffset = scaledSpacing(dim.opening_dimension_offset);
     const openingTextSize = scaledTextSize(dim.opening_text_size);
 
     for (const [wallName, ops] of Object.entries(openingsByWall)) {
@@ -382,10 +382,10 @@ export function generateFloorPlanSvg(
             svg += `  <line x1="${f(finalStart)}" y1="${f(posDimY)}" x2="${f(wallInsideEnd)}" y2="${f(posDimY)}" stroke="#666" stroke-width="0.3"/>\n`;
             svg += `  <line x1="${f(finalStart)}" y1="${f(lastOpening.y as number)}" x2="${f(finalStart)}" y2="${f(posDimY)}" stroke="#666" stroke-width="0.2" stroke-dasharray="1,1"/>\n`;
             svg += `  <line x1="${f(wallInsideEnd)}" y1="${f(lastOpening.y as number)}" x2="${f(wallInsideEnd)}" y2="${f(posDimY)}" stroke="#666" stroke-width="0.2" stroke-dasharray="1,1"/>\n`;
-            const arrow = 2;
+            const arrow = scaledSpacing(2);
             svg += `  <polygon points="${f(finalStart)},${f(posDimY)} ${f(finalStart + arrow)},${fFloat(posDimY - arrow / 2)} ${f(finalStart + arrow)},${fFloat(posDimY + arrow / 2)}" fill="#666"/>\n`;
             svg += `  <polygon points="${f(wallInsideEnd)},${f(posDimY)} ${f(wallInsideEnd - arrow)},${fFloat(posDimY - arrow / 2)} ${f(wallInsideEnd - arrow)},${fFloat(posDimY + arrow / 2)}" fill="#666"/>\n`;
-            const textY = direction === "north" ? posDimY - 3 : posDimY + openingTextSize + 1;
+            const textY = direction === "north" ? posDimY - scaledSpacing(3) : posDimY + openingTextSize + scaledSpacing(1);
             svg += `  <text x="${fFloat((finalStart + wallInsideEnd) / 2)}" y="${f(textY)}" text-anchor="middle" font-size="${openingTextSize}" fill="#666">${finalDimText}</text>\n`;
             svg += "</g>\n";
           }
@@ -401,10 +401,10 @@ export function generateFloorPlanSvg(
             svg += `  <line x1="${f(posDimX)}" y1="${f(finalStart)}" x2="${f(posDimX)}" y2="${f(wallInsideEnd)}" stroke="#666" stroke-width="0.3"/>\n`;
             svg += `  <line x1="${f(lastOpening.x as number)}" y1="${f(finalStart)}" x2="${f(posDimX)}" y2="${f(finalStart)}" stroke="#666" stroke-width="0.2" stroke-dasharray="1,1"/>\n`;
             svg += `  <line x1="${f(lastOpening.x as number)}" y1="${f(wallInsideEnd)}" x2="${f(posDimX)}" y2="${f(wallInsideEnd)}" stroke="#666" stroke-width="0.2" stroke-dasharray="1,1"/>\n`;
-            const arrow = 2;
+            const arrow = scaledSpacing(2);
             svg += `  <polygon points="${f(posDimX)},${f(finalStart)} ${fFloat(posDimX - arrow / 2)},${f(finalStart + arrow)} ${fFloat(posDimX + arrow / 2)},${f(finalStart + arrow)}" fill="#666"/>\n`;
             svg += `  <polygon points="${f(posDimX)},${f(wallInsideEnd)} ${fFloat(posDimX - arrow / 2)},${f(wallInsideEnd - arrow)} ${fFloat(posDimX + arrow / 2)},${f(wallInsideEnd - arrow)}" fill="#666"/>\n`;
-            const textX = direction === "west" ? posDimX - openingTextSize - 2 : posDimX + openingTextSize + 2;
+            const textX = direction === "west" ? posDimX - openingTextSize - scaledSpacing(2) : posDimX + openingTextSize + scaledSpacing(2);
             svg += `  <text x="${f(textX)}" y="${fFloat((finalStart + wallInsideEnd) / 2)}" text-anchor="middle" font-size="${openingTextSize}" fill="#666" transform="rotate(-90 ${f(textX)} ${fFloat((finalStart + wallInsideEnd) / 2)})">${finalDimText}</text>\n`;
             svg += "</g>\n";
           }
@@ -431,7 +431,7 @@ export function generateFloorPlanSvg(
     const perimeter = classifyPerimeterEdges(edges, bounds);
 
     if (dim.show_outer_dimensions) {
-      const baseOffset = dim.dimension_offset;
+      const baseOffset = scaledSpacing(dim.dimension_offset);
       northLevels = assignDimensionOffsetLevels(perimeter.north, true);
       southLevels = assignDimensionOffsetLevels(perimeter.south, true);
       westLevels  = assignDimensionOffsetLevels(perimeter.west, false);
@@ -481,7 +481,7 @@ export function generateFloorPlanSvg(
     }
 
     if (dim.show_inner_dimensions) {
-      const innerOffset = dim.inner_dimension_offset;
+      const innerOffset = scaledSpacing(dim.inner_dimension_offset);
       const perimN_S_keys = new Set(
         perimeter.north.concat(perimeter.south).map((e) => normalizeEdgeKey(e.x1, e.y1, e.x2, e.y2)),
       );
@@ -540,7 +540,7 @@ export function generateFloorPlanSvg(
   if (dim.show_outer_dimensions) {
     const overallWidth = maxX - minX;
     const overallLength = maxY - minY;
-    const baseOffset = dim.dimension_offset;
+    const baseOffset = scaledSpacing(dim.dimension_offset);
     const maxNorth = maxValue(northLevels);
     const maxSouth = maxValue(southLevels);
     const maxWest  = maxValue(westLevels);

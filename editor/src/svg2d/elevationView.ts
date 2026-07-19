@@ -13,7 +13,7 @@
 // The Python debug-dump of `objects_debug_*.json` is intentionally NOT
 // reproduced — that side effect is disk I/O we don't want in the browser.
 
-import { DEFAULT_GLOBAL_CONFIG, scaledTextSize } from "./config";
+import { DEFAULT_GLOBAL_CONFIG, scaledTextSize, scaledSpacing } from "./config";
 import { f, fFloat } from "./format";
 import { svgDrawDimensionLine } from "./dimensions";
 import { deriveAllHipRoofs } from "./roofGeometry";
@@ -207,14 +207,20 @@ export function generateElevationView(
   let horizontalMargin: number;
   let verticalMargin: number;
   let titleSpace: number;
+  // The render scale is a fixed 2.0; big houses become big SVGs that are
+  // fit-to-view at display time, which is why fonts AND spacing scale with
+  // the active factor. The dimension offsets below now grow with that factor,
+  // so the surrounding margins must grow too or the outer dimension lines and
+  // their labels clip against the fixed viewBox. scaledSpacing(k) === k at
+  // factor 1, so default elevations stay byte-identical.
   if (dimCfg.show_outer_dimensions) {
-    horizontalMargin = 150;
-    verticalMargin = 150;
-    titleSpace = 60;
+    horizontalMargin = scaledSpacing(150);
+    verticalMargin = scaledSpacing(150);
+    titleSpace = scaledSpacing(60);
   } else {
-    horizontalMargin = 50;
-    verticalMargin = 50;
-    titleSpace = 40;
+    horizontalMargin = scaledSpacing(50);
+    verticalMargin = scaledSpacing(50);
+    titleSpace = scaledSpacing(40);
   }
 
   const svgWidth = width * scale + 2 * horizontalMargin;
@@ -1138,7 +1144,7 @@ export function generateElevationView(
 
   // Dimensions
   if (dimCfg.show_outer_dimensions) {
-    const baseOffset = 30;
+    const baseOffset = scaledSpacing(30);
 
     // 1. Right side floor heights
     // y_bottom/y_top come from zToY(int) — Python float. Flag y1/y2 as float.
@@ -1276,7 +1282,7 @@ export function generateElevationView(
     // left to the reader's interpretation. Mirrors svg_2d.py section 5.
     // Flags match section 1 (floor heights): x like the opening dims
     // (int-typed), y from zToY (float-typed).
-    const sillOffset = -8;
+    const sillOffset = -scaledSpacing(8);
     for (const w of sillWindows) {
       if (w.sill_height <= 0) continue;
       const sillXSvg = worldToSvgX(w.x, w.width);
