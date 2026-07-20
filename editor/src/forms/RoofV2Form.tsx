@@ -96,6 +96,13 @@ export function RoofV2Form({
           value={(get<string>(bag, ["name"]) as string | undefined) ?? ""}
           onCommit={(v) => setAt(["name"], v || undefined)}
         />
+        <NumberField
+          label="Z offset"
+          value={get<number>(bag, ["z_offset"]) as number | undefined}
+          onCommit={(v) => setAt(["z_offset"], v)}
+          allowEmpty
+          hint="lift roof above wall top (10u=1ft); blank = 0"
+        />
       </Section>
 
       <Section title="Roof type">

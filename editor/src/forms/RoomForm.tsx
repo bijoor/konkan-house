@@ -141,6 +141,7 @@ export function RoomForm({ room, selection }: { room: Room; selection: Selection
           <NumberField label="Width" value={room.width} onCommit={(v) => v !== undefined && patch({ width: v })} min={0.01} />
           <NumberField label="Length" value={room.length} onCommit={(v) => v !== undefined && patch({ length: v })} min={0.01} />
           <NumberField label="Height" value={room.height} onCommit={(v) => patch({ height: v && v > 0 ? v : undefined })} allowEmpty hint="optional; defaults to floor" />
+          <NumberField label="Z offset" value={room.z_offset} onCommit={(v) => patch({ z_offset: v })} allowEmpty hint="above floor base (10u=1ft); blank = on slab" />
         </div>
       </Section>
 

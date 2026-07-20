@@ -76,6 +76,13 @@ export function WallForm({ wall, selection }: { wall: Wall; selection: Selection
           allowEmpty
           hint="sloping wall — height at end"
         />
+        <NumberField
+          label="Z offset"
+          value={wall.z_offset}
+          onCommit={(v) => patch({ z_offset: v })}
+          allowEmpty
+          hint="above floor base (10u=1ft); blank = on slab"
+        />
         <SelectField
           label="Facing"
           hint={`default: ${defaultFacing}`}

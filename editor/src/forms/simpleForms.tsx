@@ -28,6 +28,7 @@ export function PillarForm({
           <NumberField label="Width" value={obj.width} onCommit={(v) => patch({ width: v })} min={0.01} allowEmpty hint="X extent" />
           <NumberField label="Length" value={obj.length} onCommit={(v) => patch({ length: v })} min={0.01} allowEmpty hint="Y extent" />
           <NumberField label="Height" value={obj.height} onCommit={(v) => v !== undefined && patch({ height: v })} min={0.01} />
+          <NumberField label="Z offset" value={obj.z_offset} onCommit={(v) => patch({ z_offset: v })} allowEmpty hint="above floor base (10u=1ft)" />
         </div>
       </Section>
     </div>
