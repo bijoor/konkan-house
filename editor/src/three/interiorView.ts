@@ -42,9 +42,35 @@ export interface RoomEntry {
   eye: [number, number, number];
 }
 
-// Default eye height above the floor's walking surface (project units,
-// 10 = 1 ft → ~5.5 ft). Capped below the ceiling for short walls.
-const EYE_HEIGHT = 55;
+// Default eye height above the floor's walking surface, as a PHYSICAL
+// height. Converted to project units per the model's configurable
+// units (below) so it stays ~5 ft whatever the units-to-project scale is.
+// Capped below the ceiling for short walls.
+const EYE_HEIGHT_FEET = 5;
+
+// One display unit spans this many feet, per `units.system`. Combined with
+// `units.per_unit` (project units per ONE display unit) this gives the
+// project-units-per-foot needed to place a physical height in the model.
+const FEET_PER_DISPLAY_UNIT: Record<string, number> = {
+  feet_inches: 1,
+  feet: 1,
+  meters: 3.280839895, // 1 m
+  centimeters: 0.032808399, // 1 cm
+  millimeters: 0.003280839, // 1 mm
+};
+
+// Convert a physical height in feet to project units using the config's
+// (optional) display-unit settings. Default 10 units = 1 ft (feet_inches),
+// matching the historical hard-coded eye height of 50 units for 5 ft.
+function feetToProjectUnits(
+  feet: number,
+  units?: { system?: string; per_unit?: number },
+): number {
+  const perUnit = units?.per_unit ?? 10; // project units per 1 display unit
+  const feetPerDisplayUnit = FEET_PER_DISPLAY_UNIT[units?.system ?? "feet_inches"] ?? 1;
+  const unitsPerFoot = perUnit / feetPerDisplayUnit;
+  return feet * unitsPerFoot;
+}
 
 // Enumerate every room in the config with the eye position (Three coords)
 // you'd stand at to look around inside it. Uses the same coord helpers the
@@ -53,9 +79,12 @@ export function listRooms(config: unknown): RoomEntry[] {
   const hc = config as {
     defaults?: Parameters<typeof readGlobals>[0];
     plinth?: { height?: number };
+    units?: { system?: string; per_unit?: number };
     floors?: Array<{ name?: string; objects?: Array<Record<string, unknown>> }>;
   } | null;
   if (!hc || !hc.floors) return [];
+
+  const eyeUnits = feetToProjectUnits(EYE_HEIGHT_FEET, hc.units);
 
   const g = readGlobals(hc.defaults, hc.plinth?.height);
   const bands = computeFloorZBands(
@@ -82,7 +111,7 @@ export function listRooms(config: unknown): RoomEntry[] {
       const x = o.x as number, y = o.y as number;
       const w = o.width as number, l = o.length as number;
       if ([x, y, w, l].some((n) => typeof n !== "number")) return;
-      const eyeH = Math.min(EYE_HEIGHT, band.wallHeight * 0.6);
+      const eyeH = Math.min(eyeUnits, band.wallHeight * 0.6);
       const p = toThreePos(x + w / 2, y + l / 2, band.wallZ + eyeH, plot.width, plot.length);
       out.push({
         key: `${fi}:${oi}`,
