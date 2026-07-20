@@ -86,6 +86,11 @@ export function generateElevationView(
   houseConfig: HouseConfig & Record<string, unknown>,
   viewType: "front" | "back" | "left" | "right",
   scale = 2.0,
+  // Invert the horizontal mirroring. The standalone elevation tabs use the
+  // default (front/right mirrored). The composite sheet flips the top
+  // (north) elevation so its world-X runs east→right, matching the plan for
+  // projection alignment. Position-only (text stays upright).
+  flipX = false,
 ): string {
   const site = (houseConfig.site as Record<string, unknown> | undefined) ?? {};
   void site;
@@ -232,9 +237,9 @@ export function generateElevationView(
   const zToY = (z: number): number => totalHeight - z;
 
   const worldToSvgX = (coord: number, objWidth = 0): number => {
-    if (viewType === "front") return width - (coord + objWidth);
-    if (viewType === "right") return width - (coord + objWidth);
-    return coord;
+    const mirrored = viewType === "front" || viewType === "right";
+    const doMirror = flipX ? !mirrored : mirrored;
+    return doMirror ? width - (coord + objWidth) : coord;
   };
 
   // The compass direction a wall must face to point at the viewer in this

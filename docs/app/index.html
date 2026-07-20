@@ -1189,7 +1189,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-VGLD74_B.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-C04wZg4Z.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/viewer-63hXaHDZ.css">
 </head>
 <body>
@@ -1285,6 +1285,17 @@
                     <line x1="17" y1="11.5" x2="12" y2="18" stroke="rgba(0,0,0,0.55)" stroke-width="1.2"/>
                 </svg><span class="tab-label"> Roof Details</span>
             </button>
+            <button class="tab" onclick="switchView('layout')" title="Layout (plan + elevations)">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <!-- general-arrangement cross: plan centre + 4 elevations -->
+                    <rect x="9" y="9" width="6" height="6" fill="#B85028"/>
+                    <rect x="9" y="9" width="6" height="6" stroke="currentColor" stroke-width="1.3"/>
+                    <rect x="9" y="2" width="6" height="4.5" stroke="currentColor" stroke-width="1.3"/>
+                    <rect x="9" y="17.5" width="6" height="4.5" stroke="currentColor" stroke-width="1.3"/>
+                    <rect x="2" y="9" width="4.5" height="6" stroke="currentColor" stroke-width="1.3"/>
+                    <rect x="17.5" y="9" width="4.5" height="6" stroke="currentColor" stroke-width="1.3"/>
+                </svg><span class="tab-label"> Layout</span>
+            </button>
         </nav>
         <div id="viewer-views">
         <!-- 3D Model View -->
@@ -1356,6 +1367,19 @@
             </div>
         </div>
         <!-- End Roof Details View -->
+
+        <!-- Layout View — composite general-arrangement sheet (plan centre
+             + four elevations) per floor. One card per floor; click to
+             pan/zoom in the lightbox. -->
+        <div id="view-layout" class="view-container">
+            <div class="svg-views-container">
+                <h2 class="section-header">Layout</h2>
+                <div class="svg-grid" id="layout-grid">
+                    <!-- Composite sheets loaded here from window.layoutManifest -->
+                </div>
+            </div>
+        </div>
+        <!-- End Layout View -->
 
         <!-- Template picker modal — opens when the New button is clicked.
              Populated from templates/index.json. Selecting a card loads
@@ -1433,9 +1457,13 @@
 
         // View switching
         function switchView(view) {
-            // Update tabs
+            // Update tabs. Mark the matching tab active by the view name
+            // rather than the global `event.target` (which is undefined on
+            // programmatic calls and points at the inner icon/label when the
+            // user clicks those).
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            event.target.classList.add('active');
+            const activeTab = document.querySelector(`.tab[onclick*="switchView('${view}')"]`);
+            if (activeTab) activeTab.classList.add('active');
 
             // Update views
             document.querySelectorAll('.view-container').forEach(container => {
@@ -1459,6 +1487,10 @@
                 document.getElementById('view-roof').classList.add('active');
                 svgContainer.style.display = 'none';
                 loadRoofPanels();
+            } else if (view === 'layout') {
+                document.getElementById('view-layout').classList.add('active');
+                svgContainer.style.display = 'none';
+                loadLayout();
             }
         }
 
@@ -1473,21 +1505,17 @@
             if (window.floorPlansLoaded) return;
 
             const grid = document.getElementById('floor-plans-grid');
-            const floorPlanFiles = [
-                { num: 0, name: 'Ground_Floor', displayName: 'Ground Floor' },
-                { num: 1, name: 'First_Floor', displayName: 'First Floor' },
-                { num: 2, name: 'Loft_Floor', displayName: 'Loft Floor' },
-                { num: 3, name: 'Roof_Floor', displayName: 'Roof Floor' }
-            ];
 
             grid.innerHTML = '<p style="text-align: center; color: #666;">Loading floor plans...</p>';
 
             let loadedAny = false;
-            // Per-floor cards first, then an "All Floor Plans" card at the
-            // end pointing at the combined SVG so users can drill into the
-            // full layout from the same tab.
-            const perFloor = floorPlanFiles.map((f) => ({
-                filename: `2d/floor_plans/floor_plan_${f.num}_${f.name}.svg`,
+            // Per-floor cards come from the config-driven manifest published
+            // by main.ts (only the ACTUAL floors), then an "All Floor Plans"
+            // card. Hardcoding the floor list caused fetches for
+            // non-existent floors to fall through to the server and inject
+            // its homepage HTML into a card.
+            const perFloor = (window.floorPlanManifest || []).map((f) => ({
+                filename: f.filename,
                 displayName: f.displayName,
             }));
             const cards = [
@@ -1503,6 +1531,11 @@
                     const response = await fetch(c.filename + cacheBuster);
                     if (!response.ok) continue;
                     const svgContent = await response.text();
+                    // Guard: only render real SVG. A missing view falls
+                    // through to the server, which returns the site homepage
+                    // HTML (200) — never inject that into a card.
+                    const ctype = response.headers.get('content-type') || '';
+                    if (!ctype.includes('svg') && !/^\s*(<\?xml[^>]*\?>\s*)?<svg[\s>]/i.test(svgContent)) continue;
 
                     const item = document.createElement('div');
                     item.className = 'svg-item';
@@ -1575,6 +1608,11 @@
                     const response = await fetch(c.filename + cacheBuster);
                     if (!response.ok) continue;
                     const svgContent = await response.text();
+                    // Guard: only render real SVG. A missing view falls
+                    // through to the server, which returns the site homepage
+                    // HTML (200) — never inject that into a card.
+                    const ctype = response.headers.get('content-type') || '';
+                    if (!ctype.includes('svg') && !/^\s*(<\?xml[^>]*\?>\s*)?<svg[\s>]/i.test(svgContent)) continue;
 
                     const item = document.createElement('div');
                     item.className = 'svg-item';
@@ -1688,6 +1726,47 @@
             }
             if (myToken !== window.__roofPanelsToken) return;
             window.roofPanelsLoaded = true;
+        }
+
+        // Load composite Layout sheets (plan + elevations) — one card per
+        // floor from window.layoutManifest. Click a card to pan/zoom it in
+        // the lightbox (the sheets are large).
+        window.layoutLoaded = false;
+        async function loadLayout() {
+            if (window.layoutLoaded) return;
+            const grid = document.getElementById('layout-grid');
+            grid.innerHTML = '<p style="text-align: center; color: #666;">Loading layout…</p>';
+            let loadedAny = false;
+            const cards = (window.layoutManifest || []).map((l) => ({
+                filename: l.filename,
+                displayName: `${l.displayName} — Layout`,
+            }));
+            for (const c of cards) {
+                try {
+                    const response = await fetch(c.filename + `?t=${Date.now()}`);
+                    if (!response.ok) continue;
+                    const svgContent = await response.text();
+                    const ctype = response.headers.get('content-type') || '';
+                    if (!ctype.includes('svg') && !/^\s*(<\?xml[^>]*\?>\s*)?<svg[\s>]/i.test(svgContent)) continue;
+                    const item = document.createElement('div');
+                    item.className = 'svg-item';
+                    item.innerHTML = `<h3>${c.displayName}</h3>${svgContent}`;
+                    if (!loadedAny) { grid.innerHTML = ''; loadedAny = true; }
+                    grid.appendChild(item);
+                    const svg = item.querySelector('svg');
+                    if (svg) svg.addEventListener('click', () => openSvgLightbox(c.filename, c.displayName));
+                } catch (error) {
+                    console.log(`Layout ${c.filename} not found:`, error);
+                }
+            }
+            if (!loadedAny) {
+                grid.innerHTML = `
+                    <div style="text-align: center; padding: 3rem; color: #666;">
+                        <h3>No layout available</h3>
+                        <p>The composite plan + elevations sheet will appear here.</p>
+                    </div>`;
+            }
+            window.layoutLoaded = true;
         }
 
         // Zoom and Pan state for combined views

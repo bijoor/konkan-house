@@ -32,6 +32,7 @@ import { validate } from "../schema/houseConfig";
 import type { HouseConfig } from "../svg2d/expand";
 import { generateAllFloorPlans } from "../svg2d/floorPlansAll";
 import { generateCombinedFloorPlans } from "../svg2d/floorPlansCombined";
+import { generateCompositeSheet } from "../svg2d/compositeSheet";
 import { generateAllElevations } from "../svg2d/elevationsAll";
 import { generateCombinedElevations } from "../svg2d/elevationsCombined";
 import { computeRoofSections } from "../svg2d/roof/index";
@@ -359,6 +360,31 @@ function rebuildSvgMap(): void {
   safe("combined floor plans", () => {
     svgMap.set("2d/floor_plans/floor_plans_combined.svg", generateCombinedFloorPlans(cfg));
   });
+  // Config-driven manifests: the 2D tabs build their cards from the ACTUAL
+  // floors of this house (not a hardcoded list), so we never request a
+  // non-existent view — which is what made the viewer inject the site's
+  // homepage HTML into a card (patchFetch falls through to the server for
+  // unknown keys, and the SPA returns index.html with 200).
+  const floorPlanManifest: { filename: string; displayName: string }[] = [];
+  const layoutManifest: { filename: string; displayName: string }[] = [];
+  safe("layout sheets + manifests", () => {
+    const floors = (cfg.floors ?? []) as Array<{ floor_number?: number; name?: string }>;
+    for (const f of floors) {
+      const num = f.floor_number ?? 0;
+      const name = f.name ?? `Floor ${num}`;
+      const fpFile = `2d/floor_plans/floor_plan_${num}_${name.replace(/ /g, "_")}.svg`;
+      if (svgMap.has(fpFile)) floorPlanManifest.push({ filename: fpFile, displayName: name });
+      try {
+        const layoutFile = `2d/layout/layout_${num}.svg`;
+        svgMap.set(layoutFile, generateCompositeSheet(cfg as never, num));
+        layoutManifest.push({ filename: layoutFile, displayName: name });
+      } catch (e) {
+        console.warn(`[layout] floor ${num} skipped:`, e instanceof Error ? e.message : e);
+      }
+    }
+  });
+  window.floorPlanManifest = floorPlanManifest;
+  window.layoutManifest = layoutManifest;
   safe("elevations", () => {
     for (const { view, content } of generateAllElevations(cfg)) {
       svgMap.set(`2d/elevations/elevation_${view}.svg`, content);
@@ -583,9 +609,15 @@ declare global {
     floorPlansLoaded?: boolean;
     elevationsLoaded?: boolean;
     roofPanelsLoaded?: boolean;
+    layoutLoaded?: boolean;
     loadFloorPlans?: () => Promise<void>;
     loadElevations?: () => Promise<void>;
     loadRoofPanels?: () => Promise<void>;
+    loadLayout?: () => Promise<void>;
+    // Published from rebuildSvgMap so the 2D tabs build cards from the
+    // actual floors (config-driven, no hardcoded floor list).
+    floorPlanManifest?: { filename: string; displayName: string }[];
+    layoutManifest?: { filename: string; displayName: string }[];
     // Published from rebuildSvgMap so the elevations loader can iterate
     // pillar cards without hard-coding the row/col count.
     pillarSvgManifest?: { filename: string; displayName: string }[];
@@ -627,12 +659,14 @@ function reloadActiveTab(): void {
   window.floorPlansLoaded = false;
   window.elevationsLoaded = false;
   window.roofPanelsLoaded = false;
+  window.layoutLoaded = false;
   const activeView = document.querySelector(".view-container.active");
   if (!activeView) return;
   const id = activeView.id;
   if (id === "view-plans") void window.loadFloorPlans?.();
   else if (id === "view-elevations") void window.loadElevations?.();
   else if (id === "view-roof") void window.loadRoofPanels?.();
+  else if (id === "view-layout") void window.loadLayout?.();
   // 3D tab reacts automatically via React subscription — no manual call.
 }
 
