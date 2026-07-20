@@ -179,6 +179,11 @@ real structure — `roof_type`, `segments`, `slope`, `default_endpoint`,
 `min_overhang`, `trusses`, `framing` — is documented in **`roof-v2-guide.md`**.
 Read that before writing a roof. (Legacy `hip_roof`/`gable_roof`/`flat_roof`/
 `shed_roof` still parse but prefer `roof`.)
+- `z_offset` (optional, project units, **default 0**) — lifts the whole roof
+  above its natural resting position (the top floor's wall top). Raise it to
+  clear a raised split-level section. Applies to the unified `roof` only (not the
+  deprecated legacy roof types). It shifts the 3D model, the elevations, and the
+  BOM geometry together.
 
 ## Minimal valid config
 

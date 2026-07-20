@@ -386,14 +386,18 @@ function collectV2Roofs(config: HouseConfig): V2RoofBundle[] {
         const framingRaw = (obj.framing as Record<string, unknown> | undefined) ?? {};
         void framingRaw;
         // V2 roofs sit directly on wall-top-Z — no extra beam offset.
-        const wallTopZ = computeTopFloorWallTopZ(
-          fi,
-          DEFAULT_GLOBAL_CONFIG,
-          0,
-          hc.floors as Array<{ height?: number; slab_thickness?: number }>,
-          houseDefaults,
-          (hc.plinth as { height?: number } | undefined)?.height,
-        );
+        // `z_offset` (default 0) lifts the whole roof above that natural
+        // resting position (e.g. to clear a raised split-level section).
+        const roofZOffset = Number((obj as { z_offset?: number }).z_offset ?? 0);
+        const wallTopZ =
+          computeTopFloorWallTopZ(
+            fi,
+            DEFAULT_GLOBAL_CONFIG,
+            0,
+            hc.floors as Array<{ height?: number; slab_thickness?: number }>,
+            houseDefaults,
+            (hc.plinth as { height?: number } | undefined)?.height,
+          ) + roofZOffset;
         const cfg = obj as unknown as RoofConfig;
         let spec: RoofSpec;
         if (cfg.roof_type === "flat") {

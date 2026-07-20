@@ -63,15 +63,18 @@ export function computeMergedV2Spec(
         const framing: FramingConfig = { ...DEFAULT_V2_FRAMING, ...framingRaw };
         // V2 roofs sit directly on wall-top-Z with no extra beam
         // offset — floor height is assumed to already include the
-        // beam. Pass beamOffset = 0.
-        const wallTopZ = computeTopFloorWallTopZ(
-          fi,
-          DEFAULT_GLOBAL_CONFIG,
-          0,
-          hc.floors as Array<{ height?: number; slab_thickness?: number }>,
-          houseDefaults,
-          (hc.plinth as { height?: number } | undefined)?.height,
-        );
+        // beam. Pass beamOffset = 0. `z_offset` (default 0) lifts the
+        // whole roof above that natural resting position.
+        const roofZOffset = Number((obj as { z_offset?: number }).z_offset ?? 0);
+        const wallTopZ =
+          computeTopFloorWallTopZ(
+            fi,
+            DEFAULT_GLOBAL_CONFIG,
+            0,
+            hc.floors as Array<{ height?: number; slab_thickness?: number }>,
+            houseDefaults,
+            (hc.plinth as { height?: number } | undefined)?.height,
+          ) + roofZOffset;
         const v2Cfg: RoofConfig = isV2
           ? (obj as unknown as RoofConfig)
           : oldRectRoofToSegments(obj);
@@ -151,14 +154,18 @@ export function collectV2FramingSpecs(
       try {
         const framing = (obj.framing as Record<string, unknown> | undefined) ?? {};
         void framing;   // no longer used for beam offset — kept for reference
-        const wallTopZ = computeTopFloorWallTopZ(
-          fi,
-          DEFAULT_GLOBAL_CONFIG,
-          0,
-          hc.floors as Array<{ height?: number; slab_thickness?: number }>,
-          houseDefaults,
-          (hc.plinth as { height?: number } | undefined)?.height,
-        );
+        // Match computeMergedV2Spec: roof z_offset (default 0) lifts the
+        // whole roof so the BOM's geometry stays consistent with the render.
+        const roofZOffset = Number((obj as { z_offset?: number }).z_offset ?? 0);
+        const wallTopZ =
+          computeTopFloorWallTopZ(
+            fi,
+            DEFAULT_GLOBAL_CONFIG,
+            0,
+            hc.floors as Array<{ height?: number; slab_thickness?: number }>,
+            houseDefaults,
+            (hc.plinth as { height?: number } | undefined)?.height,
+          ) + roofZOffset;
         const v2Cfg: RoofConfig = isV2
           ? (obj as unknown as RoofConfig)
           : oldRectRoofToSegments(obj);
