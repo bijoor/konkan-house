@@ -342,33 +342,32 @@ function replaceJointEndCorner(
   // We identify it by proximity in XY to jointXY plus the OUTSIDE
   // half-width along -inside*leftN.
   const leftN = segmentLeftNormal(seg);
-  const outerHalf = Math.hypot(
-    outsideCorner[0] - jointXY[0], outsideCorner[1] - jointXY[1],
-  );
-  // Fallback: pick any candidate whose "along" is ~0 from jointXY.
-  // But better: pick the vertex closest to (jointXY + -inside*leftN*outerHalf_along_perp).
-  // Since we don't know the perp exactly (varies with segment) but we DO
-  // know the outside corner, pick the eave vertex nearest jointXY on the
-  // outside side.
+  const unit = segmentUnitVector(seg);
+  const eaveZ = Math.min(...verts.map((v2) => v2[2]));
+  // The joint-end OUTER eave corner is the eave-level vertex that is
+  // (a) on the OUTSIDE side of the centerline and (b) at the JOINT end
+  // of the segment — i.e. its projection ALONG the segment direction
+  // (measured from the joint point) is ~0. The FAR eave corner sits a
+  // full segment-length away along that axis. Picking by min |along|
+  // is robust; the earlier residual-vs-diagonal heuristic mis-selected
+  // the far corner on longer segments, producing a twisted slope quad.
   let bestIdx = -1;
-  let bestDist = Infinity;
+  let bestAlong = Infinity;
   for (let i = 0; i < verts.length; i++) {
     const v = verts[i];
-    // Only replace an eave-level vertex.
-    const eaveZ = Math.min(...verts.map((v2) => v2[2]));
-    if (Math.abs(v[2] - eaveZ) > 0.1) continue;
+    if (Math.abs(v[2] - eaveZ) > 0.1) continue;   // eave-level only
     // Perpendicular signed distance from segment centerline.
     const perpSigned = (v[0] - seg.start[0]) * leftN[0]
                     + (v[1] - seg.start[1]) * leftN[1];
     // Outside side has sign = -inside (opposite of inside).
     if (Math.sign(perpSigned) !== -inside) continue;
-    // Along-position relative to jointXY.
-    const alongToJoint = Math.hypot(v[0] - jointXY[0], v[1] - jointXY[1]);
-    // Should be roughly outerHalf (the perp distance to outside eave).
-    // We take the vertex whose position matches best (small residual).
-    const residual = Math.abs(alongToJoint - outerHalf);
-    if (residual < bestDist) {
-      bestDist = residual;
+    // Distance along the segment axis from the joint end (~0 at the
+    // joint-end corner, ~segment length at the far corner).
+    const along = Math.abs(
+      (v[0] - jointXY[0]) * unit[0] + (v[1] - jointXY[1]) * unit[1],
+    );
+    if (along < bestAlong) {
+      bestAlong = along;
       bestIdx = i;
     }
   }
