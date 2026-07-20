@@ -119,7 +119,12 @@ async function bootViewer(): Promise<void> {
   // stale fragment decodes to null / fails validation and we quietly
   // fall through to the normal auto-load.
   let loadedFromHash = false;
+  // When a share link is present but can't be opened, remember why so we can
+  // TELL the recipient instead of silently showing the default house (which
+  // looks like the link "worked" but with the wrong design).
+  let shareLinkError: string | null = null;
   if (!loadedFromOpenFile && location.hash.length > 1) {
+    const looksLikeShareLink = /^#w1=/.test(location.hash);
     const raw = await decodeConfigFromHash(location.hash);
     if (raw) {
       const parsed = validate(raw);
@@ -128,7 +133,12 @@ async function bootViewer(): Promise<void> {
         loadedFromHash = true;
       } else {
         console.warn("viewer: shared-link config failed validation", parsed.errors);
+        shareLinkError =
+          "This shared link couldn't be opened — it may have been created with a newer version of Wadi. Showing the default house instead.";
       }
+    } else if (looksLikeShareLink) {
+      shareLinkError =
+        "This shared link is corrupt or truncated and couldn't be opened. Showing the default house instead.";
     }
   }
 
@@ -152,6 +162,10 @@ async function bootViewer(): Promise<void> {
       console.warn("viewer: no house_config.json auto-load", err);
     }
   }
+
+  // A broken/stale share link fell back to the default house above — now
+  // tell the recipient so they don't mistake it for the shared design.
+  if (shareLinkError) showBanner(shareLinkError);
 
   eaveSvg = (await eavePromise) || undefined;
 
@@ -630,6 +644,34 @@ function reloadActiveTab(): void {
 // path writes silently on success, so this is the only signal the user
 // gets. Captures the real label once (so rapid re-clicks don't freeze
 // the checkmark in) and resets the revert timer on each click.
+// A dismissible warning banner pinned top-centre. Used for problems the
+// recipient must notice (e.g. a shared link that failed to load). Auto-hides
+// after a while, or on the ✕.
+function showBanner(message: string): void {
+  const el = document.createElement("div");
+  el.setAttribute("role", "alert");
+  el.style.cssText = [
+    "position:fixed", "top:12px", "left:50%", "transform:translateX(-50%)",
+    "z-index:1000", "max-width:min(92vw,540px)", "display:flex", "gap:10px",
+    "align-items:flex-start", "background:#7c2d12", "color:#fff",
+    "font-size:13px", "line-height:1.4", "padding:10px 12px",
+    "border-radius:10px", "box-shadow:0 6px 24px rgba(0,0,0,0.35)",
+  ].join(";");
+  const span = document.createElement("span");
+  span.textContent = message;
+  span.style.flex = "1";
+  const close = document.createElement("button");
+  close.textContent = "✕";
+  close.setAttribute("aria-label", "Dismiss");
+  close.style.cssText =
+    "background:none;border:none;color:#fff;cursor:pointer;font-size:14px;line-height:1;padding:0 2px;";
+  const remove = () => el.remove();
+  close.addEventListener("click", remove);
+  el.append(span, close);
+  document.body.appendChild(el);
+  window.setTimeout(remove, 14000);
+}
+
 function flashSaved(btn: HTMLElement | null, text = "✓ Saved"): void {
   if (!btn) return;
   if (!btn.dataset.label) btn.dataset.label = btn.textContent ?? "";
