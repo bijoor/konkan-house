@@ -15,7 +15,7 @@ export interface ElevationOutput {
 export function generateAllElevations(
   houseConfig: HouseConfig,
 ): ElevationOutput[] {
-  const hc = expandRoomWalls(houseConfig);
+  const hc = expandRoomWalls(houseConfig, undefined, { lenient: true });
   const views: Array<"front" | "back" | "left" | "right"> = [
     "front",
     "back",

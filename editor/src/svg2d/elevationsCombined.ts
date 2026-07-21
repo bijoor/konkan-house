@@ -21,7 +21,7 @@ interface ElevationEntry {
 }
 
 export function generateCombinedElevations(houseConfig: HouseConfig): string {
-  const hc = expandRoomWalls(houseConfig);
+  const hc = expandRoomWalls(houseConfig, undefined, { lenient: true });
   const scale = 2.0;
   const spacing = 100;
   const leftRightMargin = 80;

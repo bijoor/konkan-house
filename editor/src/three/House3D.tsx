@@ -47,24 +47,53 @@ interface Obj {
 
 const POS_TOL = 2.0; // matches Python's normalize_edge_key tolerance
 
+// Publish geometry warnings (invalid openings dropped during expansion) so
+// the viewer shell can show a banner. Deduped against the last set so React
+// re-renders with the same problems don't re-fire the banner. Stored on
+// window.__geometryWarnings and announced via a CustomEvent that main.ts
+// listens for (keeps the DOM side-effect out of React's render pass).
+let lastWarningKey = "";
+function reportGeometryWarnings(warnings: string[]): void {
+  if (typeof window === "undefined") return;
+  const key = warnings.join("\n");
+  if (key === lastWarningKey) return;
+  lastWarningKey = key;
+  const w = window as unknown as {
+    __geometryWarnings?: string[];
+    __expandError?: unknown;
+  };
+  w.__geometryWarnings = warnings;
+  // Back-compat: keep __expandError populated (existing debug badge reads it).
+  w.__expandError = warnings.length ? warnings[0] : null;
+  window.dispatchEvent(
+    new CustomEvent("wadi-geometry-warnings", { detail: warnings }),
+  );
+}
+
 export function House3D({ config }: { config: HouseConfig }) {
   const visible = useLayerStore((s) => s.visible);
 
   const byLayer = useMemo(() => {
-    // expandRoomWalls throws on invalid openings (overlaps, out-of-range
-    // etc.). Catch so a bad opening doesn't take down the whole 3D
-    // scene — return empty groups; the user can fix the offending
-    // opening and the scene will render again on the next config change.
+    // Lenient expansion: a wall/room whose openings are invalid (out-of-range,
+    // diagonal wall mid-edit, zero length, overlap…) is rendered as a SOLID
+    // wall instead of aborting the whole scene. Previously any such error blanked
+    // the entire 3D model ("stopped loading"); now only the bad opening drops out
+    // and the reason is surfaced so the user can fix it. Truly fatal errors
+    // (non-opening) still fall through to the empty-scene guard.
+    const warnings: string[] = [];
     let hc: ReturnType<typeof expandRoomWalls>;
     try {
-      hc = expandRoomWalls(config);
+      hc = expandRoomWalls(config, undefined, {
+        lenient: true,
+        onWarning: (m) => warnings.push(m),
+      });
     } catch (e) {
       console.warn("[house3d] expandRoomWalls failed, skipping scene:", e);
-      (window as unknown as { __expandError?: unknown }).__expandError =
-        e instanceof Error ? e.message : String(e);
+      warnings.push(e instanceof Error ? e.message : String(e));
+      reportGeometryWarnings(warnings);
       return {} as Record<string, React.ReactNode[]>;
     }
-    (window as unknown as { __expandError?: unknown }).__expandError = null;
+    reportGeometryWarnings(warnings);
     // House-level defaults (defaults.floor_height / slab_thickness) win
     // over the code globals; per-floor overrides win over both.
     const houseDefaults = (config as { defaults?: { floor_height?: number; slab_thickness?: number; wall_thickness?: number } }).defaults;

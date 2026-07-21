@@ -21,7 +21,7 @@ export interface FloorPlanFile {
 }
 
 export function generateAllFloorPlans(houseConfig: HouseConfig): FloorPlanFile[] {
-  const hc = expandRoomWalls(houseConfig);
+  const hc = expandRoomWalls(houseConfig, undefined, { lenient: true });
   const houseDefaults = (hc as { defaults?: { floor_height?: number; slab_thickness?: number; wall_thickness?: number } })
     .defaults;
   const wallThickness = houseDefaults?.wall_thickness ?? DEFAULT_GLOBAL_CONFIG.wall_thickness;

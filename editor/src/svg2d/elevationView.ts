@@ -13,7 +13,7 @@
 // The Python debug-dump of `objects_debug_*.json` is intentionally NOT
 // reproduced — that side effect is disk I/O we don't want in the browser.
 
-import { DEFAULT_GLOBAL_CONFIG, scaledTextSize, scaledSpacing } from "./config";
+import { DEFAULT_GLOBAL_CONFIG, activeDimensions, scaledTextSize, scaledSpacing } from "./config";
 import { f, fFloat } from "./format";
 import { svgDrawDimensionLine } from "./dimensions";
 import { deriveAllHipRoofs } from "./roofGeometry";
@@ -42,6 +42,10 @@ interface DrawObject {
   z: number;
   fill?: string;
   num_steps?: number;
+  // True when the staircase's run goes into the page for this elevation
+  // (seen end-on) — drawn as a solid rising block instead of a stepped
+  // profile.
+  run_perpendicular?: boolean;
   openings?: Obj[];
   coord_key?: string | null;
   floor_height_expected?: number;
@@ -208,7 +212,7 @@ export function generateElevationView(
     }
   }
 
-  const dimCfg = GC.dimensions;
+  const dimCfg = activeDimensions();
   let horizontalMargin: number;
   let verticalMargin: number;
   let titleSpace: number;
@@ -522,6 +526,11 @@ export function generateElevationView(
       } else if (objType === "staircase") {
         let stairX: number, stairY: number, stairWidth: number, stairLength: number;
         let numSteps: number;
+        // Which world axis the stair ASCENDS along (its run). north/south
+        // stairs run along Y; east/west along X. The x/width form has no
+        // direction, so we follow the same convention as its numSteps
+        // default (derived from stairLength → run is along Y).
+        let runAxis: "x" | "y";
 
         if ("start_x" in obj) {
           const startX = obj.start_x as number;
@@ -533,15 +542,19 @@ export function generateElevationView(
           if (compassDir === "north") {
             stairX = startX; stairY = startY - numSteps * stepTread;
             stairWidth = stepWidth; stairLength = numSteps * stepTread;
+            runAxis = "y";
           } else if (compassDir === "south") {
             stairX = startX; stairY = startY;
             stairWidth = stepWidth; stairLength = numSteps * stepTread;
+            runAxis = "y";
           } else if (compassDir === "east") {
             stairX = startX; stairY = startY;
             stairWidth = numSteps * stepTread; stairLength = stepWidth;
+            runAxis = "x";
           } else {
             stairX = startX - numSteps * stepTread; stairY = startY;
             stairWidth = numSteps * stepTread; stairLength = stepWidth;
+            runAxis = "x";
           }
         } else {
           stairX = obj.x as number;
@@ -550,20 +563,32 @@ export function generateElevationView(
           stairLength = obj.length as number;
           const ns = obj.num_steps as number | undefined;
           numSteps = ns ?? Math.max(3, Math.floor(stairLength / 10));
+          runAxis = "y";
         }
 
         const stepRise = (obj.step_rise as number | undefined) ?? 7;
         const totalRise = numSteps * stepRise;
 
         let objX: number, objW: number, objDepth: number;
+        // The elevation's horizontal axis is X for front/back and Y for
+        // left/right. The stepped profile is only meaningful when the run
+        // lies along that horizontal axis; when the run goes INTO the page
+        // (perpendicular), the stair is seen end-on and must be drawn as a
+        // solid block rising to the total run height, not a zig-zag crammed
+        // into the stair's width.
+        let runPerpendicular: boolean;
         if (viewType === "left") {
           objX = stairY; objW = stairLength; objDepth = -stairX;
+          runPerpendicular = runAxis === "x";
         } else if (viewType === "right") {
           objX = stairY; objW = stairLength; objDepth = stairX + stairWidth;
+          runPerpendicular = runAxis === "x";
         } else if (viewType === "front") {
           objX = stairX; objW = stairWidth; objDepth = -stairY;
+          runPerpendicular = runAxis === "y";
         } else if (viewType === "back") {
           objX = stairX; objW = stairWidth; objDepth = stairY + stairLength;
+          runPerpendicular = runAxis === "y";
         } else continue;
 
         objectsToDraw.push({
@@ -578,6 +603,7 @@ export function generateElevationView(
           // the first step sits on the walking surface (= wallZ) as before.
           z: obj.z_offset != null ? slabZ + Number(obj.z_offset) : wallZ,
           num_steps: numSteps,
+          run_perpendicular: runPerpendicular,
           fill: "#C19A6B",
         });
       } else if (objType === "room") {
@@ -1037,22 +1063,36 @@ export function generateElevationView(
     } else if (objType === "staircase") {
       const numSteps = obj.num_steps ?? 10;
       const fillColor = obj.fill ?? "#C19A6B";
-      const treadRun = objW / numSteps;
-      const riserHeight = objSvgHeight / numSteps;
 
       svg += '<g class="staircase-elevation">\n';
-      for (let i = 0; i < numSteps; i++) {
-        const stepX = objX + i * treadRun;
-        const stepBottomY = objBottomY - i * riserHeight;
-        const stepTopY = stepBottomY - riserHeight;
-        svg += `<line x1="${fFloat(stepX)}" y1="${fFloat(stepBottomY)}" x2="${fFloat(stepX)}" y2="${fFloat(stepTopY)}" stroke="#000" stroke-width="0.5"/>\n`;
-        svg += `<line x1="${fFloat(stepX)}" y1="${fFloat(stepTopY)}" x2="${fFloat(stepX + treadRun)}" y2="${fFloat(stepTopY)}" stroke="#000" stroke-width="0.5"/>\n`;
-        svg += `<rect x="${fFloat(stepX)}" y="${fFloat(stepTopY)}" width="${fFloat(treadRun)}" height="${fFloat(riserHeight)}" fill="${fillColor}" opacity="0.7"/>\n`;
+      if (obj.run_perpendicular) {
+        // Seen end-on: the run recedes into the page, so every tread
+        // projects onto the same width. The silhouette is a solid block
+        // the full stair width × total rise; horizontal lines mark each
+        // visible tread nosing.
+        const riserHeight = objSvgHeight / numSteps;
+        svg += `<rect x="${emitX(objX)}" y="${fFloat(objTopY)}" width="${f(objW)}" height="${fFloat(objSvgHeight)}" fill="${fillColor}" stroke="#000" stroke-width="0.5"/>\n`;
+        for (let i = 1; i < numSteps; i++) {
+          const lineY = objBottomY - i * riserHeight;
+          svg += `<line x1="${emitX(objX)}" y1="${fFloat(lineY)}" x2="${fFloat(objX + objW)}" y2="${fFloat(lineY)}" stroke="#000" stroke-width="0.3"/>\n`;
+        }
+      } else {
+        // Run lies across the elevation: draw the true stepped profile.
+        const treadRun = objW / numSteps;
+        const riserHeight = objSvgHeight / numSteps;
+        for (let i = 0; i < numSteps; i++) {
+          const stepX = objX + i * treadRun;
+          const stepBottomY = objBottomY - i * riserHeight;
+          const stepTopY = stepBottomY - riserHeight;
+          svg += `<line x1="${fFloat(stepX)}" y1="${fFloat(stepBottomY)}" x2="${fFloat(stepX)}" y2="${fFloat(stepTopY)}" stroke="#000" stroke-width="0.5"/>\n`;
+          svg += `<line x1="${fFloat(stepX)}" y1="${fFloat(stepTopY)}" x2="${fFloat(stepX + treadRun)}" y2="${fFloat(stepTopY)}" stroke="#000" stroke-width="0.5"/>\n`;
+          svg += `<rect x="${fFloat(stepX)}" y="${fFloat(stepTopY)}" width="${fFloat(treadRun)}" height="${fFloat(riserHeight)}" fill="${fillColor}" opacity="0.7"/>\n`;
+        }
+        const lastStepX = objX + numSteps * treadRun;
+        svg += `<line x1="${fFloat(lastStepX)}" y1="${fFloat(objTopY)}" x2="${fFloat(lastStepX)}" y2="${fFloat(objBottomY)}" stroke="#000" stroke-width="0.5"/>\n`;
+        // Python: `<line x1="{obj_x}" ...` — obj_x is int for staircase.
+        svg += `<line x1="${emitX(objX)}" y1="${fFloat(objBottomY)}" x2="${fFloat(lastStepX)}" y2="${fFloat(objBottomY)}" stroke="#000" stroke-width="0.5"/>\n`;
       }
-      const lastStepX = objX + numSteps * treadRun;
-      svg += `<line x1="${fFloat(lastStepX)}" y1="${fFloat(objTopY)}" x2="${fFloat(lastStepX)}" y2="${fFloat(objBottomY)}" stroke="#000" stroke-width="0.5"/>\n`;
-      // Python: `<line x1="{obj_x}" ...` — obj_x is int for staircase.
-      svg += `<line x1="${emitX(objX)}" y1="${fFloat(objBottomY)}" x2="${fFloat(lastStepX)}" y2="${fFloat(objBottomY)}" stroke="#000" stroke-width="0.5"/>\n`;
       svg += "</g>\n";
     } else if (objType === "pillar") {
       svg += `<rect x="${emitX(objX)}" y="${fFloat(objTopY)}" width="${f(objW)}" height="${fFloat(objSvgHeight)}" fill="#000" stroke="#000" stroke-width="0.5"/>\n`;

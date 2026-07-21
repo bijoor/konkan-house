@@ -10,10 +10,11 @@
 // object/feature filtering. Kept deliberately simple so the layout can be
 // reviewed before that investment.
 
-import { DEFAULT_GLOBAL_CONFIG } from "./config";
+import { DEFAULT_GLOBAL_CONFIG, setActiveDimFlags } from "./config";
 import { generateFloorPlanSvg } from "./floorPlan";
 import { generateElevationView } from "./elevationView";
 import { expandRoomWalls, type HouseConfig } from "./expand";
+import { applyDrawFilter, dimShowFlags, type DrawFilter } from "./drawFilter";
 
 interface Dim {
   w: number;
@@ -66,6 +67,9 @@ function round(n: number): number {
 
 export interface CompositeSheetOptions {
   scale?: number;
+  // Filter panel state — which objects/annotations to draw. Omitted = draw
+  // everything (backward compatible).
+  filter?: DrawFilter | null;
 }
 
 // Render the composite sheet for one floor's plan + the building's four
@@ -76,9 +80,26 @@ export function generateCompositeSheet(
   opts: CompositeSheetOptions = {},
 ): string {
   const scale = opts.scale ?? 2.0;
+  try {
+    // Object selection: pre-filter the config so the renderers only see the
+    // chosen objects. Annotation toggles: set the active dimension flags.
+    const selected = applyDrawFilter(houseConfig, opts.filter);
+    setActiveDimFlags(dimShowFlags(opts.filter));
+    return renderSheet(selected as HouseConfig & Record<string, unknown>, floorNum, scale);
+  } finally {
+    setActiveDimFlags(null); // never leak the override to other renders
+  }
+}
+
+function renderSheet(
+  houseConfig: HouseConfig & Record<string, unknown>,
+  floorNum: number,
+  scale: number,
+): string {
   // Both the plan and elevation renderers expect room walls expanded to the
   // legacy list form (the All* wrappers do this too). Expand once.
-  const hc = expandRoomWalls(houseConfig) as HouseConfig & Record<string, unknown>;
+  const hc = expandRoomWalls(houseConfig, undefined, { lenient: true }) as HouseConfig &
+    Record<string, unknown>;
   const floors = (hc.floors as Array<Record<string, unknown>> | undefined) ?? [];
   const floorConfig =
     floors.find((f) => (f.floor_number ?? 0) === floorNum) ?? floors[0];

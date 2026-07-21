@@ -33,6 +33,9 @@ import type { HouseConfig } from "../svg2d/expand";
 import { generateAllFloorPlans } from "../svg2d/floorPlansAll";
 import { generateCombinedFloorPlans } from "../svg2d/floorPlansCombined";
 import { generateCompositeSheet } from "../svg2d/compositeSheet";
+import type { DrawFilter } from "../svg2d/drawFilter";
+import { objectKey } from "../svg2d/drawFilter";
+import { effectiveLayers, heuristicLayerId } from "../three/layers";
 import { generateAllElevations } from "../svg2d/elevationsAll";
 import { generateCombinedElevations } from "../svg2d/elevationsCombined";
 import { computeRoofSections } from "../svg2d/roof/index";
@@ -170,8 +173,15 @@ async function bootViewer(): Promise<void> {
 
   eaveSvg = (await eavePromise) || undefined;
 
-  // First SVG map build using whatever ended up in the store.
-  rebuildSvgMap();
+  // First SVG map build using whatever ended up in the store. Guarded so a
+  // throw in SVG generation (e.g. an invalid opening on some object) can
+  // NEVER abort init before the 3D scene + window APIs mount below — that
+  // was the "model stopped loading altogether" failure.
+  try {
+    rebuildSvgMap();
+  } catch (e) {
+    console.error("[viewer] initial rebuildSvgMap failed:", e);
+  }
 
   // Install the fetch patch once. It reads live from svgMap on every
   // call, so it doesn't need reinstalling after config changes.
@@ -208,6 +218,11 @@ async function bootViewer(): Promise<void> {
   wireCloseGuard();
   // Expose window.exportCurrentSvg for the inline lightbox toolbar.
   wireExports();
+  // Expose the on-demand Layout render + panel metadata.
+  wireLayoutApi();
+  // Surface geometry warnings (invalid openings dropped during expansion)
+  // as a banner instead of silently blanking the 3D model.
+  wireGeometryWarnings();
   applyStoredEditMode();
 
   // Live-preview loop (Tauri only): poll the loaded config file and
@@ -365,26 +380,21 @@ function rebuildSvgMap(): void {
   // non-existent view — which is what made the viewer inject the site's
   // homepage HTML into a card (patchFetch falls through to the server for
   // unknown keys, and the SPA returns index.html with 200).
+  // The Layout tab renders its composite sheets on demand (filtered) via
+  // window.wadiRenderLayout, so we no longer bake them into svgMap here —
+  // that avoids re-rendering every floor's whole sheet on each config edit.
+  // We still publish floorPlanManifest for the Floor Plans tab.
   const floorPlanManifest: { filename: string; displayName: string }[] = [];
-  const layoutManifest: { filename: string; displayName: string }[] = [];
-  safe("layout sheets + manifests", () => {
+  safe("floor-plan manifest", () => {
     const floors = (cfg.floors ?? []) as Array<{ floor_number?: number; name?: string }>;
     for (const f of floors) {
       const num = f.floor_number ?? 0;
       const name = f.name ?? `Floor ${num}`;
       const fpFile = `2d/floor_plans/floor_plan_${num}_${name.replace(/ /g, "_")}.svg`;
       if (svgMap.has(fpFile)) floorPlanManifest.push({ filename: fpFile, displayName: name });
-      try {
-        const layoutFile = `2d/layout/layout_${num}.svg`;
-        svgMap.set(layoutFile, generateCompositeSheet(cfg as never, num));
-        layoutManifest.push({ filename: layoutFile, displayName: name });
-      } catch (e) {
-        console.warn(`[layout] floor ${num} skipped:`, e instanceof Error ? e.message : e);
-      }
     }
   });
   window.floorPlanManifest = floorPlanManifest;
-  window.layoutManifest = layoutManifest;
   safe("elevations", () => {
     for (const { view, content } of generateAllElevations(cfg)) {
       svgMap.set(`2d/elevations/elevation_${view}.svg`, content);
@@ -481,7 +491,7 @@ function rebuildSvgMap(): void {
   // hip_roof (via computeAllRoofs → RoofComputed[]) AND every
   // gable_roof (via collectAllGableMembers). Emitted whenever there's
   // at least one roof of either type.
-  const expanded = expandRoomWalls(cfg);
+  const expanded = expandRoomWalls(cfg, undefined, { lenient: true });
   const allRoofs = computeAllRoofs(expanded);
   const gableMembers = collectAllGableMembers(cfg);
   const flatMembers = collectAllFlatMembers(cfg);
@@ -586,7 +596,15 @@ function subscribeConfig(): void {
     }
     if (state.config === last) return;
     last = state.config;
-    rebuildSvgMap();
+    // Guard: an edit that transiently produces invalid geometry must not
+    // throw out of the subscriber (that would wedge reactivity and leave
+    // the app looking frozen). The 3D scene subscribes separately and
+    // degrades gracefully on its own.
+    try {
+      rebuildSvgMap();
+    } catch (e) {
+      console.error("[viewer] rebuildSvgMap failed on config change:", e);
+    }
     reloadActiveTab();
     updateHistoryButtons();
   });
@@ -617,7 +635,6 @@ declare global {
     // Published from rebuildSvgMap so the 2D tabs build cards from the
     // actual floors (config-driven, no hardcoded floor list).
     floorPlanManifest?: { filename: string; displayName: string }[];
-    layoutManifest?: { filename: string; displayName: string }[];
     // Published from rebuildSvgMap so the elevations loader can iterate
     // pillar cards without hard-coding the row/col count.
     pillarSvgManifest?: { filename: string; displayName: string }[];
@@ -628,7 +645,107 @@ declare global {
     // index.html can trigger a save without needing to import
     // fileIO. Filename is a hint for the save dialog.
     exportCurrentSvg?: (defaultName: string) => Promise<void>;
+    // On-demand Layout composite render, driven by the filter panel.
+    // Returns the composite SVG string for `floorNum` with `filter`
+    // applied (object/type/layer selection + dimension toggles).
+    wadiRenderLayout?: (floorNum: number, filter?: DrawFilter | null) => string;
+    // Panel metadata: the floors, object types, layers, and per-object
+    // list the filter panel builds its checkbox groups from.
+    wadiLayoutMeta?: () => LayoutMeta | null;
   }
+}
+
+interface LayoutMeta {
+  floors: { num: number; name: string }[];
+  types: { id: string; label: string }[];
+  layers: { id: string; label: string }[];
+  objects: {
+    key: string;
+    floor: number;
+    index: number;
+    type: string;
+    name: string;
+    layer: string;
+  }[];
+}
+
+// Human-facing labels for the object types that appear on a 2D sheet.
+// "openings" is a pseudo-type gating doors + windows (they draw with
+// their host wall, so they aren't independent rows in the object list).
+const TYPE_LABELS: Record<string, string> = {
+  floor_slab: "Floor slabs",
+  beam: "Beams",
+  room: "Rooms",
+  wall: "Walls",
+  pillar: "Pillars",
+  staircase: "Staircases",
+  kitchen: "Kitchens",
+  gable_roof: "Roofs",
+  hip_roof: "Roofs",
+  flat_roof: "Roofs",
+  shed_roof: "Roofs",
+  openings: "Doors & windows",
+};
+
+function wireLayoutApi(): void {
+  window.wadiRenderLayout = (floorNum: number, filter?: DrawFilter | null): string => {
+    const cfg = useConfigStore.getState().config as HouseConfig | null;
+    if (!cfg) return "";
+    return generateCompositeSheet(cfg as never, floorNum, { filter });
+  };
+
+  window.wadiLayoutMeta = (): LayoutMeta | null => {
+    const cfg = useConfigStore.getState().config as
+      | (HouseConfig & { floors?: Array<Record<string, unknown>> })
+      | null;
+    if (!cfg) return null;
+
+    const floors: LayoutMeta["floors"] = [];
+    const typeIds = new Set<string>();
+    const objects: LayoutMeta["objects"] = [];
+    let hasOpening = false;
+
+    (cfg.floors ?? []).forEach((f, fi) => {
+      const num = (f.floor_number as number | undefined) ?? fi;
+      const fname = (f.name as string | undefined) ?? `Floor ${num}`;
+      floors.push({ num, name: fname });
+      ((f.objects as Array<Record<string, unknown>>) ?? []).forEach((o, oi) => {
+        const t = o.type as string;
+        if (t === "door" || t === "window") {
+          hasOpening = true;
+          return; // openings draw with their wall — not standalone rows
+        }
+        typeIds.add(t);
+        const layer =
+          typeof o.layer === "string" && o.layer ? o.layer : heuristicLayerId(t, num);
+        objects.push({
+          key: objectKey(num, oi),
+          floor: num,
+          index: oi,
+          type: t,
+          name: (o.name as string | undefined) ?? `${t} ${oi}`,
+          layer,
+        });
+      });
+    });
+    if (hasOpening) typeIds.add("openings");
+
+    // Preserve a sensible type order; unknown types go last alphabetically.
+    const typeOrder = [
+      "floor_slab", "beam", "room", "wall", "staircase", "kitchen",
+      "pillar", "gable_roof", "hip_roof", "flat_roof", "shed_roof", "openings",
+    ];
+    const types = [...typeIds]
+      .sort((a, b) => {
+        const ia = typeOrder.indexOf(a), ib = typeOrder.indexOf(b);
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+      })
+      .map((id) => ({ id, label: TYPE_LABELS[id] ?? id }));
+
+    const layers = effectiveLayers(cfg).map((l) => ({ id: l.id, label: l.label }));
+
+    return { floors, types, layers, objects };
+  };
 }
 
 // Grab the currently-open lightbox SVG (as source text) and save
@@ -704,6 +821,34 @@ function showBanner(message: string): void {
   el.append(span, close);
   document.body.appendChild(el);
   window.setTimeout(remove, 14000);
+}
+
+// Listen for geometry warnings emitted by House3D's lenient expansion and
+// show them in a banner. Deduped so the same problem set doesn't re-fire on
+// every re-render; cleared silently when the geometry becomes valid again.
+function wireGeometryWarnings(): void {
+  let lastShown = "";
+  const present = (warnings: string[]) => {
+    const key = warnings.join("\n");
+    if (key === lastShown) return;
+    lastShown = key;
+    if (warnings.length === 0) return; // geometry now valid — nothing to show
+    const head =
+      warnings.length === 1
+        ? warnings[0]
+        : `${warnings.length} geometry issues — ${warnings[0]}`;
+    showBanner(
+      `⚠ ${head} The affected wall is shown solid (openings skipped) until you fix it in the object editor.`,
+    );
+  };
+  window.addEventListener("wadi-geometry-warnings", (e) =>
+    present((e as CustomEvent<string[]>).detail ?? []),
+  );
+  // Catch-up: the first House3D render dispatches its warning event during
+  // mountViewer3D, which runs before this listener is attached. Pick up any
+  // warnings it already stored so the initial banner isn't missed.
+  const stored = (window as unknown as { __geometryWarnings?: string[] }).__geometryWarnings;
+  if (stored && stored.length) present(stored);
 }
 
 function flashSaved(btn: HTMLElement | null, text = "✓ Saved"): void {

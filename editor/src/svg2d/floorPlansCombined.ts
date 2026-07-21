@@ -10,7 +10,7 @@ import { expandRoomWalls, type HouseConfig } from "./expand";
 export function generateCombinedFloorPlans(
   houseConfig: HouseConfig,
 ): string {
-  const hc = expandRoomWalls(houseConfig);
+  const hc = expandRoomWalls(houseConfig, undefined, { lenient: true });
   const floors = hc.floors ?? [];
 
   const scale = 2.0;

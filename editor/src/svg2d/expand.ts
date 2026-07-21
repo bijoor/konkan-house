@@ -73,9 +73,20 @@ export type HouseConfig = {
   [key: string]: unknown;
 };
 
+export interface ExpandOptions {
+  // When true, a wall/room whose openings fail validation (out-of-range,
+  // diagonal wall, zero length, overlap…) is emitted WITHOUT its openings
+  // — rendered as a solid wall — instead of aborting the whole expansion.
+  // The error message is reported via `onWarning`. This keeps a single bad
+  // object (e.g. a wall mid-edit) from blanking the entire 3D scene.
+  lenient?: boolean;
+  onWarning?: (message: string) => void;
+}
+
 export function expandRoomWalls(
   houseConfig: HouseConfig,
   wallThickness?: number,
+  opts?: ExpandOptions,
 ): HouseConfig {
   if (houseConfig._walls_expanded) return houseConfig;
   const t =
@@ -90,7 +101,18 @@ export function expandRoomWalls(
     const deferredDoors: Obj[] = [];
     const deferredWindows: Obj[] = [];
     for (const obj of objs) {
-      const [first, extras] = expandObject(obj, t);
+      let first: Obj;
+      let extras: Obj[];
+      try {
+        [first, extras] = expandObject(obj, t);
+      } catch (e) {
+        // Strict (default): propagate — preserves the parity harness and
+        // any caller that wants hard failures. Lenient: drop this object's
+        // openings so it still renders as a solid wall, and report why.
+        if (!opts?.lenient) throw e;
+        opts.onWarning?.(e instanceof Error ? e.message : String(e));
+        [first, extras] = expandObject(stripOpenings(obj), t);
+      }
       head.push(first);
       for (const e of extras) {
         (e.type === "door" ? deferredDoors : deferredWindows).push(e);
@@ -100,6 +122,28 @@ export function expandRoomWalls(
   }
   hc._walls_expanded = true;
   return hc;
+}
+
+// Return a copy of a wall/room object with all openings removed, so it can
+// be expanded without hitting opening validation. Non-wall/room objects are
+// returned unchanged.
+function stripOpenings(obj: Obj): Obj {
+  if (obj.type === "wall") {
+    const { openings: _drop, ...rest } = obj as Wall;
+    return rest as Obj;
+  }
+  if (obj.type === "room") {
+    const walls = (obj as Room).walls;
+    if (walls && !Array.isArray(walls) && typeof walls === "object") {
+      const cleaned: Record<string, RoomWallSide> = {};
+      for (const [side, wc] of Object.entries(walls as Record<string, RoomWallSide>)) {
+        const { openings: _drop, ...restSide } = wc ?? {};
+        cleaned[side] = restSide;
+      }
+      return { ...obj, walls: cleaned } as Obj;
+    }
+  }
+  return obj;
 }
 
 function expandObject(obj: Obj, wallThickness: number): [Obj, Obj[]] {

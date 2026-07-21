@@ -6,7 +6,7 @@
 // Callers should pass a floor already run through expandRoomWalls so
 // nested-form rooms are flattened.
 
-import { DEFAULT_GLOBAL_CONFIG, scaledTextSize, scaledSpacing } from "./config";
+import { DEFAULT_GLOBAL_CONFIG, activeDimensions, scaledTextSize, scaledSpacing } from "./config";
 import { formatDimension, f, fFloat } from "./format";
 import {
   svgDrawWall, svgDrawRoom, svgDrawDoor, svgDrawWindow, svgDrawFloorSlab,
@@ -53,7 +53,7 @@ export function generateFloorPlanSvg(
 ): string {
   const floorNum = floorConfig.floor_number ?? 0;
   const floorName = floorConfig.name ?? `Floor ${floorNum}`;
-  const dim = DEFAULT_GLOBAL_CONFIG.dimensions;
+  const dim = activeDimensions();
 
   // -----------------------------------------------------------------
   // Bounds

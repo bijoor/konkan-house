@@ -207,6 +207,24 @@ export function getTextScale(): number {
   return activeTextScale;
 }
 
+// Active dimension-flag override (same "set once per render pass" pattern as
+// setTextScale). The Layout view's filter panel sets which dimension chains
+// are drawn; standalone callers leave it null and get the config defaults.
+let activeDimOverride: Partial<DimensionConfig> | null = null;
+
+export function setActiveDimFlags(o: Partial<DimensionConfig> | null): void {
+  activeDimOverride = o && Object.keys(o).length > 0 ? o : null;
+}
+
+// Effective dimension config = defaults with any active override applied.
+// Renderers read this instead of DEFAULT_GLOBAL_CONFIG.dimensions so the
+// filter panel's toggles take effect.
+export function activeDimensions(): DimensionConfig {
+  return activeDimOverride
+    ? { ...DEFAULT_GLOBAL_CONFIG.dimensions, ...activeDimOverride }
+    : DEFAULT_GLOBAL_CONFIG.dimensions;
+}
+
 // Scale a base font size by the active factor. Whole results stay whole
 // (so factor === 1 is byte-identical); others round to 1 decimal to keep
 // the SVG tidy.

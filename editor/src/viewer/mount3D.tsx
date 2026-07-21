@@ -4,7 +4,7 @@
 // scene that fills its container. The viewer's own HTML/CSS shell
 // wraps this canvas.
 
-import { Suspense, useEffect, useMemo, useRef } from "react";
+import { Component, Suspense, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, OrbitControls, Grid, Text, Billboard } from "@react-three/drei";
@@ -52,17 +52,22 @@ function ViewerScene() {
   // level inside it and OrbitControls hands off to the first-person rig.
   const interior = useInteriorStore((s) => s.target);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
-  if (!config) return null;
-  // expandRoomWalls throws on invalid openings; falls back to reading
-  // the plot directly from the raw config so the scene camera stays
-  // consistent while House3D handles the error.
+  // Compute the plot bounds for camera framing. This useMemo must run on
+  // EVERY render (before any early return) or the hook order changes when
+  // config goes null→set and React unmounts the whole canvas. Lenient
+  // expansion means a bad opening never throws here; the raw-config read is
+  // a final fallback for a genuinely unexpandable config.
   const plot = useMemo(() => {
+    if (!config) return null;
     try {
-      return readPlotBounds(expandRoomWalls(config));
+      return readPlotBounds(expandRoomWalls(config, undefined, { lenient: true }));
     } catch {
       return readPlotBounds(config as unknown as Record<string, unknown>);
     }
   }, [config]);
+  // Render nothing until the config arrives (after all hooks, so the hook
+  // count is stable across the empty→loaded transition).
+  if (!config || !plot) return null;
   // Rough bounding sphere: floor plan diagonal + a chunky vertical
   // allowance (the roof reaches ~30-35% of the plot's larger side).
   // Distance = R / sin(fov/2) gives the closest we can be while still
@@ -391,9 +396,85 @@ function OrientationGizmo({ plot }: { plot: { width: number; length: number } })
   );
 }
 
+// Self-healing error boundary for the 3D scene. Without it, a render throw
+// anywhere in the scene tree (a bad mesh, a geometry edge case) unmounts the
+// whole React root and NOTHING short of restarting the app brings it back —
+// which is exactly the "only a restart loads it properly" symptom. Here we
+// catch the error, render an empty scene, and subscribe to the config store
+// so the NEXT edit (which usually fixes the offending geometry) clears the
+// error and re-renders. The app self-heals in place.
+class SceneErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  private unsub?: () => void;
+  state = { failed: false };
+
+  static getDerivedStateFromError(): { failed: boolean } {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: unknown): void {
+    console.error("[3d scene] render error — will retry on the next edit:", error);
+  }
+
+  componentDidMount(): void {
+    // Any config change is a chance to recover: clear the error so the
+    // scene re-renders from the (hopefully fixed) config.
+    this.unsub = useConfigStore.subscribe(() => {
+      if (this.state.failed) this.setState({ failed: false });
+    });
+  }
+
+  componentWillUnmount(): void {
+    this.unsub?.();
+  }
+
+  render(): ReactNode {
+    return this.state.failed ? null : this.props.children;
+  }
+}
+
 export function mountViewer3D(container: HTMLElement): void {
   const root = createRoot(container);
-  root.render(<ViewerScene />);
+  root.render(
+    <SceneErrorBoundary>
+      <ViewerScene />
+    </SceneErrorBoundary>,
+  );
+
+  // R3F sizes its canvas from the container's measured size at the moment its
+  // canvas mounts (asynchronously, after this render is scheduled). If the 3D
+  // tab isn't laid out yet (0×0 — hidden behind another tab, or the flex
+  // layout hasn't settled), the canvas sticks at its 300×150 default and the
+  // scene renders into a tiny black sliver until the user happens to interact
+  // (which triggers a re-measure). That was the "black 3D until you zoom"
+  // symptom.
+  //
+  // Fix, two parts:
+  //  1. Poll for the first ~2s after mount and dispatch a window 'resize'
+  //     (which R3F's Canvas listens for) until the canvas actually fills a
+  //     non-zero container — a single kick isn't enough because it can fire
+  //     before R3F has even mounted its canvas.
+  //  2. A ResizeObserver keeps the canvas in sync for later changes (tab
+  //     switches, edit-panel toggle, window resize).
+  const kickResize = (): void => {
+    window.dispatchEvent(new Event("resize"));
+  };
+  // A few staged one-shot kicks catch R3F's async canvas mount + the layout
+  // settling, without spamming resize every frame (which stutters the render
+  // loop). The first rAF fires after the canvas mounts; the later timeouts
+  // cover slower layout/paint on first load.
+  requestAnimationFrame(kickResize);
+  for (const ms of [60, 200, 500, 1000]) window.setTimeout(kickResize, ms);
+  // Ongoing: keep the canvas synced to later size changes (tab switch,
+  // edit-panel toggle, window resize). Debounced to one dispatch per frame.
+  let raf = 0;
+  const kick = (): void => {
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      kickResize();
+    });
+  };
+  new ResizeObserver(kick).observe(container);
 }
 
 // Mount the layer-visibility checkboxes into a separate HTML slot.
