@@ -1,7 +1,7 @@
 import { validate, type HouseConfig } from "../schema/houseConfig";
 import { isTauri } from "@tauri-apps/api/core";
 import { open as tauriOpen, save as tauriSave } from "@tauri-apps/plugin-dialog";
-import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { readTextFile, writeTextFile, writeFile } from "@tauri-apps/plugin-fs";
 
 // Load result — filePath is populated only when running inside Tauri,
 // so `saveConfig` can distinguish "Save" (write in place) from
@@ -200,6 +200,37 @@ export async function saveText(
     return chosen;
   }
   const blob = new Blob([text], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = defaultName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return null;
+}
+
+// Save binary bytes (e.g. a generated PDF). Mirrors saveText: native Save
+// dialog + writeFile inside Tauri, Blob download in a plain browser tab.
+export async function saveBinary(
+  bytes: Uint8Array,
+  defaultName: string,
+  filterName: string,
+  extensions: string[],
+  mimeType = "application/octet-stream",
+): Promise<string | null> {
+  if (isTauri()) {
+    const chosen = await tauriSave({
+      title: `Save ${filterName}`,
+      defaultPath: defaultName,
+      filters: [{ name: filterName, extensions }],
+    });
+    if (!chosen) throw new Error("Cancelled");
+    await writeFile(chosen, bytes);
+    return chosen;
+  }
+  const blob = new Blob([bytes as BlobPart], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

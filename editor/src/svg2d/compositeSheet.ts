@@ -10,7 +10,7 @@
 // object/feature filtering. Kept deliberately simple so the layout can be
 // reviewed before that investment.
 
-import { DEFAULT_GLOBAL_CONFIG, setActiveDimFlags } from "./config";
+import { DEFAULT_GLOBAL_CONFIG, setActiveDimFlags, scaledSpacing } from "./config";
 import { generateFloorPlanSvg } from "./floorPlan";
 import { generateElevationView } from "./elevationView";
 import { expandRoomWalls, type HouseConfig } from "./expand";
@@ -37,7 +37,13 @@ function stripDecl(svg: string): string {
 
 function placeSvg(svg: string, x: number, y: number): string {
   // Nest a sub-<svg> at (x, y) — keeps its own viewBox/coordinate system.
-  return stripDecl(svg).replace(/<svg\b/, `<svg x="${round(x)}" y="${round(y)}"`);
+  // overflow="visible" so any content a sub-drawing paints slightly outside
+  // its declared box (titles, outer dimension labels, roof overhang) isn't
+  // clipped by the nested viewport.
+  return stripDecl(svg).replace(
+    /<svg\b/,
+    `<svg x="${round(x)}" y="${round(y)}" overflow="visible"`,
+  );
 }
 
 // Place a sub-<svg> of size (w, h) rotated ±90°, with its rotated bounding
@@ -51,7 +57,7 @@ function placeRotated(
   boxY: number,
   dir: "cw" | "ccw",
 ): string {
-  const inner = stripDecl(svg).replace(/<svg\b/, `<svg x="0" y="0"`);
+  const inner = stripDecl(svg).replace(/<svg\b/, `<svg x="0" y="0" overflow="visible"`);
   // +90° (cw): (x,y)→(-y,x) → bbox x∈[-h,0], y∈[0,w]; shift by (boxX+h, boxY).
   // −90° (ccw): (x,y)→(y,-x) → bbox x∈[0,h], y∈[-w,0]; shift by (boxX, boxY+w).
   const t =
@@ -114,7 +120,9 @@ function renderSheet(
   // "north"), so it sits on TOP; "back" is the SOUTH face → bottom. The
   // "front" view mirrors world-X by default, which would flip the top
   // elevation relative to the plan — pass flipX so it runs east→right and
-  // aligns. "back" already runs east→right, so no flip.
+  // aligns. "back" already runs east→right, so no flip. Elevations keep their
+  // full dimension set; the gap below is sized to clear each view's
+  // dimension/label overflow so nothing overlaps.
   const north = generateElevationView(hc, "front", scale, true); // top
   const south = generateElevationView(hc, "back", scale); // bottom
   const left = generateElevationView(hc, "left", scale); // West (left)
@@ -126,7 +134,18 @@ function renderSheet(
   const W = svgDims(left);
   const E = svgDims(right);
 
-  const gap = 60;
+  // Gap + outer padding scale with the drawing (via the elevation margin,
+  // which tracks textScale) so spacing is proportional across unit systems.
+  // Each elevation paints its outer dimension + roof up to `horizontalMargin`
+  // (= scaledSpacing(150)) beyond its declared box; with overflow visible that
+  // would spill into the neighbour. Two facing views can each overflow toward
+  // the gap, so size it to ~2.5× that margin to clear both plus breathing
+  // room — keeping every view's full dimensions legible and non-overlapping.
+  const elevMargin = scaledSpacing(150);
+  const gap = Math.max(60, Math.round(2.5 * elevMargin));
+  // Padding so a view's outer dimensions / roof tip / title at the sheet edge
+  // isn't clipped by the root viewBox.
+  const pad = Math.max(30, Math.round(1.3 * elevMargin));
 
   // W/E are rotated 90°, so their footprint bbox swaps (w↔h).
   const Wbox = { w: W.h, h: W.w };
@@ -140,24 +159,24 @@ function renderSheet(
   const bottomRowH = S.h;
   const midRowH = Math.max(P.h, Wbox.h, Ebox.h);
 
-  const centreColX = leftColW + gap;
-  const midRowY = topRowH + gap;
+  const centreColX = pad + leftColW + gap;
+  const midRowY = pad + topRowH + gap;
 
   // Each drawing centred within its cell (precise projection-line alignment
   // is a later polish; this reads as a coordinated cross for now).
   const nX = centreColX + (centreColW - N.w) / 2;
-  const nY = 0;
+  const nY = pad;
   const sX = centreColX + (centreColW - S.w) / 2;
   const sY = midRowY + midRowH + gap;
   const pX = centreColX + (centreColW - P.w) / 2;
   const pY = midRowY + (midRowH - P.h) / 2;
-  const wBoxX = 0;
+  const wBoxX = pad;
   const wBoxY = midRowY + (midRowH - Wbox.h) / 2;
   const eBoxX = centreColX + centreColW + gap;
   const eBoxY = midRowY + (midRowH - Ebox.h) / 2;
 
-  const totalW = leftColW + gap + centreColW + gap + rightColW;
-  const totalH = topRowH + gap + midRowH + gap + bottomRowH;
+  const totalW = pad + leftColW + gap + centreColW + gap + rightColW + pad;
+  const totalH = pad + topRowH + gap + midRowH + gap + bottomRowH + pad;
 
   // West on the left: rotate CW so its ground line faces the plan (right)
   // and north is up. East on the right: rotate CCW (mirror). We'll confirm

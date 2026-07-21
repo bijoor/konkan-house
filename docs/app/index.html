@@ -537,15 +537,26 @@
             margin: 0 auto;
             padding-bottom: 2rem;
         }
-        /* --- Layout tab: filter panel + rendered sheet --------------- */
+        /* --- Layout tab: fixed shell + inline pan/zoom viewport ------- */
+        .layout-shell {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background: #f5f5f5;
+        }
         .layout-header {
+            flex: 0 0 auto;
             display: flex;
             align-items: center;
             gap: 1rem;
-            flex-wrap: wrap;
-            margin-bottom: 1rem;
+            padding: 0.6rem 1rem;
+            background: #fff;
+            border-bottom: 1px solid #e2e2e2;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+            z-index: 2;
         }
-        .layout-header .section-header { margin: 0; }
+        .layout-header .section-header { margin: 0; font-size: 1.25rem; }
+        .layout-spacer { flex: 1 1 auto; }
         .layout-floor-picker {
             display: flex;
             align-items: center;
@@ -569,29 +580,94 @@
             font-size: 0.9rem;
         }
         .layout-btn:hover { background: #f2f2f2; }
-        .layout-body {
+        .layout-btn[aria-pressed="true"] { background: #eef3fb; border-color: #9db8de; color: #2c5aa0; }
+        /* Zoom / export toolbar */
+        .layout-zoombar {
             display: flex;
-            gap: 1.5rem;
-            align-items: flex-start;
+            align-items: center;
+            gap: 2px;
+            background: #f2f2f2;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 2px;
         }
-        .layout-body .svg-grid {
-            display: block;
-            flex: 1;
-            min-width: 0;
-            margin: 0;
+        .layout-zbtn {
+            min-width: 30px;
+            height: 30px;
+            padding: 0 6px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+            color: #333;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .layout-zbtn:hover { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+        .layout-zoom-pct {
+            min-width: 48px;
+            text-align: center;
+            font-size: 0.82rem;
+            color: #444;
+            cursor: pointer;
+            user-select: none;
+        }
+        .layout-zsep { width: 1px; height: 20px; background: #d5d5d5; margin: 0 4px; }
+        .layout-body {
+            flex: 1 1 auto;
+            display: flex;
+            min-height: 0;      /* let children own the scroll, not the body */
+            position: relative;
         }
         .layout-filters {
-            flex: 0 0 220px;
+            flex: 0 0 230px;
             background: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border-right: 1px solid #e2e2e2;
             padding: 1rem;
-            max-height: calc(100vh - 220px);
             overflow-y: auto;
-            position: sticky;
-            top: 1rem;
+            overflow-x: hidden;
         }
         .layout-filters.hidden { display: none; }
+        /* Pan/zoom viewport — the sheet is dragged/zoomed inside this box. */
+        .layout-viewport {
+            flex: 1 1 auto;
+            position: relative;
+            overflow: hidden;
+            min-width: 0;
+            background:
+                linear-gradient(45deg, #ececec 25%, transparent 25%, transparent 75%, #ececec 75%) 0 0 / 24px 24px,
+                linear-gradient(45deg, #ececec 25%, transparent 25%, transparent 75%, #ececec 75%) 12px 12px / 24px 24px,
+                #f5f5f5;
+            cursor: grab;
+            touch-action: none;
+        }
+        .layout-viewport.grabbing { cursor: grabbing; }
+        .layout-stage {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform-origin: 0 0;
+            will-change: transform;
+        }
+        .layout-stage svg {
+            display: block;
+            background: #fff;
+            box-shadow: 0 3px 18px rgba(0,0,0,0.18);
+        }
+        .layout-empty {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #666;
+            padding: 2rem;
+            pointer-events: none;
+        }
         .layout-filter-group { margin-bottom: 1rem; }
         .layout-filter-group:last-child { margin-bottom: 0; }
         .layout-filter-head {
@@ -637,13 +713,18 @@
             margin: 0.4rem 0 0.1rem;
         }
         @media (max-width: 820px) {
-            .layout-body { flex-direction: column; }
+            /* Filters slide over the viewport instead of squeezing it. */
             .layout-filters {
-                flex-basis: auto;
-                width: 100%;
-                position: static;
-                max-height: 40vh;
+                position: absolute;
+                z-index: 3;
+                top: 0;
+                bottom: 0;
+                left: 0;
+                width: 78%;
+                max-width: 300px;
+                box-shadow: 4px 0 20px rgba(0,0,0,0.2);
             }
+            .layout-header { flex-wrap: wrap; }
         }
         .svg-item {
             background: white;
@@ -1297,7 +1378,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-Cw9wkD0v.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-iSou1-xg.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/viewer-BFNhQa1b.css">
 </head>
 <body>
@@ -1477,17 +1558,29 @@
         <!-- End Roof Details View -->
 
         <!-- Layout View — composite general-arrangement sheet (plan centre
-             + four elevations) per floor. One card per floor; click to
-             pan/zoom in the lightbox. -->
+             + four elevations) per floor. Fixed header + toggleable filter
+             panel; the single sheet is pan/zoom/scrollable IN PLACE (no
+             click-to-open lightbox). -->
         <div id="view-layout" class="view-container">
-            <div class="svg-views-container">
+            <div class="layout-shell">
                 <div class="layout-header">
                     <h2 class="section-header">Layout</h2>
                     <div class="layout-floor-picker">
                         <label for="layout-floor-select">Floor</label>
                         <select id="layout-floor-select" onchange="onLayoutFloorChange()"></select>
                     </div>
-                    <button id="layout-filter-toggle" class="layout-btn" onclick="toggleLayoutFilters()" title="Show/hide filters">⚙ Filters</button>
+                    <button id="layout-filter-toggle" class="layout-btn" onclick="toggleLayoutFilters()" title="Show/hide filters" aria-pressed="true">⚙ Filters</button>
+                    <div class="layout-spacer"></div>
+                    <!-- Zoom / export toolbar (fixed in the header). -->
+                    <div class="layout-zoombar" role="group" aria-label="Zoom and export">
+                        <button class="layout-zbtn" onclick="layoutZoomStep(1/1.25)" title="Zoom out (−)" aria-label="Zoom out">−</button>
+                        <span id="layout-zoom-pct" class="layout-zoom-pct" onclick="layoutFit()" title="Fit to view">100%</span>
+                        <button class="layout-zbtn" onclick="layoutZoomStep(1.25)" title="Zoom in (+)" aria-label="Zoom in">+</button>
+                        <button class="layout-zbtn" onclick="layoutFit()" title="Fit to view (0)" aria-label="Fit to view">⤢</button>
+                        <span class="layout-zsep"></span>
+                        <button class="layout-zbtn" onclick="layoutExportSvg()" title="Export as SVG" aria-label="Export SVG">💾</button>
+                        <button class="layout-zbtn" onclick="layoutExportPdf()" title="Export as PDF" aria-label="Export PDF">📄</button>
+                    </div>
                 </div>
                 <div class="layout-body">
                     <!-- Filter panel: three independent AND object filters
@@ -1532,10 +1625,19 @@
                                 <label><input type="checkbox" data-dim="opening" checked onchange="onLayoutFilterChange()"> Openings</label>
                             </div>
                         </div>
+                        <div class="layout-filter-group">
+                            <div class="layout-filter-head"><span>Room labels</span></div>
+                            <div class="layout-filter-list" id="layout-labels-list">
+                                <label><input type="checkbox" data-label="names" checked onchange="onLayoutFilterChange()"> Room names</label>
+                                <label><input type="checkbox" data-label="abbrev" onchange="onLayoutFilterChange()"> Abbreviate + legend</label>
+                            </div>
+                        </div>
                     </aside>
-                    <!-- Rendered composite sheet for the selected floor. -->
-                    <div class="svg-grid" id="layout-grid">
-                        <!-- Composite sheet rendered here on demand -->
+                    <!-- Pan/zoom viewport: the composite sheet renders into
+                         #layout-stage and is dragged/zoomed in place. -->
+                    <div class="layout-viewport" id="layout-viewport">
+                        <div class="layout-stage" id="layout-stage"></div>
+                        <div class="layout-empty" id="layout-empty" style="display:none;"></div>
                     </div>
                 </div>
             </div>
@@ -1901,6 +2003,7 @@
             layersOff: new Set(),
             objectsOff: new Set(),
             dims: { outer: true, inner: true, room: true, opening: true },
+            labels: { names: true, abbrev: false },
         };
         let layoutMeta = null;
 
@@ -1925,13 +2028,15 @@
         function buildLayoutPanel() {
             const meta = window.wadiLayoutMeta ? window.wadiLayoutMeta() : null;
             layoutMeta = meta;
-            const grid = document.getElementById('layout-grid');
+            const empty = document.getElementById('layout-empty');
+            const stage = document.getElementById('layout-stage');
             if (!meta || !meta.floors.length) {
-                grid.innerHTML = `
-                    <div style="text-align: center; padding: 3rem; color: #666;">
-                        <h3>No layout available</h3>
-                        <p>Load a house to see its composite plan + elevations sheet.</p>
-                    </div>`;
+                if (stage) { stage.innerHTML = ''; stage.style.transform = 'none'; }
+                layoutSvgEl = null;
+                if (empty) {
+                    empty.innerHTML = '<div><h3>No layout available</h3><p>Load a house to see its composite plan + elevations sheet.</p></div>';
+                    empty.style.display = 'flex';
+                }
                 return;
             }
             const f = window.layoutFilter;
@@ -1967,6 +2072,9 @@
             document.querySelectorAll('#layout-dims-list input[data-dim]').forEach((cb) => {
                 cb.checked = f.dims[cb.dataset.dim] !== false;
             });
+            document.querySelectorAll('#layout-labels-list input[data-label]').forEach((cb) => {
+                cb.checked = f.labels[cb.dataset.label] === true;
+            });
         }
 
         // Pull the current checkbox states back into window.layoutFilter.
@@ -1980,6 +2088,8 @@
             document.querySelectorAll('#layout-objects-list input[data-obj]').forEach((cb) => { if (!cb.checked) f.objectsOff.add(cb.dataset.obj); });
             f.dims = {};
             document.querySelectorAll('#layout-dims-list input[data-dim]').forEach((cb) => { f.dims[cb.dataset.dim] = cb.checked; });
+            f.labels = {};
+            document.querySelectorAll('#layout-labels-list input[data-label]').forEach((cb) => { f.labels[cb.dataset.label] = cb.checked; });
         }
 
         function onLayoutFilterChange() {
@@ -2004,13 +2114,166 @@
         }
 
         function toggleLayoutFilters() {
-            document.getElementById('layout-filters').classList.toggle('hidden');
+            const el = document.getElementById('layout-filters');
+            const hidden = el.classList.toggle('hidden');
+            const btn = document.getElementById('layout-filter-toggle');
+            if (btn) btn.setAttribute('aria-pressed', hidden ? 'false' : 'true');
         }
 
-        // Build a DrawFilter from panel state and render the composite.
+        // -------- Inline Layout viewer: pan / zoom / export -----------
+        // The Layout tab shows ONE composite sheet, so it's dragged and
+        // zoomed in place (no click-to-open lightbox). State is scoped to
+        // this view; the shared lightbox (other tabs) is untouched.
+        const layoutZoom = { scale: 1, tx: 0, ty: 0, fit: 1 };
+        let layoutSvgEl = null;         // current <svg> in the stage
+        let layoutRenderedFloor = null; // floor last rendered (fit vs preserve)
+        let layoutFloorName = '';
+        let layoutViewportWired = false;
+
+        function layoutApplyTransform() {
+            const stage = document.getElementById('layout-stage');
+            if (!stage) return;
+            stage.style.transform =
+                'translate(' + layoutZoom.tx + 'px,' + layoutZoom.ty + 'px) scale(' + layoutZoom.scale + ')';
+            const pct = document.getElementById('layout-zoom-pct');
+            if (pct) pct.textContent = Math.round(layoutZoom.scale * 100) + '%';
+        }
+
+        function layoutSvgSize() {
+            if (!layoutSvgEl) return { w: 0, h: 0 };
+            const vb = layoutSvgEl.viewBox && layoutSvgEl.viewBox.baseVal;
+            if (vb && vb.width > 0) return { w: vb.width, h: vb.height };
+            const r = layoutSvgEl.getBoundingClientRect();
+            return { w: r.width || 800, h: r.height || 600 };
+        }
+
+        function layoutMinZoom() { return Math.min(0.02, layoutZoom.fit * 0.5); }
+
+        // Fit the whole sheet in the viewport and centre it.
+        function layoutFit() {
+            const vp = document.getElementById('layout-viewport');
+            if (!vp || !layoutSvgEl) return;
+            const { w, h } = layoutSvgSize();
+            if (w <= 0 || h <= 0) return;
+            const pad = 32;
+            const vw = vp.clientWidth, vh = vp.clientHeight;
+            const scale = Math.max(
+                layoutMinZoom(),
+                Math.min((vw - pad * 2) / w, (vh - pad * 2) / h)
+            );
+            layoutZoom.fit = scale;
+            layoutZoom.scale = scale;
+            layoutZoom.tx = (vw - w * scale) / 2;
+            layoutZoom.ty = (vh - h * scale) / 2;
+            layoutApplyTransform();
+        }
+
+        // Zoom by a factor toward a viewport-space point (default centre).
+        function layoutZoomTo(factor, cx, cy) {
+            const vp = document.getElementById('layout-viewport');
+            if (!vp || !layoutSvgEl) return;
+            if (cx == null) { cx = vp.clientWidth / 2; cy = vp.clientHeight / 2; }
+            const target = Math.min(8, Math.max(layoutMinZoom(), layoutZoom.scale * factor));
+            const f = target / layoutZoom.scale;
+            layoutZoom.tx = cx - (cx - layoutZoom.tx) * f;
+            layoutZoom.ty = cy - (cy - layoutZoom.ty) * f;
+            layoutZoom.scale = target;
+            layoutApplyTransform();
+        }
+        function layoutZoomStep(factor) { layoutZoomTo(factor); }
+
+        function layoutExportSvg() {
+            if (!layoutSvgEl || typeof window.exportSvgElement !== 'function') {
+                alert('Nothing to export yet.');
+                return;
+            }
+            window.exportSvgElement(layoutSvgEl, (layoutFloorName || 'layout').replace(/\s+/g, '_') + '-layout.svg');
+        }
+        function layoutExportPdf() {
+            if (!layoutSvgEl || typeof window.exportSvgElementAsPdf !== 'function') {
+                alert('Nothing to export yet.');
+                return;
+            }
+            const pct = document.getElementById('layout-zoom-pct');
+            const prev = pct ? pct.textContent : '';
+            if (pct) pct.textContent = 'PDF…';
+            Promise.resolve(
+                window.exportSvgElementAsPdf(layoutSvgEl, (layoutFloorName || 'layout').replace(/\s+/g, '_') + '-layout.pdf')
+            ).finally(() => { if (pct) pct.textContent = prev; });
+        }
+
+        // Wire pan (drag) + zoom (wheel) on the viewport, once.
+        function wireLayoutViewport() {
+            if (layoutViewportWired) return;
+            const vp = document.getElementById('layout-viewport');
+            if (!vp) return;
+            layoutViewportWired = true;
+
+            vp.addEventListener('wheel', (e) => {
+                if (!layoutSvgEl) return;
+                e.preventDefault();
+                const rect = vp.getBoundingClientRect();
+                const factor = e.deltaY > 0 ? 1 / 1.1 : 1.1;
+                layoutZoomTo(factor, e.clientX - rect.left, e.clientY - rect.top);
+            }, { passive: false });
+
+            let dragging = false, lastX = 0, lastY = 0, pid = null;
+            vp.addEventListener('pointerdown', (e) => {
+                if (!layoutSvgEl || e.button !== 0) return;
+                dragging = true; pid = e.pointerId; lastX = e.clientX; lastY = e.clientY;
+                vp.classList.add('grabbing');
+                vp.setPointerCapture(e.pointerId);
+            });
+            vp.addEventListener('pointermove', (e) => {
+                if (!dragging) return;
+                layoutZoom.tx += e.clientX - lastX;
+                layoutZoom.ty += e.clientY - lastY;
+                lastX = e.clientX; lastY = e.clientY;
+                layoutApplyTransform();
+            });
+            const endDrag = (e) => {
+                if (!dragging) return;
+                dragging = false;
+                vp.classList.remove('grabbing');
+                if (pid != null) { try { vp.releasePointerCapture(pid); } catch (_) {} pid = null; }
+            };
+            vp.addEventListener('pointerup', endDrag);
+            vp.addEventListener('pointercancel', endDrag);
+            vp.addEventListener('dblclick', () => layoutFit());
+
+            // Keyboard zoom when the Layout tab is active.
+            document.addEventListener('keydown', (e) => {
+                const active = document.querySelector('.view-container.active');
+                if (!active || active.id !== 'view-layout') return;
+                if (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+                if (e.key === '+' || e.key === '=') { e.preventDefault(); layoutZoomStep(1.25); }
+                else if (e.key === '-' || e.key === '_') { e.preventDefault(); layoutZoomStep(1 / 1.25); }
+                else if (e.key === '0') { e.preventDefault(); layoutFit(); }
+            });
+
+            // Keep centred-ish on viewport resize (window resize / edit panel
+            // toggle). Re-fit only if the whole sheet no longer fits; otherwise
+            // leave the user's zoom/pan alone.
+            let ro;
+            try {
+                ro = new ResizeObserver(() => {
+                    if (!layoutSvgEl) return;
+                    const { w, h } = layoutSvgSize();
+                    if (w <= 0) return;
+                    if (Math.abs(layoutZoom.scale - layoutZoom.fit) < 1e-6) layoutFit();
+                });
+                ro.observe(vp);
+            } catch (_) { /* ResizeObserver unsupported — ignore */ }
+        }
+
+        // Build a DrawFilter from panel state and render the composite into
+        // the viewport. Re-fits on floor change; preserves zoom/pan on a
+        // filter toggle.
         function renderLayoutSheet() {
-            const grid = document.getElementById('layout-grid');
-            if (!window.wadiRenderLayout || !layoutMeta) return; // panel showed its empty state
+            const stage = document.getElementById('layout-stage');
+            const empty = document.getElementById('layout-empty');
+            if (!stage || !window.wadiRenderLayout || !layoutMeta) return;
+            wireLayoutViewport();
             const f = window.layoutFilter;
             const allTypeIds = layoutMeta.types.map((t) => t.id);
             const allLayerIds = layoutMeta.layers.map((l) => l.id);
@@ -2019,27 +2282,48 @@
                 layers: f.layersOff.size ? allLayerIds.filter((id) => !f.layersOff.has(id)) : null,
                 hiddenObjects: Array.from(f.objectsOff),
                 dims: f.dims,
+                labels: { roomNames: f.labels.names, roomAbbrev: f.labels.abbrev },
             };
+            const floor = layoutMeta.floors.find((fl) => fl.num === f.floorNum);
+            layoutFloorName = floor ? floor.name : 'Floor ' + f.floorNum;
+
+            const showEmpty = (html) => {
+                stage.innerHTML = '';
+                layoutSvgEl = null;
+                stage.style.transform = 'none';
+                empty.innerHTML = html;
+                empty.style.display = 'flex';
+            };
+
             let svgContent = '';
             try {
                 svgContent = window.wadiRenderLayout(f.floorNum, filter);
             } catch (e) {
-                grid.innerHTML = `<div style="text-align:center;padding:2rem;color:#b00;">Render failed: ${layoutEscape(e && e.message ? e.message : String(e))}</div>`;
+                showEmpty('<div style="color:#b00;">Render failed: ' + layoutEscape(e && e.message ? e.message : String(e)) + '</div>');
                 return;
             }
-            const floor = layoutMeta.floors.find((fl) => fl.num === f.floorNum);
-            const floorName = floor ? floor.name : 'Floor ' + f.floorNum;
             if (!svgContent) {
-                grid.innerHTML = `<div style="text-align:center;padding:2rem;color:#666;">Nothing to draw for this selection.</div>`;
+                showEmpty('<div><h3>Nothing to draw</h3><p>No objects match the current filter selection.</p></div>');
                 return;
             }
-            const item = document.createElement('div');
-            item.className = 'svg-item';
-            item.innerHTML = `<h3>${layoutEscape(floorName)} — Layout</h3>${svgContent}`;
-            grid.innerHTML = '';
-            grid.appendChild(item);
-            const svg = item.querySelector('svg');
-            if (svg) svg.addEventListener('click', () => openSvgLightboxContent(svgContent, `${floorName} — Layout`));
+            empty.style.display = 'none';
+            stage.innerHTML = svgContent;
+            layoutSvgEl = stage.querySelector('svg');
+            if (layoutSvgEl) {
+                // Lay the SVG out at its intrinsic (viewBox) pixel size so the
+                // stage transform controls the zoom precisely.
+                const vb = layoutSvgEl.viewBox && layoutSvgEl.viewBox.baseVal;
+                if (vb && vb.width > 0) {
+                    layoutSvgEl.setAttribute('width', vb.width);
+                    layoutSvgEl.setAttribute('height', vb.height);
+                    layoutSvgEl.style.maxWidth = 'none';
+                    layoutSvgEl.style.width = vb.width + 'px';
+                    layoutSvgEl.style.height = vb.height + 'px';
+                }
+            }
+            const refit = layoutRenderedFloor !== f.floorNum || !Number.isFinite(layoutZoom.scale);
+            layoutRenderedFloor = f.floorNum;
+            if (refit) layoutFit(); else layoutApplyTransform();
         }
 
         // Zoom and Pan state for combined views

@@ -58,6 +58,7 @@ import {
   saveConfig,
   saveAsWadi,
   saveText,
+  saveBinary,
 } from "../io/fileIO";
 import {
   encodeConfigToHash,
@@ -645,6 +646,11 @@ declare global {
     // index.html can trigger a save without needing to import
     // fileIO. Filename is a hint for the save dialog.
     exportCurrentSvg?: (defaultName: string) => Promise<void>;
+    // Generic exporters used by the inline Layout viewer (it passes its own
+    // <svg> element). PDF is vector via svg2pdf; both save via the native
+    // dialog in the desktop app.
+    exportSvgElement?: (svg: SVGSVGElement, defaultName: string) => Promise<void>;
+    exportSvgElementAsPdf?: (svg: SVGSVGElement, defaultName: string) => Promise<void>;
     // On-demand Layout composite render, driven by the filter panel.
     // Returns the composite SVG string for `floorNum` with `filter`
     // applied (object/type/layer selection + dimension toggles).
@@ -691,6 +697,11 @@ function wireLayoutApi(): void {
   window.wadiRenderLayout = (floorNum: number, filter?: DrawFilter | null): string => {
     const cfg = useConfigStore.getState().config as HouseConfig | null;
     if (!cfg) return "";
+    // Apply this house's display units + text scale before rendering, so the
+    // composite is correct on its own (not reliant on a prior rebuildSvgMap
+    // having set the module-level "active" values).
+    setDimensionUnits((cfg as { units?: Parameters<typeof setDimensionUnits>[0] }).units);
+    setTextScale(computeTextScale(houseSpanUnits(cfg)));
     return generateCompositeSheet(cfg as never, floorNum, { filter });
   };
 
@@ -757,16 +768,91 @@ function wireExports(): void {
       alert("No SVG open to export.");
       return;
     }
-    // Prepend the XML declaration so downstream tools (Illustrator,
-    // Inkscape) recognise the file as standalone SVG.
-    const text = `<?xml version="1.0" encoding="UTF-8"?>\n${svg.outerHTML}`;
+    await exportSvgElementAsSvg(svg, defaultName);
+  };
+
+  // Generic SVG export (used by the inline Layout viewer, which passes its
+  // own <svg> element rather than the lightbox's).
+  window.exportSvgElement = async (svg: SVGSVGElement, defaultName: string) => {
+    await exportSvgElementAsSvg(svg, defaultName);
+  };
+
+  // Vector PDF export. window.print() is a no-op in the desktop WKWebview,
+  // so we render the SVG straight into a jsPDF page with svg2pdf (true
+  // vectors — crisp lines, selectable text) and save via the native dialog.
+  // Both libs are dynamic-imported so they stay out of the initial bundle.
+  window.exportSvgElementAsPdf = async (svg: SVGSVGElement, defaultName: string) => {
     try {
-      await saveText(text, defaultName, "SVG image", ["svg"], "image/svg+xml");
+      const { width, height } = svgIntrinsicSize(svg);
+      const [{ jsPDF }, { svg2pdf }] = await Promise.all([
+        import("jspdf"),
+        import("svg2pdf.js"),
+      ]);
+      // Fit the sheet onto a standard printable page rather than a page the
+      // literal size of the drawing (which, in project units, would be metres
+      // wide — and jsPDF hard-caps pages at 14400pt, clipping big sheets).
+      // A3 oriented to the drawing gives a crisp, printable vector sheet.
+      const pdf = new jsPDF({
+        orientation: width >= height ? "landscape" : "portrait",
+        unit: "pt",
+        format: "a3",
+        compress: true,
+      });
+      const pw = pdf.internal.pageSize.getWidth();
+      const ph = pdf.internal.pageSize.getHeight();
+      const margin = 24;
+      const scale = Math.min((pw - margin * 2) / width, (ph - margin * 2) / height);
+      const dw = width * scale;
+      const dh = height * scale;
+      // svg2pdf reads the live element's computed styles, so pass the on-DOM
+      // node (a detached clone would lose CSS). Centre it on the page.
+      await svg2pdf(svg, pdf, {
+        x: (pw - dw) / 2,
+        y: (ph - dh) / 2,
+        width: dw,
+        height: dh,
+      });
+      const bytes = pdf.output("arraybuffer");
+      await saveBinary(
+        new Uint8Array(bytes),
+        defaultName,
+        "PDF document",
+        ["pdf"],
+        "application/pdf",
+      );
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (msg !== "Cancelled") alert(`Export failed: ${msg}`);
+      if (msg !== "Cancelled") alert(`PDF export failed: ${msg}`);
     }
   };
+}
+
+// Intrinsic drawing size of an <svg> in user units — prefers the viewBox
+// (our generated sheets always set one), falls back to width/height attrs,
+// then the rendered box. Used to size the PDF page 1:1 with the drawing.
+function svgIntrinsicSize(svg: SVGSVGElement): { width: number; height: number } {
+  const vb = svg.viewBox?.baseVal;
+  if (vb && vb.width > 0 && vb.height > 0) return { width: vb.width, height: vb.height };
+  const w = svg.width?.baseVal?.value;
+  const h = svg.height?.baseVal?.value;
+  if (w && h) return { width: w, height: h };
+  const r = svg.getBoundingClientRect();
+  return { width: r.width || 800, height: r.height || 600 };
+}
+
+async function exportSvgElementAsSvg(
+  svg: SVGSVGElement,
+  defaultName: string,
+): Promise<void> {
+  // Prepend the XML declaration so downstream tools (Illustrator, Inkscape)
+  // recognise the file as standalone SVG.
+  const text = `<?xml version="1.0" encoding="UTF-8"?>\n${svg.outerHTML}`;
+  try {
+    await saveText(text, defaultName, "SVG image", ["svg"], "image/svg+xml");
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg !== "Cancelled") alert(`Export failed: ${msg}`);
+  }
 }
 
 function reloadActiveTab(): void {

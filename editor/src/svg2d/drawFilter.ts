@@ -19,6 +19,9 @@ export interface DrawFilter {
   hiddenObjects?: string[];
   // Dimension annotation toggles (map to DimensionConfig show-flags).
   dims?: Partial<{ outer: boolean; inner: boolean; room: boolean; opening: boolean }>;
+  // Room-name label toggles: whether to show room names at all, and whether
+  // to draw short mnemonic keys + a legend instead of full names.
+  labels?: Partial<{ roomNames: boolean; roomAbbrev: boolean }>;
 }
 
 const OPENING_TYPES = new Set(["door", "window"]);
@@ -89,13 +92,21 @@ export function dimShowFlags(
   show_inner_dimensions: boolean;
   show_room_dimensions: boolean;
   show_opening_dimensions: boolean;
+  show_room_names: boolean;
+  abbreviate_room_names: boolean;
 }> {
-  const d = filter?.dims;
-  if (!d) return {};
   const out: Record<string, boolean> = {};
-  if (d.outer !== undefined) out.show_outer_dimensions = d.outer;
-  if (d.inner !== undefined) out.show_inner_dimensions = d.inner;
-  if (d.room !== undefined) out.show_room_dimensions = d.room;
-  if (d.opening !== undefined) out.show_opening_dimensions = d.opening;
+  const d = filter?.dims;
+  if (d) {
+    if (d.outer !== undefined) out.show_outer_dimensions = d.outer;
+    if (d.inner !== undefined) out.show_inner_dimensions = d.inner;
+    if (d.room !== undefined) out.show_room_dimensions = d.room;
+    if (d.opening !== undefined) out.show_opening_dimensions = d.opening;
+  }
+  const l = filter?.labels;
+  if (l) {
+    if (l.roomNames !== undefined) out.show_room_names = l.roomNames;
+    if (l.roomAbbrev !== undefined) out.abbreviate_room_names = l.roomAbbrev;
+  }
   return out;
 }

@@ -12,6 +12,12 @@ export interface DimensionConfig {
   show_inner_dimensions: boolean;
   show_room_dimensions: boolean;
   show_opening_dimensions: boolean;
+  // Room NAME label, independent of the room's W×L dimension line.
+  show_room_names: boolean;
+  // Draw a short mnemonic key (e.g. GAR, LKD) in each room instead of the
+  // full name, plus a legend below the plan mapping keys → names. Declutters
+  // dense floor plans. Only meaningful when show_room_names is true.
+  abbreviate_room_names: boolean;
   dimension_offset: number;
   dimension_offset_increment: number;
   inner_dimension_offset: number;
@@ -99,6 +105,8 @@ export const DEFAULT_GLOBAL_CONFIG: GlobalConfig = {
     show_inner_dimensions: true,
     show_room_dimensions: true,
     show_opening_dimensions: true,
+    show_room_names: true,
+    abbreviate_room_names: false,
     dimension_offset: 30,
     dimension_offset_increment: 20,
     inner_dimension_offset: 15,

@@ -93,6 +93,17 @@ export function generateFloorPlanSvg(
   }
   if (minX === INF || maxX === -INF) return "";
 
+  // Room-name abbreviation + legend (declutters dense plans). Abbreviations
+  // are keyed in first-seen order; the legend below the drawing maps them back
+  // to full names.
+  const roomNames: string[] = [];
+  for (const obj of objects) {
+    if (obj.type === "room") roomNames.push((obj.name as string | undefined) ?? "Room");
+  }
+  const abbrevOn =
+    dim.show_room_names && dim.abbreviate_room_names && roomNames.length > 0;
+  const roomAbbrevs = abbrevOn ? makeRoomAbbrevs(roomNames) : null;
+
   // -----------------------------------------------------------------
   // Margins / viewBox
   // -----------------------------------------------------------------
@@ -108,7 +119,28 @@ export function generateFloorPlanSvg(
   const topMargin = 50 + dimMargin;
 
   const width = (maxX - minX) * scale + 2 * margin;
-  const height = (maxY - minY) * scale + margin + topMargin;
+
+  // Legend layout — reserve a strip at the bottom for the "key = name" list.
+  let legendHeight = 0;
+  let legendCols = 1;
+  let legendFont = 0;
+  let legendRowH = 0;
+  let legendColW = 0;
+  if (roomAbbrevs && roomAbbrevs.size > 0) {
+    legendFont = scaledTextSize(dim.room_text_size);
+    legendRowH = legendFont * 1.7;
+    let maxChars = 0;
+    for (const [name, abbr] of roomAbbrevs) {
+      maxChars = Math.max(maxChars, abbr.length + 3 + name.length);
+    }
+    legendColW = maxChars * legendFont * 0.6 + scaledSpacing(24);
+    const avail = width - 2 * baseMargin;
+    legendCols = Math.max(1, Math.min(roomAbbrevs.size, Math.floor(avail / legendColW)));
+    const rows = Math.ceil(roomAbbrevs.size / legendCols);
+    legendHeight = legendFont * 2.4 + rows * legendRowH + baseMargin;
+  }
+
+  const height = (maxY - minY) * scale + margin + topMargin + legendHeight;
 
   // Python's `f'{margin - min_x * scale}'` — with margin (float) and
   // min_x * scale (float), result is float. Reproduce via fFloat.
@@ -506,29 +538,38 @@ export function generateFloorPlanSvg(
   // -----------------------------------------------------------------
   // Room labels
   // -----------------------------------------------------------------
-  if (dim.show_room_dimensions) {
+  // The room NAME (optionally abbreviated) and the room's W×L dimension line
+  // are now independent: `show_room_names` gates the name, `show_room_dimensions`
+  // the dimension. When both show, name sits above centre and dim below (the
+  // historical layout); when only one shows, it's centred.
+  const showNames = dim.show_room_names;
+  const showRoomDims = dim.show_room_dimensions;
+  if (showNames || showRoomDims) {
     const roomTextSize = scaledTextSize(dim.room_text_size);
     const roomSubTextSize = scaledTextSize(dim.room_text_size - 2);
     // Vertical gap between the room name and its sub-dimension line. Scales
     // with the fonts so the two lines don't collide on large houses (was a
     // hardcoded ±8; scaledTextSize(8) === 8 at factor 1, so default output
-    // is unchanged).
+    // is unchanged when both lines show).
     const roomLabelDy = scaledTextSize(8);
     for (const obj of objects) {
-      if (obj.type === "room") {
-        const centerX = (obj.x as number) + (obj.width as number) / 2;
-        const centerY = (obj.y as number) + (obj.length as number) / 2;
-        const t = (obj.wall_thickness as number | undefined) ?? wallThickness;
-        const carpetWidth = (obj.width as number) - 2 * t;
-        const carpetLength = (obj.length as number) - 2 * t;
-        const widthDim = formatDimension(carpetWidth);
-        const lengthDim = formatDimension(carpetLength);
-        const roomName = (obj.name as string | undefined) ?? "Room";
+      if (obj.type !== "room") continue;
+      const centerX = (obj.x as number) + (obj.width as number) / 2;
+      const centerY = (obj.y as number) + (obj.length as number) / 2;
+      const t = (obj.wall_thickness as number | undefined) ?? wallThickness;
+      const carpetWidth = (obj.width as number) - 2 * t;
+      const carpetLength = (obj.length as number) - 2 * t;
+      const roomName = (obj.name as string | undefined) ?? "Room";
+      const nameLabel = roomAbbrevs ? (roomAbbrevs.get(roomName) ?? roomName) : roomName;
+      const dimText = `${formatDimension(carpetWidth)} × ${formatDimension(carpetLength)}`;
 
-        // centerX and centerY are both Python-float (from `/ 2`), and
-        // centerY ± 8 inherits float-ness.
-        svg += `<text x="${fFloat(centerX)}" y="${fFloat(centerY - roomLabelDy)}" text-anchor="middle" font-size="${roomTextSize}" font-weight="bold" fill="#333">${roomName}</text>\n`;
-        svg += `<text x="${fFloat(centerX)}" y="${fFloat(centerY + roomLabelDy)}" text-anchor="middle" font-size="${roomSubTextSize}" fill="#666">${widthDim} × ${lengthDim}</text>\n`;
+      if (showNames && showRoomDims) {
+        svg += `<text x="${fFloat(centerX)}" y="${fFloat(centerY - roomLabelDy)}" text-anchor="middle" font-size="${roomTextSize}" font-weight="bold" fill="#333">${nameLabel}</text>\n`;
+        svg += `<text x="${fFloat(centerX)}" y="${fFloat(centerY + roomLabelDy)}" text-anchor="middle" font-size="${roomSubTextSize}" fill="#666">${dimText}</text>\n`;
+      } else if (showNames) {
+        svg += `<text x="${fFloat(centerX)}" y="${fFloat(centerY)}" text-anchor="middle" font-size="${roomTextSize}" font-weight="bold" fill="#333" dominant-baseline="middle">${nameLabel}</text>\n`;
+      } else {
+        svg += `<text x="${fFloat(centerX)}" y="${fFloat(centerY)}" text-anchor="middle" font-size="${roomSubTextSize}" fill="#666" dominant-baseline="middle">${dimText}</text>\n`;
       }
     }
   }
@@ -612,9 +653,54 @@ export function generateFloorPlanSvg(
   void titleWidthIsFloat;
   svg += `</g>
 <text x="${titleXStr}" y="30" text-anchor="middle" font-size="${scaledTextSize(16)}" font-weight="bold">${floorName}</text>
-</svg>`;
+`;
+
+  // Room-key legend, in the reserved strip at the bottom of the sheet.
+  if (roomAbbrevs && legendHeight > 0) {
+    const top = height - legendHeight;
+    const startX = baseMargin;
+    const headerY = top + legendFont;
+    svg += `<line x1="${fFloat(startX)}" y1="${fFloat(top)}" x2="${fFloat(width - baseMargin)}" y2="${fFloat(top)}" stroke="#ccc" stroke-width="0.5"/>\n`;
+    svg += `<text x="${fFloat(startX)}" y="${fFloat(headerY)}" font-size="${fFloat(legendFont)}" font-weight="bold" fill="#333">Room key</text>\n`;
+    let i = 0;
+    for (const [name, abbr] of roomAbbrevs) {
+      const col = i % legendCols;
+      const row = Math.floor(i / legendCols);
+      const x = startX + col * legendColW;
+      const y = headerY + legendFont * 1.5 + row * legendRowH;
+      svg += `<text x="${fFloat(x)}" y="${fFloat(y)}" font-size="${fFloat(legendFont)}" fill="#333"><tspan font-weight="bold">${abbr}</tspan> = ${name}</text>\n`;
+      i++;
+    }
+  }
+
+  svg += `</svg>`;
 
   return svg;
+}
+
+// Build short mnemonic keys for room names, in first-seen order. Initials of
+// hyphen/underscore/space-separated words (single-word names → first 3
+// letters); digit groups kept verbatim; a numeric suffix breaks ties.
+//   Garage→GAR, Balcony-Garage→BG, Bedroom_1→B1, Living-Kitchen-Dining→LKD
+function makeRoomAbbrevs(names: string[]): Map<string, string> {
+  const map = new Map<string, string>();
+  const used = new Set<string>();
+  for (const name of names) {
+    if (map.has(name)) continue;
+    const parts = name.split(/[^A-Za-z0-9]+/).filter(Boolean);
+    let base: string;
+    if (parts.length <= 1) {
+      base = (parts[0] ?? name).slice(0, 3).toUpperCase();
+    } else {
+      base = parts.map((p) => (/^\d+$/.test(p) ? p : p[0]!.toUpperCase())).join("");
+    }
+    if (!base) base = "R";
+    let abbr = base;
+    for (let n = 2; used.has(abbr); n++) abbr = `${base}${n}`;
+    used.add(abbr);
+    map.set(name, abbr);
+  }
+  return map;
 }
 
 function maxValue(m: Record<string, number>): number {
