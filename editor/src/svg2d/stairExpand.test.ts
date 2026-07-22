@@ -3,17 +3,15 @@ import { expandStaircase } from "./stairExpand";
 
 type Obj = { type: string; [k: string]: unknown };
 type Dir = "north" | "south" | "east" | "west";
+const DV: Record<Dir, [number, number]> = {
+  south: [0, 1], north: [0, -1], east: [1, 0], west: [-1, 0],
+};
 
-// rise_height 90 / step_rise 5 → 18 RISERS. Treads = risers − (num flights).
+// rise_height 90 / step_rise 5 → 18 RISERS.
 const base = (over: Partial<Obj> = {}): Obj => ({
-  type: "staircase",
-  name: "Stair",
-  start_x: 100,
-  start_y: 50,
-  rise_height: 90,
-  step_rise: 5,
-  step_tread: 10,
-  step_width: 30,
+  type: "staircase", name: "Stair",
+  start_x: 100, start_y: 50,
+  rise_height: 90, step_rise: 5, step_tread: 10, step_width: 30,
   direction: "south",
   ...over,
 });
@@ -23,40 +21,45 @@ const expand = (over: Partial<Obj> = {}, slab = 8, below = 100) =>
 const stairs = (o: Obj[]) => o.filter((x) => x.type === "staircase");
 const landings = (o: Obj[]) => o.filter((x) => x.type === "floor_slab");
 const treads = (o: Obj[]) => stairs(o).reduce((a, s) => a + (s.num_steps as number), 0);
-// walking-surface z of every tread across every flight
+
+// bounding rectangle of every object (treads + landings) in plan
+function bbox(o: Obj[]) {
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const s of o as any[]) {
+    let pts: number[][];
+    if (s.type === "staircase") {
+      const [vx, vy] = DV[s.direction as Dir];
+      const r = s.num_steps * s.step_tread, w = s.step_width;
+      const ns = s.direction === "north" || s.direction === "south";
+      pts = [[s.start_x, s.start_y], [s.start_x + (ns ? w : r * vx), s.start_y + (ns ? r * vy : w)]];
+    } else pts = [[s.x, s.y], [s.x + s.width, s.y + s.length]];
+    for (const [px, py] of pts) { x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py); }
+  }
+  return { x0, x1, y0, y1 };
+}
+// signed run extent [lo,hi] measured from (sx,sy) along +direction
+function runExtent(o: Obj[], dir: Dir, sx: number, sy: number): [number, number] {
+  const [vx, vy] = DV[dir];
+  const b = bbox(o);
+  const ds = [b.x0, b.x1].flatMap((px) => [b.y0, b.y1].map((py) => (px - sx) * vx + (py - sy) * vy));
+  return [Math.min(...ds), Math.max(...ds)];
+}
 const treadLevels = (o: Obj[]) =>
   stairs(o).flatMap((s: any) =>
-    Array.from({ length: s.num_steps }, (_, i) =>
-      +(s.z_offset + (i + 1) * s.step_rise).toFixed(4),
-    ),
-  );
+    Array.from({ length: s.num_steps }, (_, i) => +(s.z_offset + (i + 1) * s.step_rise).toFixed(4)));
 const platformLevels = (o: Obj[], floorTop: number, floorBottom: number) => [
-  floorTop,
-  floorBottom,
-  ...landings(o).map((l: any) => +(l.z_offset + l.thickness).toFixed(4)),
+  floorTop, floorBottom, ...landings(o).map((l: any) => +(l.z_offset + l.thickness).toFixed(4)),
 ];
-
-const DV: Record<Dir, [number, number]> = {
-  south: [0, 1], north: [0, -1], east: [1, 0], west: [-1, 0],
-};
-// the flight whose TOP near corner sits at (start_x, start_y) = the floor-meeting flight
-const topFlight = (o: Obj[]): any =>
-  stairs(o).find((s: any) => {
-    const [vx, vy] = DV[s.direction as Dir];
-    const r = s.num_steps * s.step_tread;
-    return Math.abs(s.start_x + r * vx - 100) < 1e-6 && Math.abs(s.start_y + r * vy - 50) < 1e-6;
-  });
 
 describe("expandStaircase", () => {
   it("single flight: R risers → R−1 treads, top tread a riser below the floor", () => {
     const out = expand();
     expect(out).toHaveLength(1);
-    expect(out[0].num_steps).toBe(17); // 18 risers − 1
+    expect(out[0].num_steps).toBe(17);
     expect("rise_height" in out[0]).toBe(false);
-    expect(topFlight(out)).toBeDefined(); // anchored at (100,50)
     const lv = treadLevels(out);
-    expect(Math.max(...lv)).toBe(8 - 5); // top tread = floor(8) − one riser
-    expect(Math.min(...lv)).toBe(8 - 90 + 5); // bottom tread = floor-below + one riser
+    expect(Math.max(...lv)).toBe(8 - 5);          // top tread a riser below the floor
+    expect(Math.min(...lv)).toBe(8 - 90 + 5);     // bottom tread a riser above the floor below
   });
 
   it("rise_height defaults to the floor-below height when omitted", () => {
@@ -64,66 +67,61 @@ describe("expandStaircase", () => {
     expect(out[0].num_steps).toBe(19); // 20 risers − 1
   });
 
-  it("explicit z_offset sets the TOP (floor) height; no tread sits on it", () => {
-    const out = expand({ z_offset: 50 });
-    const lv = treadLevels(out);
-    expect(Math.max(...lv)).toBe(50 - 5); // top tread a riser below the floor at 50
-    expect(lv).not.toContain(50);
+  it("descends from the top INTO `direction`, within [start, start+max_run]", () => {
+    for (const direction of ["south", "north", "east", "west"] as const) {
+      const out = expand({ max_run: 60, direction });
+      const [lo, hi] = runExtent(out, direction, 100, 50);
+      expect(lo).toBeGreaterThanOrEqual(-0.01);   // never behind the start point
+      expect(hi).toBeLessThanOrEqual(60 + 0.01);  // never past the allocated box
+    }
   });
 
-  it("does not split when the run fits within max_run", () => {
-    const out = expand({ max_run: 400 });
-    expect(out).toHaveLength(1);
-    expect(out[0].num_steps).toBe(17);
+  it("a single flight also extends forward from the start (not behind it)", () => {
+    const [lo, hi] = runExtent(expand(), "south", 100, 50);
+    expect(lo).toBeGreaterThanOrEqual(-0.01);
+    expect(hi).toBeGreaterThan(0);
   });
 
-  it("splits into balanced switchback flights; treads = risers − numFlights", () => {
-    const out = expand({ max_run: 60 }); // capRisers 7 → 3 flights of 6 risers
-    expect(stairs(out)).toHaveLength(3);
-    expect(landings(out)).toHaveLength(2);
-    expect(stairs(out).map((s) => s.num_steps)).toEqual([5, 5, 5]); // 6 risers − 1
-    expect(treads(out)).toBe(18 - 3);
+  it("adds more flights when the allocated run is tight", () => {
+    const wide = stairs(expand({ max_run: 100 })).length;
+    const tight = stairs(expand({ max_run: 40 })).length;
+    expect(tight).toBeGreaterThan(wide);
+    // both still fit their box
+    for (const [mr] of [[100], [40]] as const) {
+      const [, hi] = runExtent(expand({ max_run: mr }), "south", 100, 50);
+      expect(hi).toBeLessThanOrEqual(mr + 0.01);
+    }
   });
 
-  it("no tread coincides with the floor or any landing (fall from each platform)", () => {
-    for (const mr of [undefined, 100, 60] as const) {
+  it("conserves the total climb: treads = risers − numFlights", () => {
+    const out = expand({ max_run: 100 });
+    expect(treads(out)).toBe(18 - stairs(out).length);
+  });
+
+  it("no tread coincides with the floor or any landing", () => {
+    for (const mr of [undefined, 100, 60, 40] as const) {
       const out = expand(mr ? { max_run: mr } : {});
       const lv = treadLevels(out);
       const plat = platformLevels(out, 8, 8 - 90);
-      const collisions = lv.filter((z) => plat.some((p) => Math.abs(z - p) < 1e-6));
-      expect(collisions).toEqual([]);
+      expect(lv.filter((z) => plat.some((p) => Math.abs(z - p) < 1e-6))).toEqual([]);
     }
   });
 
-  it("the floor-meeting (top) flight is always `direction`, regardless of flight count", () => {
-    for (const [mr, n] of [[undefined, 1], [100, 2], [60, 3]] as const) {
-      const out = expand(mr ? { max_run: mr } : {});
-      expect(stairs(out)).toHaveLength(n);
-      expect(topFlight(out)?.direction).toBe("south");
-    }
+  it("explicit z_offset sets the TOP (floor) height", () => {
+    const out = expand({ z_offset: 50 });
+    expect(Math.max(...treadLevels(out))).toBe(50 - 5);
   });
 
-  it("default turn (clockwise going down): return lane +X; anticlockwise mirrors", () => {
-    const cw = expand({ max_run: 60 });
-    const ccw = expand({ max_run: 60, turn: "anticlockwise" });
-    // return lane is the middle (north) flight
-    const north = (o: Obj[]) => stairs(o).find((s: any) => s.direction === "north") as any;
-    expect(north(cw).start_x).toBeGreaterThan(100);
-    expect(north(ccw).start_x).toBeLessThan(100);
-  });
-
-  it("flight_gap widens landings to bridge the void", () => {
-    const out = expand({ max_run: 60, flight_gap: 12 });
+  it("flight_gap widens the landings to bridge the void", () => {
+    const out = expand({ max_run: 100, flight_gap: 12 });
     for (const l of landings(out)) expect(l.width).toBe(72); // 2×30 + 12
   });
 
-  for (const direction of ["south", "north", "east", "west"] as const) {
-    it(`anchors the top-flight to (start_x,start_y) + is \`${direction}\` for ${direction}`, () => {
-      const out = expand({ max_run: 60, direction });
-      const tf = topFlight(out);
-      expect(tf).toBeDefined();
-      expect(tf.direction).toBe(direction);
-      expect(treads(out)).toBe(18 - 3);
-    });
-  }
+  it("turn mirrors the return lane", () => {
+    const cwX = bbox(expand({ max_run: 100 })).x1;
+    const ccwX = bbox(expand({ max_run: 100, turn: "anticlockwise" })).x0;
+    // clockwise extends to +X of the start (100); anticlockwise to −X
+    expect(cwX).toBeGreaterThan(100);
+    expect(ccwX).toBeLessThan(100);
+  });
 });

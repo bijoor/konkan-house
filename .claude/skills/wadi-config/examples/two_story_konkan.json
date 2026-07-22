@@ -499,7 +499,7 @@
           "step_rise": 6,
           "step_tread": 10,
           "step_width": 40,
-          "direction": "north",
+          "direction": "south",
           "rise_height": 72
         }
       ]

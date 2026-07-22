@@ -243,27 +243,30 @@ export function StaircaseForm({
           onChange={(v) => patch({ direction: v as Side })}
           options={SIDES.map((s) => ({ value: s, label: s }))}
         />
+        <div className="mt-1 text-[11px] text-slate-400">
+          The stair descends from its top INTO this direction.
+        </div>
         <TextField
           label="Material"
           value={obj.material}
           onCommit={(v) => patch({ material: v || undefined })}
         />
       </Section>
-      <Section title="Flights (switchback)">
+      <Section title="Allocated run (switchback)">
         <div className="mb-2 text-[11px] text-slate-400">
-          Set a max run to auto-split a long stair into switchback flights. The
-          number of flights is computed; <b># Steps</b> stays the total. Blank =
-          one flight.
+          Space reserved for the stair along its direction. The whole stair
+          (flights + landings) is kept within it — set it and a long stair
+          auto-splits into switchback flights (more when tight). Blank = one flight.
         </div>
         <div className="grid grid-cols-2 gap-x-2">
           <ObjectMeasureField
             object={o}
             field="max_run"
-            label="Max run / flight"
+            label="Max run"
             patch={mpatch}
             allowEmpty
             min={0.01}
-            hint="along the direction; splits when exceeded"
+            hint="allocated length along the direction"
           />
           <ObjectMeasureField
             object={o}

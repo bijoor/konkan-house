@@ -883,7 +883,7 @@
           "step_rise": 5,
           "step_tread": 10,
           "step_width": 30,
-          "direction": "north",
+          "direction": "south",
           "material": "floor",
           "rise_height": 100
         }

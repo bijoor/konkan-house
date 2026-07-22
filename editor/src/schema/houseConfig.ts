@@ -262,10 +262,11 @@ const staircase = z
     name: z.string().optional(),
     // A staircase belongs to the DESTINATION (upper) floor it leads to — put it
     // on that floor's `objects` so deleting the floor deletes the stair. It is
-    // TOP-anchored and DESCENDS: (start_x, start_y) is the top step's near corner
-    // where it meets this floor; `z_offset` is that top's height above the floor
-    // base (omitted → this floor's slab thickness, i.e. flush with the walking
-    // surface); the flights run DOWN from there to the floor below.
+    // TOP-anchored and DESCENDS: (start_x, start_y) is the top connection where it
+    // meets this floor, and the stair descends INTO `direction` from there (its
+    // body + landings fill the box [start, start + max_run] along `direction`).
+    // `z_offset` is the top's height above the floor base (omitted → this floor's
+    // slab thickness, flush with the walking surface).
     start_x: z.number(),
     start_y: z.number(),
     // Total height the stair covers, top → floor below. The step COUNT is
@@ -276,12 +277,15 @@ const staircase = z
     step_rise: positive(),
     step_tread: positive(),
     step_width: positive(),
+    // The direction the stair EXTENDS from its top — the whole assembly fills the
+    // allocated box from (start_x,start_y) going this way for up to `max_run`.
     direction: side,
-    // Multi-flight (switchback): when `max_run` is set and the single-flight run
-    // (derived-steps × step_tread) exceeds it, the stair auto-splits at render
-    // into that many switchback flights + turn landings (expanded in
-    // expandRoomWalls into plain single-flight staircases + floor_slab landings,
-    // so every renderer is unchanged). Omit → one flight.
+    // ALLOCATED run: the length of space reserved for the stair along `direction`.
+    // The WHOLE assembly (flights + turn landings) is kept within
+    // [start, start+max_run]; when the run won't fit as one flight it auto-splits
+    // into switchback flights (more flights when tight), expanded in
+    // expandRoomWalls into plain staircases + floor_slab landings so every
+    // renderer is unchanged. Omit → one flight, no length limit.
     max_run: positive().optional(),
     // Turn-landing depth (along the run). Omitted → equals step_width.
     landing_depth: positive().optional(),
