@@ -28,27 +28,27 @@ export interface FloorZBounds {
 }
 
 // Compute the per-floor Z bands the elevation code uses. Same math:
-//   current_z = plinth_height
+//   current_z = 0                     (ground level)
 //   for floor:
 //     slab_z   = current_z            (bottom of slab / top of floor below)
 //     wall_z   = current_z + slab     (floor-top → base of walls)
 //     wall_top = current_z + fh       (next floor level)
 //     current_z = wall_top
 //
-// Floor-position stack uses PLINTH + FLOOR_HEIGHTS ONLY. `slab_thickness`
-// is a separate metadata dimension used to place the slab MESH inside
-// the floor band — it does NOT contribute to the vertical stack.
-// (User directive: roof position should be a function of plinth +
-// floor_heights only.)
+// The plinth is now the FIRST floor (number 0): its `height` produces the rise
+// from ground(0) to the floor above, replacing the old hardcoded plinth_height
+// seed. Floor-position stack uses FLOOR_HEIGHTS ONLY. `slab_thickness` is a
+// separate metadata dimension used to place the slab MESH inside the floor band
+// — it does NOT contribute to the vertical stack. (User directive: roof
+// position should be a function of the floor_heights only.)
 export function computeFloorZBands(
   floors: Array<Record<string, unknown>>,
-  plinthHeight: number,
   slabThickness: number,          // house.defaults.slab_thickness ?? GC default
   floorHeight: number,            // house.defaults.floor_height ?? GC default
   wallHeight: number,             // house.defaults.wall_height ?? GC default
 ): FloorZBounds[] {
   const bands: FloorZBounds[] = [];
-  let current = plinthHeight;
+  let current = 0;
   for (const floor of floors) {
     // Per-floor overrides take precedence over the defaults passed in.
     const fhOverride = floor.height as number | undefined;
@@ -87,14 +87,13 @@ export interface PlotBounds {
   length: number; // Y extent (north/south)
 }
 
-// Read the plot footprint from a house_config, falling back to the
-// plinth footprint if `site` is absent.
+// Read the plot footprint from a house_config's `site` (the plinth is now a
+// floor object, no longer a top-level fallback source).
 export function readPlotBounds(house: Record<string, unknown>): PlotBounds {
   const site = house.site as { plot_width?: number; plot_length?: number } | undefined;
-  const plinth = house.plinth as { width?: number; length?: number } | undefined;
   return {
-    width: site?.plot_width ?? plinth?.width ?? 270,
-    length: site?.plot_length ?? plinth?.length ?? 450,
+    width: site?.plot_width ?? 270,
+    length: site?.plot_length ?? 450,
   };
 }
 
@@ -102,14 +101,10 @@ export function readPlotBounds(house: Record<string, unknown>): PlotBounds {
 // with optional house-level overrides layered on top.
 export function readGlobals(
   houseDefaults?: { floor_height?: number; wall_height?: number; slab_thickness?: number; wall_thickness?: number },
-  // Actual config.plinth.height — anchors the whole floor/wall Z-stack.
-  // Falls back to the code default only when not supplied.
-  plinthHeight?: number,
 ) {
   const g = DEFAULT_GLOBAL_CONFIG;
   return {
     wallThickness: houseDefaults?.wall_thickness ?? g.wall_thickness,
-    plinthHeight: plinthHeight ?? g.plinth_height,
     slabThickness: houseDefaults?.slab_thickness ?? g.floor_slab_thickness,
     roofThickness: g.roof_thickness,
     beamSize: g.beam_size,

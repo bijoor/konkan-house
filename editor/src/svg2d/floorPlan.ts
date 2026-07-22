@@ -7,10 +7,13 @@
 // nested-form rooms are flattened.
 
 import { DEFAULT_GLOBAL_CONFIG, activeDimensions, scaledTextSize, scaledSpacing } from "./config";
+import { activeObjects } from "../schema/enabled";
+import { pillarRects } from "./wallTrim";
 import { formatDimension, f, fFloat } from "./format";
 import {
   svgDrawWall, svgDrawRoom, svgDrawDoor, svgDrawWindow, svgDrawFloorSlab,
   svgDrawPillar, svgDrawBeam, svgDrawStaircase, svgDrawKitchenPlatform,
+  svgDrawGround, svgDrawPlinth,
 } from "./shapes";
 import {
   extractFloorEdges, classifyPerimeterEdges, detectWallConnections,
@@ -66,10 +69,12 @@ export function generateFloorPlanSvg(
   let minX = INF, minY = INF;
   let maxX = -INF, maxY = -INF;
 
-  const objects = floorConfig.objects ?? [];
+  // Disabled objects (enabled === false / 0) contribute to nothing — bounds,
+  // geometry or dimensions. Filter once here so every loop below skips them.
+  const objects = activeObjects(floorConfig.objects);
   for (const obj of objects) {
     const t = obj.type as string;
-    if (t === "floor_slab" || t === "beam" || t === "room") {
+    if (t === "floor_slab" || t === "beam" || t === "room" || t === "plinth" || t === "ground") {
       const x = obj.x as number, y = obj.y as number;
       const w = obj.width as number, l = obj.length as number;
       if (x < minX) minX = x;
@@ -172,6 +177,24 @@ export function generateFloorPlanSvg(
   // staircases, walls/rooms/pillars-collected, doors/windows, dims,
   // room labels, slab dims, pillars.
   // -----------------------------------------------------------------
+  // Ground plane (bottom-most), then the plinth on top — only present on the
+  // Plinth floor; a no-op on habitable floors.
+  for (const obj of objects) {
+    if (obj.type === "ground") {
+      svg += svgDrawGround(
+        obj.x as number, obj.y as number,
+        obj.width as number, obj.length as number,
+      );
+    }
+  }
+  for (const obj of objects) {
+    if (obj.type === "plinth") {
+      svg += svgDrawPlinth(
+        obj.x as number, obj.y as number,
+        obj.width as number, obj.length as number,
+      );
+    }
+  }
   for (const obj of objects) {
     if (obj.type === "floor_slab") {
       svg += svgDrawFloorSlab(
@@ -254,6 +277,9 @@ export function generateFloorPlanSvg(
   }
 
   const pillarsToDraw: Array<{ x: number; y: number; size?: number; width?: number; length?: number }> = [];
+  // Pillar footprints, gathered up front so room/wall runs can be trimmed to
+  // stop at the pillar faces (walls butt into columns, no overlap).
+  const pillars = pillarRects(objects);
 
   for (const obj of objects) {
     const t = obj.type as string;
@@ -267,13 +293,14 @@ export function generateFloorPlanSvg(
         obj.width as number, obj.length as number,
         ((obj.wall_thickness as number | undefined) ?? wallThickness),
         wallsList ?? ["north", "south", "east", "west"],
+        pillars,
       );
     } else if (t === "wall") {
       const thickness = (obj.thickness as number | undefined) ?? wallThickness;
       svg += svgDrawWall(
         obj.start_x as number, obj.start_y as number,
         obj.end_x as number, obj.end_y as number,
-        thickness,
+        thickness, undefined, pillars,
       );
     } else if (t === "pillar") {
       pillarsToDraw.push({

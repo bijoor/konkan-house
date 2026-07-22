@@ -46,20 +46,26 @@ export const useLayerStore = create<LayerState>((set) => ({
 // explicit `layer`. MUST match the ids House3D pushes to (all present in
 // DEFAULT_LAYERS). Shared by House3D (grouping) and effectiveLayers (menu)
 // so the two never drift.
+// NOTE: the plinth is floor 0; the ground floor is floor 1. The historical
+// "floor 0 → plinth/f0" branches therefore key on floorNum === 1 now.
 export function heuristicLayerId(objType: string, floorNum: number): string {
   switch (objType) {
+    case "plinth":
+      return "plinth";
+    case "ground":
+      return "ground";
     case "floor_slab":
-      return floorNum === 0 ? "plinth" : "f1_slab";
+      return floorNum === 1 ? "plinth" : "f1_slab";
     case "beam":
       return "f1_beam";
     case "pillar":
       return "pillars";
     case "room":
     case "wall":
-      return floorNum === 0 ? "f0" : "f1";
+      return floorNum === 1 ? "f0" : "f1";
     case "staircase":
     case "kitchen_platform":
-      return floorNum === 0 ? "plinth" : "f1_slab";
+      return floorNum === 1 ? "plinth" : "f1_slab";
     default:
       return "ground";
   }
@@ -149,15 +155,18 @@ export function layerForObject(
   objType: string,
   floorNumber: number,
 ): string {
+  if (objType === "plinth") return "plinth";
+  if (objType === "ground") return "ground";
   if (objType === "pillar") return "pillars";
   if (objType === "hip_roof" || objType === "gable_roof") return "loft";
   if (objType === "door" || objType === "window") return "openings";
+  // Plinth is floor 0; ground floor is 1 (historical floor-0 branches → 1).
   if (objType === "floor_slab") {
-    return floorNumber === 0 ? "plinth" : "f1_slab";
+    return floorNumber === 1 ? "plinth" : "f1_slab";
   }
   if (objType === "beam") return "f1_beam";
   if (objType === "room" || objType === "wall") {
-    return floorNumber === 0 ? "f0" : "f1";
+    return floorNumber === 1 ? "f0" : "f1";
   }
   return "ground";
 }

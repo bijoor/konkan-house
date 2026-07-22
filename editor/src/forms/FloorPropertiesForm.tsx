@@ -6,8 +6,9 @@
 // the per-object property forms; this editor only touches the floor's
 // own metadata.
 
+import type { HouseConfig } from "../schema/houseConfig";
 import { useConfigStore } from "../state/configStore";
-import { NumberField, TextField, Section } from "./fields";
+import { TextField, Section, ObjectMeasureField, EnabledField } from "./fields";
 import { DEFAULT_GLOBAL_CONFIG } from "../svg2d/config";
 
 export function FloorPropertiesForm({ floorIdx }: { floorIdx: number }) {
@@ -23,6 +24,10 @@ export function FloorPropertiesForm({ floorIdx }: { floorIdx: number }) {
   const defaultHeight = houseDefaults?.floor_height ?? DEFAULT_GLOBAL_CONFIG.floor_height;
   const defaultWall = houseDefaults?.wall_height ?? DEFAULT_GLOBAL_CONFIG.wall_height;
 
+  const floorObj = floor as unknown as Record<string, unknown>;
+  const floorPatch = (p: Record<string, unknown>) =>
+    updateFloor(floorIdx, p as Partial<HouseConfig["floors"][number]>);
+
   return (
     <div>
       <Section title="Identity">
@@ -31,10 +36,11 @@ export function FloorPropertiesForm({ floorIdx }: { floorIdx: number }) {
           value={floor.name}
           onCommit={(v) => updateFloor(floorIdx, { name: v || floor.name })}
         />
-        <div className="mt-1 text-[11px] text-slate-500">
+        <div className="mt-1 mb-2 text-[11px] text-slate-500">
           Floor number: <b>{floor.floor_number}</b> · {floor.objects.length}{" "}
           object{floor.objects.length === 1 ? "" : "s"}
         </div>
+        <EnabledField object={floorObj} patch={floorPatch} />
       </Section>
 
       <Section title="Dimensions">
@@ -50,30 +56,9 @@ export function FloorPropertiesForm({ floorIdx }: { floorIdx: number }) {
           inside the floor band.
         </div>
         <div className="grid grid-cols-3 gap-x-2">
-          <NumberField
-            label="Floor height"
-            hint={`default ${defaultHeight}`}
-            value={floor.height}
-            onCommit={(v) => updateFloor(floorIdx, { height: v })}
-            allowEmpty
-            min={0.01}
-          />
-          <NumberField
-            label="Wall height"
-            hint={`default ${defaultWall}`}
-            value={(floor as { wall_height?: number }).wall_height}
-            onCommit={(v) => updateFloor(floorIdx, { wall_height: v })}
-            allowEmpty
-            min={0.01}
-          />
-          <NumberField
-            label="Slab thickness"
-            hint={`default ${defaultSlab}`}
-            value={floor.slab_thickness}
-            onCommit={(v) => updateFloor(floorIdx, { slab_thickness: v })}
-            allowEmpty
-            min={0}
-          />
+          <ObjectMeasureField object={floorObj} field="height" label="Floor height" hint={`default ${defaultHeight}`} patch={floorPatch} allowEmpty min={0.01} />
+          <ObjectMeasureField object={floorObj} field="wall_height" label="Wall height" hint={`default ${defaultWall}`} patch={floorPatch} allowEmpty min={0.01} />
+          <ObjectMeasureField object={floorObj} field="slab_thickness" label="Slab thickness" hint={`default ${defaultSlab}`} patch={floorPatch} allowEmpty min={0} />
         </div>
       </Section>
     </div>

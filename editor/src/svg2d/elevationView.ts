@@ -17,10 +17,12 @@ import { DEFAULT_GLOBAL_CONFIG, activeDimensions, scaledTextSize, scaledSpacing 
 import { f, fFloat } from "./format";
 import { svgDrawDimensionLine } from "./dimensions";
 import { resetDimView } from "./dimResolve";
+import { pillarCenter, type PillarLike } from "./pillar/extents";
 import { deriveAllHipRoofs } from "./roofGeometry";
 import { deriveAllGableRoofs } from "./roof/gableGeometry";
 import type { HouseConfig } from "./expand";
 import { computeMergedV2Spec } from "./roof/v2/computeFromHouse";
+import { activeObjects } from "../schema/enabled";
 import { renderV2ToElevation, roofMaxZ } from "./roof/v2/projections";
 
 type Obj = Record<string, unknown>;
@@ -108,9 +110,10 @@ export function generateElevationView(
   // another elevation's. No-op unless the Layout composite began a resolve pass.
   resetDimView();
   const site = (houseConfig.site as Record<string, unknown> | undefined) ?? {};
-  void site;
-  const plinthConfig =
-    (houseConfig.plinth as Record<string, unknown> | undefined) ?? {};
+  // Every floor, iterated uniformly. The Plinth floor is not special-cased — it
+  // just carries `plinth`/`ground` objects that are drawn by type dispatch in
+  // the loop below (exactly like House3D). No plinth-floor detection, no
+  // plinthHeight: the plinth's rise is simply that floor's own `height`.
   const floors = (houseConfig.floors as FloorConfig[] | undefined) ?? [];
   const GC = DEFAULT_GLOBAL_CONFIG;
 
@@ -144,8 +147,9 @@ export function generateElevationView(
     // partial gable configs skipped
   }
 
-  const buildingWidth = (plinthConfig.width as number | undefined) ?? 0;
-  const buildingLength = (plinthConfig.length as number | undefined) ?? 0;
+  // Elevation canvas spans the plot.
+  const buildingWidth = (site.plot_width as number | undefined) ?? 0;
+  const buildingLength = (site.plot_length as number | undefined) ?? 0;
   const wallThickness = GC.wall_thickness;
 
   let width: number;
@@ -158,9 +162,9 @@ export function generateElevationView(
     viewName = viewType === "left" ? "Left Elevation" : "Right Elevation";
   }
 
-  const plinthHeight =
-    (plinthConfig.height as number | undefined) ?? GC.plinth_height;
-  let totalHeight = plinthHeight;
+  // The z-stack seeds at the ground datum (0); every floor — including the
+  // Plinth floor — contributes its own `height`.
+  let totalHeight = 0;
 
   for (const floorConfig of floors) {
     // Per-floor override wins over the GlobalConfig default.
@@ -191,7 +195,7 @@ export function generateElevationView(
 
   // Check for roof
   for (const floorConfig of floors) {
-    for (const obj of (floorConfig.objects ?? []) as Obj[]) {
+    for (const obj of activeObjects(floorConfig.objects as Obj[])) {
       if (obj.type === "gable_roof") {
         // Prefer the derived absolute ridge top set by deriveAllGableRoofs:
         //   ridgeTop = eave_z + wall_top_above_eave + ridge_h + roof_thickness
@@ -282,21 +286,15 @@ export function generateElevationView(
 
 `;
 
-  // Ground line
+  // Ground datum line at z = 0 (always drawn; the elevation baseline).
   const groundY = zToY(0);
   svg += `<line x1="0" y1="${fFloat(groundY)}" x2="${f(width)}" y2="${fFloat(groundY)}" stroke="#666" stroke-width="2" stroke-dasharray="5,5"/>\n`;
 
-  // Plinth
-  const plinthBottomY = zToY(0);
-  const plinthTopY = zToY(plinthHeight);
-  svg += `<rect x="0" y="${fFloat(plinthTopY)}" width="${f(width)}" height="${fFloat(plinthBottomY - plinthTopY)}" fill="#A0826D" stroke="#000" stroke-width="1"/>\n`;
+  // The plinth rectangle is drawn in the floor loop below, from the plinth
+  // OBJECT on the Plinth floor (type dispatch), not as a special pre-loop step.
+  let currentZ = 0;
 
-  let currentZ = plinthHeight;
-
-  const floorLevels: FloorLevel[] = [
-    { name: "Ground Level", z: 0, height: plinthHeight },
-    { name: "Plinth Top", z: plinthHeight, height: 0 },
-  ];
+  const floorLevels: FloorLevel[] = [];
 
   const elevationOpenings: ElevationOpening[] = [];
   // Every window on a wall that faces the viewer — used for sill-height
@@ -339,10 +337,17 @@ export function generateElevationView(
 
     const floorObjectsWithDepth: [number, number, Obj][] = [];
 
-    for (const obj of (floorConfig.objects ?? []) as Obj[]) {
+    for (const obj of activeObjects(floorConfig.objects as Obj[])) {
       const objType = obj.type as string;
       let depth = 0;
       const priority = typePriority[objType] ?? 2;
+
+      // Pillars store x,y as the TOP-LEFT CORNER; the depth key works in
+      // centers (matching the projection block below), so resolve it once.
+      const pillarC =
+        objType === "pillar"
+          ? pillarCenter(obj as unknown as PillarLike, wallThickness)
+          : null;
 
       if (viewType === "front") {
         if (["floor_slab", "beam", "staircase"].includes(objType)) {
@@ -355,7 +360,7 @@ export function generateElevationView(
             (obj.end_y as number | undefined) ?? 0,
           );
         } else if (objType === "pillar") {
-          depth = (obj.y as number | undefined) ?? 0;
+          depth = pillarC ? pillarC.cy : 0;
         }
       } else if (viewType === "back") {
         if (["floor_slab", "beam", "staircase"].includes(objType)) {
@@ -368,7 +373,7 @@ export function generateElevationView(
             (obj.end_y as number | undefined) ?? 0,
           );
         } else if (objType === "pillar") {
-          depth = -((obj.y as number | undefined) ?? 0);
+          depth = pillarC ? -pillarC.cy : 0;
         }
       } else if (viewType === "left") {
         if (["floor_slab", "beam", "staircase"].includes(objType)) {
@@ -381,7 +386,7 @@ export function generateElevationView(
             (obj.end_x as number | undefined) ?? 0,
           );
         } else if (objType === "pillar") {
-          depth = (obj.x as number | undefined) ?? 0;
+          depth = pillarC ? pillarC.cx : 0;
         }
       } else if (viewType === "right") {
         if (["floor_slab", "beam", "staircase"].includes(objType)) {
@@ -394,11 +399,14 @@ export function generateElevationView(
             (obj.end_x as number | undefined) ?? 0,
           );
         } else if (objType === "pillar") {
-          depth = -((obj.x as number | undefined) ?? 0);
+          depth = pillarC ? -pillarC.cx : 0;
         }
       }
 
       if (objType === "door" || objType === "window") continue;
+      // Plinth/ground are drawn separately (plinth rect below, ground datum
+      // above) — they don't take part in the wall/opening pipeline.
+      if (objType === "plinth" || objType === "ground") continue;
       floorObjectsWithDepth.push([depth, priority, obj]);
     }
 
@@ -410,7 +418,7 @@ export function generateElevationView(
 
     // Pre-group doors/windows by parent wall
     const wallOpenings: Record<string, Obj[]> = {};
-    for (const obj of (floorConfig.objects ?? []) as Obj[]) {
+    for (const obj of activeObjects(floorConfig.objects as Obj[])) {
       if (obj.type === "door" || obj.type === "window") {
         let wallKey: string;
         if ("room" in obj) {
@@ -447,6 +455,16 @@ export function generateElevationView(
     const slabZ = currentZ;                       // floor's start Z (= floor base)
     const wallZ = currentZ + floorSlabThickness;  // top of slab / bottom of walls
     const wallTop = currentZ + floorHeight;       // top of floor = next floor's start
+
+    // Plinth object → a filled rectangle spanning this floor's band, drawn by
+    // type dispatch (like House3D). Uses the plinth object's own height.
+    for (const obj of activeObjects(floorConfig.objects as Obj[])) {
+      if (obj.type !== "plinth") continue;
+      const ph = (obj.height as number | undefined) ?? floorHeight;
+      const pTopY = zToY(slabZ + ph);
+      const pBotY = zToY(slabZ);
+      svg += `<rect x="0" y="${fFloat(pTopY)}" width="${f(width)}" height="${fFloat(pBotY - pTopY)}" fill="#A0826D" stroke="#000" stroke-width="1"/>\n`;
+    }
 
     const floorName = floorConfig.name ?? `Floor ${floorNum}`;
     floorLevels.push({
@@ -793,8 +811,10 @@ export function generateElevationView(
           defaultSize;
         const pillarHeight =
           (obj.height as number | undefined) ?? floorHeight;
-        const pillarWorldX = obj.x as number;
-        const pillarWorldY = obj.y as number;
+        // Stored x,y is the TOP-LEFT CORNER; the projection math below works in
+        // centers, so convert corner→center using the resolved footprint.
+        const pillarWorldX = (obj.x as number) + pillarWidth / 2;
+        const pillarWorldY = (obj.y as number) + pillarLength / 2;
 
         let pillarVisibleWidth: number, pillarX: number, depth: number;
         if (viewType === "left") {
@@ -844,7 +864,7 @@ export function generateElevationView(
     allObjectsToDraw.push(...objectsToDraw);
 
     // Roof collection
-    for (const obj of (floorConfig.objects ?? []) as Obj[]) {
+    for (const obj of activeObjects(floorConfig.objects as Obj[])) {
       if (obj.type === "gable_roof") {
         // Both ridge_axis='y' (ridge runs N-S) and 'x' (ridge runs E-W)
         // supported. For y: triangle in front/back, rectangle in left/

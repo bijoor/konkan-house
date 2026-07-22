@@ -5,16 +5,35 @@
     "plot_length": 400,
     "plot_width": 300
   },
-  "plinth": {
-    "x": 0,
-    "y": 0,
-    "length": 400,
-    "width": 300,
-    "height": 30
-  },
   "floors": [
     {
       "floor_number": 0,
+      "name": "Plinth",
+      "height": 30,
+      "objects": [
+        {
+          "type": "ground",
+          "name": "Ground",
+          "layer": "ground",
+          "x": 0,
+          "y": 0,
+          "width": 300,
+          "length": 400
+        },
+        {
+          "type": "plinth",
+          "name": "Plinth",
+          "layer": "plinth",
+          "x": 0,
+          "y": 0,
+          "width": 300,
+          "length": 400,
+          "height": 30
+        }
+      ]
+    },
+    {
+      "floor_number": 1,
       "name": "Ground Floor",
       "objects": [
         {

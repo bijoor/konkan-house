@@ -54,7 +54,6 @@ export interface RoofFramingDefaults {
 
 export interface GlobalConfig {
   wall_thickness: number;
-  plinth_height: number;
   floor_slab_thickness: number;
   roof_thickness: number;
   beam_size: number;
@@ -73,7 +72,6 @@ export interface GlobalConfig {
 
 export const DEFAULT_GLOBAL_CONFIG: GlobalConfig = {
   wall_thickness: 8,
-  plinth_height: 30,
   floor_slab_thickness: 8,
   roof_thickness: 3,
   beam_size: 8,
@@ -190,10 +188,8 @@ export function houseSpanUnits(hc: unknown): number {
   }
   if (best > 0) return best;
 
-  // Fallbacks: nothing drawable yet — use the plinth, then the site plot.
-  const pl = o?.plinth;
-  const span = Math.max(num(pl?.length) ?? 0, num(pl?.width) ?? 0);
-  if (span > 0) return span;
+  // Fallback: nothing drawable yet — use the site plot. (The plinth is now a
+  // floor object; the site already carries the plot extent.)
   const s = o?.site;
   return Math.max(num(s?.plot_length) ?? 0, num(s?.plot_width) ?? 0);
 }

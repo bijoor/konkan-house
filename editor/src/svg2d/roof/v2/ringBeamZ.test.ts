@@ -37,15 +37,16 @@ describe("floor heights → ring beam Z (integration)", () => {
       wall_height: 90,
       slab_thickness: 8,
     };
-    // Ground floor (idx 0), first floor (idx 1), roof floor (idx 2).
-    // None override height → all pick up 98 from defaults.
+    // Plinth floor (idx 0, height 30), ground (idx 1), first (idx 2), roof
+    // floor (idx 3). Ground/first pick up 98 from defaults; the stack seeds at
+    // ground level 0 and the plinth floor's own height (30) is the first term.
     const floors: Array<{ height?: number; slab_thickness?: number }> = [
-      {}, {}, {},
+      { height: 30 }, {}, {}, {},
     ];
 
     // Step 2 — compute the wall-top-Z the roof pipeline uses.
     const wallTopZ = computeTopFloorWallTopZ(
-      2,       // roof lives on floor index 2 → sums floors [0..1]
+      3,       // roof lives on floor index 3 → sums floors [0..2] = plinth+2
       globals,
       0,       // beamOffset removed for v2 (always 0)
       floors,
@@ -83,13 +84,16 @@ describe("floor heights → ring beam Z (integration)", () => {
         reference_x: 0, reference_y: 0,
         plot_length: 200, plot_width: 100,
       },
-      plinth: { x: 0, y: 0, length: 200, width: 100, height: 30 },
       defaults: { floor_height: 98, wall_height: 90, slab_thickness: 8 },
       floors: [
-        { floor_number: 0, name: "Ground", objects: [] },
-        { floor_number: 1, name: "First", objects: [] },
+        { floor_number: 0, name: "Plinth", height: 30, objects: [
+          { type: "ground", x: 0, y: 0, width: 100, length: 200 },
+          { type: "plinth", x: 0, y: 0, width: 100, length: 200, height: 30 },
+        ] },
+        { floor_number: 1, name: "Ground", objects: [] },
+        { floor_number: 2, name: "First", objects: [] },
         {
-          floor_number: 2, name: "Roof", objects: [
+          floor_number: 3, name: "Roof", objects: [
             {
               type: "roof",
               roof_type: "pitched",
@@ -113,17 +117,18 @@ describe("floor heights → ring beam Z (integration)", () => {
   });
 
   it("slab_thickness and wall_height do NOT affect ring beam Z (independence check)", () => {
-    const globals = { ...DEFAULT_GLOBAL_CONFIG };  // plinth default 30
+    const globals = { ...DEFAULT_GLOBAL_CONFIG };
+    // floors = [plinth(30), ground, first, roof]; roof at index 3.
     const withThickSlab = computeTopFloorWallTopZ(
-      2, globals, 0, [{}, {}, {}],
+      3, globals, 0, [{ height: 30 }, {}, {}, {}],
       { floor_height: 98, wall_height: 90, slab_thickness: 8 },
     );
     const withHugeSlab = computeTopFloorWallTopZ(
-      2, globals, 0, [{}, {}, {}],
+      3, globals, 0, [{ height: 30 }, {}, {}, {}],
       { floor_height: 98, wall_height: 90, slab_thickness: 999 },
     );
     const withHugeWall = computeTopFloorWallTopZ(
-      2, globals, 0, [{}, {}, {}],
+      3, globals, 0, [{ height: 30 }, {}, {}, {}],
       { floor_height: 98, wall_height: 999, slab_thickness: 8 },
     );
     expect(withThickSlab).toBe(226);
@@ -132,12 +137,12 @@ describe("floor heights → ring beam Z (integration)", () => {
   });
 
   it("per-floor `height` override wins over house.defaults.floor_height", () => {
-    const globals = { ...DEFAULT_GLOBAL_CONFIG };  // plinth 30
-    // Floor 0 keeps default 98; floor 1 overrides to 108.
-    // Expected: 30 + 98 + 108 = 236.
+    const globals = { ...DEFAULT_GLOBAL_CONFIG };
+    // floors = [plinth(30), ground(98), first(108), roof]; roof at index 3.
+    // Expected: 0 + 30 + 98 + 108 = 236.
     const wallTopZ = computeTopFloorWallTopZ(
-      2, globals, 0,
-      [{}, { height: 108 }, {}],
+      3, globals, 0,
+      [{ height: 30 }, {}, { height: 108 }, {}],
       { floor_height: 98 },
     );
     expect(wallTopZ).toBe(236);

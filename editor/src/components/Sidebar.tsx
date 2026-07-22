@@ -10,6 +10,9 @@ import {
 
 // Order used to group the object tree so it's easier to scan by category.
 const TYPE_ORDER: HouseObject["type"][] = [
+  "component",
+  "ground",
+  "plinth",
   "floor_slab",
   "beam",
   "pillar",
@@ -27,6 +30,9 @@ const TYPE_ORDER: HouseObject["type"][] = [
 ];
 
 const TYPE_LABEL: Record<HouseObject["type"], string> = {
+  component: "Components",
+  ground: "Ground",
+  plinth: "Plinth",
   floor_slab: "Floor slabs",
   beam: "Beams",
   pillar: "Pillars",
@@ -58,6 +64,7 @@ export function Sidebar() {
   const setFloorEditor = useConfigStore((s) => s.setFloorEditor);
   const addObject = useConfigStore((s) => s.addObject);
   const addFloor = useConfigStore((s) => s.addFloor);
+  const moveFloor = useConfigStore((s) => s.moveFloor);
   const [activeFloor, setActiveFloor] = useState(0);
 
   // If the config change reduced the floor count (e.g. loading a
@@ -138,6 +145,37 @@ export function Sidebar() {
           + Floor
         </button>
       </nav>
+
+      {/* Reorder the active floor in the vertical stack. Stacking is purely
+          array order (0 = bottom), so this restacks the model — e.g. move a
+          newly-added Plinth floor below the ground floor. */}
+      <div className="flex items-center gap-2 border-b border-slate-800 px-3 py-1.5 text-[11px] text-slate-400">
+        <span>Stack position:</span>
+        <button
+          type="button"
+          disabled={safeFloorIdx <= 0}
+          onClick={() => {
+            const newIdx = moveFloor(safeFloorIdx, -1);
+            if (newIdx !== null) setActiveFloor(newIdx);
+          }}
+          className="rounded border border-slate-700 px-1.5 py-0.5 enabled:hover:bg-slate-800 disabled:opacity-30"
+          title="Move this floor DOWN the stack (toward the ground)"
+        >
+          ⬇ Move down
+        </button>
+        <button
+          type="button"
+          disabled={safeFloorIdx >= config.floors.length - 1}
+          onClick={() => {
+            const newIdx = moveFloor(safeFloorIdx, +1);
+            if (newIdx !== null) setActiveFloor(newIdx);
+          }}
+          className="rounded border border-slate-700 px-1.5 py-0.5 enabled:hover:bg-slate-800 disabled:opacity-30"
+          title="Move this floor UP the stack"
+        >
+          ⬆ Move up
+        </button>
+      </div>
 
       {/* Floor-level settings button — edits the active floor's name /
           height / slab_thickness. Highlights when open. */}

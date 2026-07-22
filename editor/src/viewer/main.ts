@@ -914,32 +914,91 @@ function showBanner(message: string): void {
   window.setTimeout(remove, 14000);
 }
 
-// Listen for geometry warnings emitted by House3D's lenient expansion and
-// show them in a banner. Deduped so the same problem set doesn't re-fire on
-// every re-render; cleared silently when the geometry becomes valid again.
+// Geometry warnings emitted by House3D's lenient expansion drive three surfaces:
+//   1. a header status chip (#btn-issues) — always visible: green "✓ OK" when
+//      clean, red "⚠ N" with the count when there are issues;
+//   2. an on-demand panel (#issues-panel) — opened from the chip, lists every
+//      current issue and re-renders live, so the user can confirm a fix landed;
+//   3. the transient banner — a one-time nudge when a NEW issue set appears.
+// The warning set is republished on every re-expand (each edit), so all three
+// reflect the CURRENT model, and clear the moment the geometry becomes valid.
 function wireGeometryWarnings(): void {
-  let lastShown = "";
-  const present = (warnings: string[]) => {
-    const key = warnings.join("\n");
-    if (key === lastShown) return;
-    lastShown = key;
-    if (warnings.length === 0) return; // geometry now valid — nothing to show
-    const head =
-      warnings.length === 1
-        ? warnings[0]
-        : `${warnings.length} geometry issues — ${warnings[0]}`;
-    showBanner(
-      `⚠ ${head} The affected wall is shown solid (openings skipped) until you fix it in the object editor.`,
-    );
+  const chip = document.getElementById("btn-issues");
+  const panel = document.getElementById("issues-panel");
+  const body = document.getElementById("issues-panel-body");
+  const countEl = panel?.querySelector(".ip-count") as HTMLElement | null;
+  let current: string[] = [];
+  let lastBannerKey = "";
+
+  const renderPanel = () => {
+    if (!body) return;
+    if (countEl) {
+      countEl.textContent = current.length
+        ? `${current.length} geometry issue${current.length > 1 ? "s" : ""}`
+        : "Geometry issues";
+    }
+    body.replaceChildren();
+    if (current.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "ip-empty";
+      empty.textContent = "✓ No geometry issues — every opening and wall is valid.";
+      body.appendChild(empty);
+      return;
+    }
+    for (const msg of current) {
+      const row = document.createElement("div");
+      row.className = "ip-item";
+      const dot = document.createElement("span");
+      dot.className = "ip-dot";
+      dot.textContent = "⚠";
+      const text = document.createElement("span");
+      text.textContent = msg;
+      row.append(dot, text);
+      body.appendChild(row);
+    }
   };
+
+  const setWarnings = (warnings: string[]) => {
+    current = warnings;
+    if (chip) {
+      chip.dataset.issues = warnings.length ? "on" : "off";
+      chip.textContent = warnings.length ? `⚠ ${warnings.length}` : "✓ OK";
+      chip.title = warnings.length
+        ? `${warnings.length} geometry issue${warnings.length > 1 ? "s" : ""} — click to view`
+        : "No geometry issues — click to review";
+    }
+    if (panel?.dataset.open === "on") renderPanel();
+    // One-time banner when a NEW non-empty set appears (not on every re-render).
+    const key = warnings.join("\n");
+    if (warnings.length && key !== lastBannerKey) {
+      const head =
+        warnings.length === 1
+          ? warnings[0]
+          : `${warnings.length} geometry issues — ${warnings[0]}`;
+      showBanner(
+        `⚠ ${head} The affected wall is shown solid (openings skipped) until you fix it in the object editor. Click ⚠ in the header to review all issues.`,
+      );
+    }
+    lastBannerKey = key;
+  };
+
+  chip?.addEventListener("click", () => {
+    if (!panel) return;
+    const isOpen = panel.dataset.open === "on";
+    panel.dataset.open = isOpen ? "off" : "on";
+    if (!isOpen) renderPanel();
+  });
+  document.getElementById("issues-panel-close")?.addEventListener("click", () => {
+    if (panel) panel.dataset.open = "off";
+  });
+
   window.addEventListener("wadi-geometry-warnings", (e) =>
-    present((e as CustomEvent<string[]>).detail ?? []),
+    setWarnings((e as CustomEvent<string[]>).detail ?? []),
   );
-  // Catch-up: the first House3D render dispatches its warning event during
-  // mountViewer3D, which runs before this listener is attached. Pick up any
-  // warnings it already stored so the initial banner isn't missed.
+  // Catch-up: House3D's first render dispatches its warning event during
+  // mountViewer3D, before this listener attaches — seed from what it stored.
   const stored = (window as unknown as { __geometryWarnings?: string[] }).__geometryWarnings;
-  if (stored && stored.length) present(stored);
+  setWarnings(stored ?? []);
 }
 
 function flashSaved(btn: HTMLElement | null, text = "✓ Saved"): void {

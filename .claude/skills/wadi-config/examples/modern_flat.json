@@ -5,13 +5,6 @@
     "plot_length": 450,
     "plot_width": 360
   },
-  "plinth": {
-    "x": 0,
-    "y": 0,
-    "length": 450,
-    "width": 360,
-    "height": 30
-  },
   "defaults": {
     "floor_height": 98,
     "wall_height": 90,
@@ -20,6 +13,32 @@
   "floors": [
     {
       "floor_number": 0,
+      "name": "Plinth",
+      "height": 30,
+      "objects": [
+        {
+          "type": "ground",
+          "name": "Ground",
+          "layer": "ground",
+          "x": 0,
+          "y": 0,
+          "width": 360,
+          "length": 450
+        },
+        {
+          "type": "plinth",
+          "name": "Plinth",
+          "layer": "plinth",
+          "x": 0,
+          "y": 0,
+          "width": 360,
+          "length": 450,
+          "height": 30
+        }
+      ]
+    },
+    {
+      "floor_number": 1,
       "name": "Ground Floor",
       "objects": [
         {
@@ -329,7 +348,7 @@
       ]
     },
     {
-      "floor_number": 1,
+      "floor_number": 2,
       "name": "Roof Level",
       "objects": [
         {

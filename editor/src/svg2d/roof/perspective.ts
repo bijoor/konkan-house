@@ -2,6 +2,8 @@
 import type { RoofComputed } from "./geometry";
 import type { Layout } from "./layout";
 import { f, fFloat, f0, f1 } from "./format";
+import { DEFAULT_GLOBAL_CONFIG } from "../config";
+import { pillarCenter, type PillarLike } from "../pillar/extents";
 
 type Pt3 = [number, number, number];
 
@@ -171,11 +173,16 @@ export function perspectivePanel(
   const pillar_fill = "#7a6244";
   const pillar_positions_set = new Set<string>();
   const pillar_positions: [number, number][] = [];
+  // Pillars store x,y as the TOP-LEFT CORNER; this view marks each pillar's
+  // center, so convert corner→center using the resolved footprint.
+  const pillarWT =
+    (house_config as { defaults?: { wall_thickness?: number } }).defaults?.wall_thickness ??
+    DEFAULT_GLOBAL_CONFIG.wall_thickness ??
+    8;
   for (const floor of house_config.floors ?? []) {
     for (const obj of (floor.objects ?? []) as Record<string, unknown>[]) {
       if (obj.type === "pillar") {
-        const px = Number(obj.x ?? 0.0);
-        const py = Number(obj.y ?? 0.0);
+        const { cx: px, cy: py } = pillarCenter(obj as unknown as PillarLike, pillarWT);
         const key = `${px},${py}`;
         if (!pillar_positions_set.has(key)) {
           pillar_positions_set.add(key);

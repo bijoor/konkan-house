@@ -5,13 +5,6 @@
     "plot_length": 450,
     "plot_width": 270
   },
-  "plinth": {
-    "x": 0,
-    "y": 0,
-    "length": 450,
-    "width": 270,
-    "height": 30
-  },
   "defaults": {
     "floor_height": 98,
     "wall_height": 90,
@@ -20,6 +13,32 @@
   "floors": [
     {
       "floor_number": 0,
+      "name": "Plinth",
+      "height": 30,
+      "objects": [
+        {
+          "type": "ground",
+          "name": "Ground",
+          "layer": "ground",
+          "x": 0,
+          "y": 0,
+          "width": 270,
+          "length": 450
+        },
+        {
+          "type": "plinth",
+          "name": "Plinth",
+          "layer": "plinth",
+          "x": 0,
+          "y": 0,
+          "width": 270,
+          "length": 450,
+          "height": 30
+        }
+      ]
+    },
+    {
+      "floor_number": 1,
       "name": "Ground Floor",
       "objects": [
         {
@@ -32,143 +51,143 @@
         {
           "type": "pillar",
           "name": "First_Pillar_1",
-          "x": 5,
-          "y": 4,
+          "x": 0,
+          "y": 0,
           "width": 10,
           "height": 196
         },
         {
           "type": "pillar",
           "name": "First_Pillar_2",
-          "x": 105,
-          "y": 4,
+          "x": 100,
+          "y": 0,
           "width": 10,
           "height": 196
         },
         {
           "type": "pillar",
           "name": "First_Pillar_3",
-          "x": 165,
-          "y": 4,
+          "x": 160,
+          "y": 0,
           "width": 10,
           "height": 196
         },
         {
           "type": "pillar",
           "name": "First_Pillar_4",
-          "x": 265,
-          "y": 4,
+          "x": 260,
+          "y": 0,
           "width": 10,
           "height": 196
         },
         {
           "type": "pillar",
           "name": "Second_Pillar_1",
-          "x": 4,
-          "y": 86.225,
+          "x": 0,
+          "y": 79.975,
           "length": 12.5,
           "height": 196
         },
         {
           "type": "pillar",
           "name": "Second_Pillar_2",
-          "x": 120,
-          "y": 86.225,
+          "x": 116,
+          "y": 79.975,
           "length": 12.5,
           "height": 196
         },
         {
           "type": "pillar",
           "name": "Second_Pillar_3",
-          "x": 266,
-          "y": 86.225,
+          "x": 262,
+          "y": 79.975,
           "length": 12.5,
           "height": 196
         },
         {
           "type": "pillar",
           "name": "Center_Pillar_1",
-          "x": 6.2,
-          "y": 200,
+          "x": -0.04999999999999982,
+          "y": 196,
           "width": 12.5,
           "height": 196
         },
         {
           "type": "pillar",
           "name": "Center_Pillar_2",
-          "x": 120,
-          "y": 197.5,
+          "x": 116,
+          "y": 191.25,
           "length": 12.5,
           "height": 196
         },
         {
           "type": "pillar",
           "name": "Center_Pillar_3",
-          "x": 263.8,
-          "y": 200,
+          "x": 257.55,
+          "y": 196,
           "width": 12.5,
           "height": 196
         },
         {
           "type": "pillar",
           "name": "Fourth_Pillar_1",
-          "x": 4,
-          "y": 296,
+          "x": 0,
+          "y": 289.75,
           "length": 12.5,
           "height": 196
         },
         {
           "type": "pillar",
           "name": "Staircase_Pillar",
-          "x": 44,
-          "y": 296,
+          "x": 40,
+          "y": 292,
           "height": 196
         },
         {
           "type": "pillar",
           "name": "Fourth_Pillar_2",
-          "x": 180,
-          "y": 296,
+          "x": 173.75,
+          "y": 292,
           "width": 12.5,
           "height": 196
         },
         {
           "type": "pillar",
           "name": "Fourth_Pillar_3",
-          "x": 266,
-          "y": 296,
+          "x": 262,
+          "y": 289.75,
           "length": 12.5,
           "height": 196
         },
         {
           "type": "pillar",
           "name": "Rear_Corner_Pillar_1",
-          "x": 4,
-          "y": 443.5,
+          "x": 0,
+          "y": 437.25,
           "length": 12.5,
           "height": 196
         },
         {
           "type": "pillar",
           "name": "Rear_Entrance_Pillar_1",
-          "x": 93.5,
-          "y": 446,
+          "x": 88.5,
+          "y": 442,
           "width": 10,
           "height": 196
         },
         {
           "type": "pillar",
           "name": "Rear_Entrance_Pillar_2",
-          "x": 178.5,
-          "y": 446,
+          "x": 173.5,
+          "y": 442,
           "width": 10,
           "height": 196
         },
         {
           "type": "pillar",
           "name": "Rear_Corner_Pillar_2",
-          "x": 266,
-          "y": 443.5,
+          "x": 262,
+          "y": 437.25,
           "length": 12.5,
           "height": 196
         },
@@ -417,23 +436,21 @@
           "material": "bathroom"
         },
         {
-          "type": "staircase",
-          "start_x": 8,
-          "start_y": 430,
-          "num_steps": 20,
-          "step_rise": 5,
-          "step_tread": 10,
-          "step_width": 30,
-          "direction": "north",
-          "material": "floor"
-        },
-        {
           "type": "kitchen_platform",
           "name": "Kitchen_Counter",
           "path": [
-            [262, 370],
-            [262, 300],
-            [192, 300]
+            [
+              262,
+              370
+            ],
+            [
+              262,
+              300
+            ],
+            [
+              192,
+              300
+            ]
           ],
           "side": "right",
           "depth": 21.5,
@@ -443,9 +460,18 @@
           "type": "kitchen_platform",
           "name": "KitchenPlatform_1",
           "path": [
-            [8, 274],
-            [8, 204],
-            [78, 204]
+            [
+              8,
+              274
+            ],
+            [
+              8,
+              204
+            ],
+            [
+              78,
+              204
+            ]
           ],
           "side": "left",
           "depth": 24,
@@ -454,7 +480,7 @@
       ]
     },
     {
-      "floor_number": 1,
+      "floor_number": 2,
       "name": "First Floor",
       "wall_height": 82,
       "objects": [
@@ -849,11 +875,22 @@
               "sill_height": 5
             }
           ]
+        },
+        {
+          "type": "staircase",
+          "start_x": 8,
+          "start_y": 230,
+          "step_rise": 5,
+          "step_tread": 10,
+          "step_width": 30,
+          "direction": "north",
+          "material": "floor",
+          "rise_height": 100
         }
       ]
     },
     {
-      "floor_number": 2,
+      "floor_number": 3,
       "name": "Loft Floor",
       "objects": [
         {

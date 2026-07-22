@@ -396,7 +396,6 @@ function collectV2Roofs(config: HouseConfig): V2RoofBundle[] {
             0,
             hc.floors as Array<{ height?: number; slab_thickness?: number }>,
             houseDefaults,
-            (hc.plinth as { height?: number } | undefined)?.height,
           ) + roofZOffset;
         const cfg = obj as unknown as RoofConfig;
         let spec: RoofSpec;

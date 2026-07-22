@@ -16,6 +16,9 @@ import type { HouseConfig, HouseObject } from "../schema/houseConfig";
 // omitted — one hip_roof per house is the norm, and its structure is
 // too rich for a one-click default.
 export type AddableObjectType =
+  | "component"
+  | "ground"
+  | "plinth"
   | "floor_slab"
   | "room"
   | "wall"
@@ -31,6 +34,9 @@ export type AddableObjectType =
   | "roof";
 
 export const ADDABLE_TYPES: AddableObjectType[] = [
+  "component",
+  "ground",
+  "plinth",
   "floor_slab",
   "room",
   "wall",
@@ -47,6 +53,9 @@ export const ADDABLE_TYPES: AddableObjectType[] = [
 ];
 
 export const ADDABLE_TYPE_LABEL: Record<AddableObjectType, string> = {
+  component: "Component",
+  ground: "Ground",
+  plinth: "Plinth",
   floor_slab: "Floor slab",
   room: "Room",
   wall: "Wall",
@@ -75,6 +84,41 @@ export function makeDefault(
   const plotL = cfg.site.plot_length;
 
   switch (type) {
+    case "component": {
+      // Default to the first library component if one exists; otherwise an empty
+      // ref the user fills in via the form.
+      const firstRef = Object.keys(
+        (cfg as { components?: Record<string, unknown> }).components ?? {},
+      )[0] ?? "";
+      return {
+        type: "component",
+        name: uniqueName(existing, "Component"),
+        ref: firstRef,
+        x: 0,
+        y: 0,
+      };
+    }
+    case "ground":
+      return {
+        type: "ground",
+        name: uniqueName(existing, "Ground"),
+        layer: "ground",
+        x: 0,
+        y: 0,
+        width: plotW,
+        length: plotL,
+      };
+    case "plinth":
+      return {
+        type: "plinth",
+        name: uniqueName(existing, "Plinth"),
+        layer: "plinth",
+        x: 0,
+        y: 0,
+        width: plotW,
+        length: plotL,
+        height: 30,
+      };
     case "floor_slab":
       return {
         type: "floor_slab",
@@ -113,11 +157,12 @@ export function makeDefault(
         height: 100,
       };
     case "staircase":
+      // rise_height omitted → auto-sizes to the floor below (the floor this
+      // stair descends to). Placed on the destination (upper) floor.
       return {
         type: "staircase",
         start_x: 0,
         start_y: 0,
-        num_steps: 12,
         step_rise: 6,
         step_tread: 10,
         step_width: 40,

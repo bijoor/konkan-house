@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import clsx from "clsx";
 import { useConfigStore } from "../state/configStore";
+import { plinthGeom } from "../schema/plinthFloor";
 import { generateAllFloorPlans } from "../svg2d/floorPlansAll";
 import { generateCombinedFloorPlans } from "../svg2d/floorPlansCombined";
 import { generateAllElevations } from "../svg2d/elevationsAll";
@@ -100,12 +101,17 @@ function SummaryPanel() {
             <dt>Plot width</dt>
             <dd className="text-slate-100">{config.site.plot_width}</dd>
           </div>
-          <div>
-            <dt>Plinth</dt>
-            <dd className="text-slate-100">
-              {config.plinth.length} × {config.plinth.width} × {config.plinth.height}
-            </dd>
-          </div>
+          {(() => {
+            const p = plinthGeom(config);
+            return p ? (
+              <div>
+                <dt>Plinth</dt>
+                <dd className="text-slate-100">
+                  {p.length} × {p.width} × {p.height}
+                </dd>
+              </div>
+            ) : null;
+          })()}
           <div>
             <dt>Total objects</dt>
             <dd className="text-slate-100">{total}</dd>

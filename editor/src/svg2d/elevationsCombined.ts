@@ -84,13 +84,13 @@ export function generateCombinedElevations(houseConfig: HouseConfig): string {
     const svgWidth = svgMatch ? Number(svgMatch[1]) : 1000;
     const svgHeight = svgMatch ? Number(svgMatch[2]) : 800;
 
-    const plinth =
-      (houseConfig.plinth as Record<string, unknown> | undefined) ?? {};
+    // Content width spans the plot (matches generateElevationView's canvas).
+    const site = (houseConfig.site as Record<string, unknown> | undefined) ?? {};
     let baseContentWidth: number;
     if (viewType === "front" || viewType === "back") {
-      baseContentWidth = (plinth.width as number | undefined) ?? 0;
+      baseContentWidth = (site.plot_width as number | undefined) ?? 0;
     } else {
-      baseContentWidth = (plinth.length as number | undefined) ?? 0;
+      baseContentWidth = (site.plot_length as number | undefined) ?? 0;
     }
     const contentScale = scale;
     const scaledContentWidth = baseContentWidth * contentScale;

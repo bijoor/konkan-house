@@ -12,22 +12,72 @@ export type Side = z.infer<typeof side>;
 const positive = () => z.number().positive();
 const nonNegative = () => z.number().nonnegative();
 
+// Parametric layer (see plans/object-relationships-plan.md). A value is a
+// FORMULA iff it's a string starting with "="; otherwise a literal number.
+// `variables`/`points` entries may be authored as formulae; object numeric
+// fields stay pure numbers and carry their formula (if any) in the object's
+// `formulas` map, which the resolver evaluates into the numeric field. All of
+// this is optional so existing files still pass the strict load gate.
+const numOrFormula = z.union([z.number(), z.string()]);
+// field name -> formula source ("= expr"). Kept as a loose string here; the
+// resolver — not Zod — reports evaluation errors.
+const formulaMap = z.record(z.string(), z.string());
+// Optional presence switch on an object. `false` / `0` hides the object from
+// every view (2D, 3D, roof, bounds); absent / `true` / non-zero shows it. Can be
+// set manually, or driven by `formulas.enabled` (e.g. "= has_pooja") so a variable
+// toggles a room on/off — the basis of switch-off template rooms. A number is
+// allowed because the resolver writes the formula's numeric result here.
+const enabledField = z.union([z.boolean(), z.number()]);
+
 const site = z
   .object({
     reference_x: z.number(),
     reference_y: z.number(),
     plot_length: positive(),
     plot_width: positive(),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
   })
   .strict();
 
-const plinth = z
+// The plinth is now a normal object placed on the "Plinth" floor (the first
+// floor, number 0), not a top-level config key. Its footprint + height match
+// the old top-level plinth; the plinth floor's `height` drives the rise to the
+// floor above (replacing the old hardcoded plinth_height seed).
+const plinthObject = z
   .object({
+    type: z.literal("plinth"),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
+    layer: z.string().optional(),
+    name: z.string().optional(),
+    material: z.string().optional(),
     x: z.number(),
     y: z.number(),
-    length: positive(),
     width: positive(),
+    length: positive(),
     height: positive(),
+    z_offset: z.number().optional(),
+  })
+  .strict();
+
+// The ground plane, also on the Plinth floor. Extent defaults to the site plot
+// when authored by the migration. `height` is an optional thickness (0 = a flat
+// plane); slope fields are a later phase.
+const groundObject = z
+  .object({
+    type: z.literal("ground"),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
+    layer: z.string().optional(),
+    name: z.string().optional(),
+    material: z.string().optional(),
+    x: z.number(),
+    y: z.number(),
+    width: positive(),
+    length: positive(),
+    height: z.number().nonnegative().optional(),
+    z_offset: z.number().optional(),
   })
   .strict();
 
@@ -56,6 +106,8 @@ const roomWallSide = z
 const floorSlab = z
   .object({
     type: z.literal("floor_slab"),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
     layer: z.string().optional(),
     name: z.string().optional(),
     x: z.number(),
@@ -78,8 +130,12 @@ const floorSlab = z
 const pillar = z
   .object({
     type: z.literal("pillar"),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
     layer: z.string().optional(),
     name: z.string(),
+    // TOP-LEFT CORNER (Inkscape frame), consistent with room / floor_slab /
+    // beam. (Historically this was the pillar CENTER; changed for consistency.)
     x: z.number(),
     y: z.number(),
     // width or length may be absent — see create_pillar.
@@ -96,6 +152,8 @@ const pillar = z
 const beam = z
   .object({
     type: z.literal("beam"),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
     layer: z.string().optional(),
     name: z.string().optional(),
     x: z.number(),
@@ -128,6 +186,8 @@ const wallHeightsEntry = z.union([
 const room = z
   .object({
     type: z.literal("room"),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
     layer: z.string().optional(),
     name: z.string(),
     x: z.number(),
@@ -172,6 +232,8 @@ export type Room = z.infer<typeof room>;
 const wall = z
   .object({
     type: z.literal("wall"),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
     layer: z.string().optional(),
     name: z.string(),
     start_x: z.number(),
@@ -194,21 +256,48 @@ export type Wall = z.infer<typeof wall>;
 const staircase = z
   .object({
     type: z.literal("staircase"),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
     layer: z.string().optional(),
     name: z.string().optional(),
+    // A staircase belongs to the DESTINATION (upper) floor it leads to — put it
+    // on that floor's `objects` so deleting the floor deletes the stair. It is
+    // TOP-anchored and DESCENDS: (start_x, start_y) is the top step's near corner
+    // where it meets this floor; `z_offset` is that top's height above the floor
+    // base (omitted → this floor's slab thickness, i.e. flush with the walking
+    // surface); the flights run DOWN from there to the floor below.
     start_x: z.number(),
     start_y: z.number(),
-    num_steps: z.number().int().positive(),
+    // Total height the stair covers, top → floor below. The step COUNT is
+    // derived: num_steps = round(rise_height / step_rise). Omitted → defaults to
+    // the height of the floor immediately below this one. Formula-capable
+    // (e.g. "= floor_height"). Replaces the old explicit `num_steps`.
+    rise_height: positive().optional(),
     step_rise: positive(),
     step_tread: positive(),
     step_width: positive(),
     direction: side,
-    // Vertical position of the stair's FIRST step, as a lift above the
-    // FLOOR BASE (slabZ; project units, 10 = 1 ft). Omitted → defaults to
-    // the floor's resolved slab thickness, so it sits on the walking surface
-    // as before. Set it for a second flight starting at a mid-height
-    // landing — e.g. z_offset = slab_thickness + flight-1 num_steps ×
-    // step_rise. Same convention as `room`.
+    // Multi-flight (switchback): when `max_run` is set and the single-flight run
+    // (derived-steps × step_tread) exceeds it, the stair auto-splits at render
+    // into that many switchback flights + turn landings (expanded in
+    // expandRoomWalls into plain single-flight staircases + floor_slab landings,
+    // so every renderer is unchanged). Omit → one flight.
+    max_run: positive().optional(),
+    // Turn-landing depth (along the run). Omitted → equals step_width.
+    landing_depth: positive().optional(),
+    // Turn-landing slab thickness. Omitted → equals step_rise.
+    landing_thickness: z.number().nonnegative().optional(),
+    // Switchback handedness, reckoned DESCENDING from the anchored top. Omitted
+    // → "clockwise" (return lane on +lateral). Only affects split stairs.
+    turn: z.enum(["clockwise", "anticlockwise"]).optional(),
+    // Lateral gap between the two switchback flights (a stairwell void for a
+    // spine wall). Omitted/0 → flights are adjacent. The turn landings widen to
+    // bridge the gap. Only affects split stairs.
+    flight_gap: positive().optional(),
+    // Height of the stair's TOP above the floor base (slabZ; project units, 10 =
+    // 1 ft). Omitted → this floor's slab thickness, so the top is flush with the
+    // walking surface and the flights descend to the floor below. Raise it for an
+    // internal step whose top sits above the floor.
     z_offset: z.number().optional(),
     material: z.string().optional(),
   })
@@ -219,6 +308,8 @@ const staircase = z
 const door = z
   .object({
     type: z.literal("door"),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
     layer: z.string().optional(),
     name: z.string(),
     x: z.number(),
@@ -234,6 +325,8 @@ const door = z
 const windowObj = z
   .object({
     type: z.literal("window"),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
     layer: z.string().optional(),
     name: z.string(),
     x: z.number(),
@@ -281,6 +374,8 @@ const shedRoof = z
 const roofV2 = z
   .object({
     type: z.literal("roof"),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
   })
   .catchall(z.unknown());
 
@@ -292,6 +387,8 @@ const roofV2 = z
 const kitchenPlatform = z
   .object({
     type: z.literal("kitchen_platform"),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
     layer: z.string().optional(),
     name: z.string().optional(),
     path: z.array(z.tuple([z.number(), z.number()])).min(2),
@@ -307,7 +404,34 @@ const kitchenPlatform = z
   })
   .strict();
 
+// An INSTANCE of a reusable component from the in-file `components` library.
+// It references a component by id (`ref`), overrides the component's input
+// variables via `params`, and places it at (x, y) with a `z_offset` lift on its
+// parent floor. At render time `expandRoomWalls` flattens it into concrete
+// objects (resolve component with param+origin overrides → recurse → offset),
+// so no renderer needs to know about `component`.
+const componentObject = z
+  .object({
+    type: z.literal("component"),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
+    layer: z.string().optional(),
+    name: z.string().optional(),
+    ref: z.string(),
+    // Overrides for the component's declared input variables. A string starting
+    // with "=" is a formula evaluated in the HOST scope (so it can reference the
+    // host's variables/points); a number is used directly.
+    params: z.record(z.string(), z.union([z.number(), z.string()])).optional(),
+    x: z.number(),
+    y: z.number(),
+    z_offset: z.number().optional(),
+  })
+  .strict();
+
 export const object = z.discriminatedUnion("type", [
+  plinthObject,
+  groundObject,
+  componentObject,
   floorSlab,
   pillar,
   beam,
@@ -339,10 +463,40 @@ const floor = z
     height: z.number().positive().optional(),
     wall_height: z.number().positive().optional(),
     slab_thickness: z.number().nonnegative().optional(),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
     objects: z.array(object),
   })
   .strict();
 export type Floor = z.infer<typeof floor>;
+
+// A reusable component DEFINITION in the in-file `components` library. It is a
+// mini-house: its own `variables`/`points` and a flat `objects` body authored in
+// LOCAL coords (origin 0,0). `params` names which variables are the public
+// inputs (label/default for the instance form). A `component` instance overrides
+// those variables and places the body at its (x,y,z_offset). Stored once;
+// referenced by many instances.
+const componentParam = z
+  .object({
+    name: z.string(),
+    label: z.string().optional(),
+    description: z.string().optional(),
+    default: z.number().optional(),
+  })
+  .strict();
+
+const componentDef = z
+  .object({
+    name: z.string().optional(),
+    params: z.array(componentParam).optional(),
+    variables: z.record(z.string(), numOrFormula).optional(),
+    points: z
+      .record(z.string(), z.object({ x: numOrFormula, y: numOrFormula }).strict())
+      .optional(),
+    objects: z.array(object),
+  })
+  .strict();
+export type ComponentDef = z.infer<typeof componentDef>;
 
 // House-level overrides for the built-in GlobalConfig defaults. Every
 // floor without its own value falls back to these; if these are absent
@@ -356,6 +510,8 @@ const houseDefaults = z
     // `wall_thickness`/`thickness` overrides still win. Falls back to the
     // code default (DEFAULT_GLOBAL_CONFIG.wall_thickness = 8) when omitted.
     wall_thickness: z.number().positive().optional(),
+    formulas: formulaMap.optional(),
+    enabled: enabledField.optional(),
   })
   .strict();
 
@@ -394,12 +550,28 @@ export type LayerDef = z.infer<typeof layerDef>;
 export const HouseConfig = z
   .object({
     site,
-    plinth,
+    // Legacy top-level plinth (pre-"Plinth floor"). Tolerated but IGNORED so an
+    // un-migrated file still loads (it just renders without a plinth/ground)
+    // instead of failing .strict() validation. New configs put the plinth on
+    // the Plinth floor as a `plinth` object.
+    plinth: z.unknown().optional(),
     defaults: houseDefaults.optional(),
     units: houseUnits.optional(),
     // Configurable 3D visibility layers (optional; defaults applied when
     // absent). Objects opt in via their own `layer` field.
     layers: z.array(layerDef).optional(),
+    // Parametric layer (plans/object-relationships-plan.md). Named scalar
+    // variables (number or "= formula", may reference other variables) and
+    // named 2D points; object `formulas` maps reference these. Optional —
+    // absent = a plain non-parametric house, resolved as a no-op.
+    variables: z.record(z.string(), numOrFormula).optional(),
+    points: z
+      .record(z.string(), z.object({ x: numOrFormula, y: numOrFormula }).strict())
+      .optional(),
+    // Reusable-component library (in-file). Map of id → ComponentDef. A
+    // `component` object instantiates one by `ref`. Stored once; referenced by
+    // many instances; edit here to update every instance.
+    components: z.record(z.string(), componentDef).optional(),
     floors: z.array(floor).min(1),
     _walls_expanded: z.boolean().optional(),
   })

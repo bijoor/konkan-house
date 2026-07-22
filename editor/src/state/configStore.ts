@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { temporal } from "zundo";
 import type { HouseConfig, HouseObject } from "../schema/houseConfig";
 import { makeDefault, makeDefaultFloor, type AddableObjectType } from "./defaultFactory";
+import { resolveParametric } from "../param/resolve";
+import { reportFormulaWarnings } from "../param/warnings";
 
 // Identity of the currently-selected object in the sidebar tree. `floor`
 // is the index into HOUSE_CONFIG.floors; `object` is the index into that
@@ -39,7 +41,6 @@ interface ConfigState {
   setSiteEditorOpen: (open: boolean) => void;
   setFloorEditor: (idx: number | null) => void;
   updateSite: (patch: Partial<HouseConfig["site"]>) => void;
-  updatePlinth: (patch: Partial<HouseConfig["plinth"]>) => void;
   // Patches the house-level defaults block (floor_height / wall_height
   // / slab_thickness). Passing undefined for a field deletes it (so it
   // falls back to the code globals); passing a number sets it.
@@ -61,6 +62,15 @@ interface ConfigState {
   // Replaces the house-level 3D visibility layer list. Pass an empty array
   // or undefined to clear it (falls back to the built-in default layers).
   updateLayers: (layers: NonNullable<HouseConfig["layers"]> | undefined) => void;
+  // Replace the house-level parametric `variables` / `points` tables. Pass an
+  // empty object or undefined to clear (a non-parametric house). Both go
+  // through the resolver seam, so editing a variable re-resolves every object
+  // formula that references it.
+  updateVariables: (variables: NonNullable<HouseConfig["variables"]> | undefined) => void;
+  // Import a loaded .wadi (HouseConfig) as a reusable component (flatten its
+  // floors→objects, copy variables/points, seed params from its variable names).
+  importComponentFromWadi: (id: string, wadiConfig: HouseConfig) => void;
+  updatePoints: (points: NonNullable<HouseConfig["points"]> | undefined) => void;
   // Patches a floor's top-level fields (name, height, slab_thickness).
   // The `objects` array is edited via updateObject / insertObject etc.
   updateFloor: (floorIdx: number, patch: Partial<HouseConfig["floors"][number]>) => void;
@@ -76,6 +86,11 @@ interface ConfigState {
   // the freshly created item so the property panel opens for editing.
   addObject: (floor: number, type: AddableObjectType) => Selection | null;
   addFloor: () => number | null;
+  // Reorder a floor within the stack. delta -1 moves it DOWN (earlier in the
+  // array = lower z), +1 moves it UP. floor_number is renumbered to the new
+  // array index so it always tracks stack position. Returns the moved floor's
+  // new index, or null if the move was out of range.
+  moveFloor: (floorIdx: number, delta: number) => number | null;
 
   setValidationErrors: (errs: { path: string; message: string }[]) => void;
 }
@@ -94,7 +109,42 @@ export const useConfigStore = create<ConfigState>()(
   // <TState, Mps, Mcs, UState> — UState is the partialize slice (only
   // `config` participates in undo history; see partialize below).
   temporal<ConfigState, [], [], { config: HouseConfig | null }>(
-    (set, get) => ({
+    (rawSet, get) => {
+      // Parametric resolution seam. Wrap `set` once here so EVERY mutation
+      // (typed actions, loadConfig, duplicate, external watcher) that produces
+      // a new `config` runs the resolver, and the resolved config lands in the
+      // SAME set() — so undo captures user-edit + resolution as one snapshot
+      // and all subscribers re-derive from resolved numbers. Patches without a
+      // (truthy) `config` — selection setters, null-config early returns — pass
+      // through untouched. Non-parametric houses hit the resolver's fast path
+      // (same reference, zero cost), keeping existing behavior byte-identical.
+      const set = ((partial: unknown, replace?: boolean) => {
+        const wrap = (patch: unknown): unknown => {
+          if (
+            patch &&
+            typeof patch === "object" &&
+            "config" in patch &&
+            (patch as { config?: unknown }).config
+          ) {
+            const { config, warnings } = resolveParametric(
+              (patch as { config: HouseConfig }).config,
+            );
+            reportFormulaWarnings(warnings);
+            return { ...(patch as object), config };
+          }
+          return patch;
+        };
+        const rs = rawSet as (p: unknown, r?: boolean) => void;
+        if (typeof partial === "function") {
+          return rs(
+            (s: unknown) => wrap((partial as (s: unknown) => unknown)(s)),
+            replace,
+          );
+        }
+        return rs(wrap(partial), replace);
+      }) as typeof rawSet;
+
+      return {
       config: null,
       filename: null,
       filePath: null,
@@ -169,15 +219,6 @@ export const useConfigStore = create<ConfigState>()(
           };
         }),
 
-      updatePlinth: (patch) =>
-        set((state) => {
-          if (!state.config) return state;
-          return {
-            config: { ...state.config, plinth: { ...state.config.plinth, ...patch } },
-            dirty: true,
-          };
-        }),
-
       updateDefaults: (patch) =>
         set((state) => {
           if (!state.config) return state;
@@ -219,6 +260,48 @@ export const useConfigStore = create<ConfigState>()(
           const cleaned = layers && layers.length > 0 ? layers : undefined;
           return {
             config: { ...state.config, layers: cleaned } as HouseConfig,
+            dirty: true,
+          };
+        }),
+
+      updateVariables: (variables) =>
+        set((state) => {
+          if (!state.config) return state;
+          const cleaned =
+            variables && Object.keys(variables).length > 0 ? variables : undefined;
+          return {
+            config: { ...state.config, variables: cleaned } as HouseConfig,
+            dirty: true,
+          };
+        }),
+
+      importComponentFromWadi: (id, wadiConfig) =>
+        set((state) => {
+          if (!state.config || !id) return state;
+          const objects = (wadiConfig.floors ?? []).flatMap((f) => f.objects ?? []);
+          const vars = wadiConfig.variables ?? {};
+          // Only literal-number variables are treated as input params; `= formula`
+          // variables are derived internals and stay out of the param list.
+          const def = {
+            name: id,
+            variables: vars,
+            points: wadiConfig.points,
+            params: Object.entries(vars)
+              .filter(([, v]) => typeof v === "number")
+              .map(([name]) => ({ name })),
+            objects,
+          } as NonNullable<HouseConfig["components"]>[string];
+          const components = { ...(state.config.components ?? {}), [id]: def };
+          return { config: { ...state.config, components } as HouseConfig, dirty: true };
+        }),
+
+      updatePoints: (points) =>
+        set((state) => {
+          if (!state.config) return state;
+          const cleaned =
+            points && Object.keys(points).length > 0 ? points : undefined;
+          return {
+            config: { ...state.config, points: cleaned } as HouseConfig,
             dirty: true,
           };
         }),
@@ -345,8 +428,33 @@ export const useConfigStore = create<ConfigState>()(
         return newFloorIdx;
       },
 
+      moveFloor: (floorIdx, delta) => {
+        let resultIdx: number | null = null;
+        set((state) => {
+          if (!state.config) return state;
+          const floors = [...state.config.floors];
+          const target = floorIdx + delta;
+          if (
+            floorIdx < 0 || floorIdx >= floors.length ||
+            target < 0 || target >= floors.length
+          ) {
+            return state; // out of range — no-op
+          }
+          [floors[floorIdx], floors[target]] = [floors[target], floors[floorIdx]];
+          // Keep floor_number == array index (= stack position, 0 = bottom).
+          const renumbered = floors.map((f, i) => ({ ...f, floor_number: i }));
+          resultIdx = target;
+          return {
+            config: { ...state.config, floors: renumbered },
+            dirty: true,
+          };
+        });
+        return resultIdx;
+      },
+
       setValidationErrors: (validationErrors) => set({ validationErrors }),
-    }),
+      };
+    },
     {
       // Only diff the `config` field for undo history — other state
       // (selection, validation, filename) is ephemeral and shouldn't

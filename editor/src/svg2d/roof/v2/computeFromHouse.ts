@@ -73,7 +73,6 @@ export function computeMergedV2Spec(
             0,
             hc.floors as Array<{ height?: number; slab_thickness?: number }>,
             houseDefaults,
-            (hc.plinth as { height?: number } | undefined)?.height,
           ) + roofZOffset;
         const v2Cfg: RoofConfig = isV2
           ? (obj as unknown as RoofConfig)
@@ -164,7 +163,6 @@ export function collectV2FramingSpecs(
             0,
             hc.floors as Array<{ height?: number; slab_thickness?: number }>,
             houseDefaults,
-            (hc.plinth as { height?: number } | undefined)?.height,
           ) + roofZOffset;
         const v2Cfg: RoofConfig = isV2
           ? (obj as unknown as RoofConfig)

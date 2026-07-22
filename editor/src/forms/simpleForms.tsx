@@ -1,7 +1,7 @@
 import type { HouseObject, Side } from "../schema/houseConfig";
 import type { Selection } from "../state/configStore";
 import { useConfigStore } from "../state/configStore";
-import { NumberField, TextField, SelectField, Section } from "./fields";
+import { NumberField, TextField, SelectField, Section, ObjectMeasureField } from "./fields";
 
 // A generic patch helper — narrowed at each callsite via the object type
 // discriminator so the store's replaceObject call still stays type-safe.
@@ -16,6 +16,8 @@ export function PillarForm({
 }) {
   const replace = useConfigStore((s) => s.replaceObject);
   const patch = (next: Partial<typeof obj>) => replace(selection, { ...obj, ...next });
+  const mpatch = (p: Record<string, unknown>) => replace(selection, { ...obj, ...p } as typeof obj);
+  const o = obj as unknown as Record<string, unknown>;
   return (
     <div>
       <Section title="Identity">
@@ -23,12 +25,12 @@ export function PillarForm({
       </Section>
       <Section title="Position & size">
         <div className="grid grid-cols-2 gap-x-2">
-          <NumberField label="X (centre)" value={obj.x} onCommit={(v) => v !== undefined && patch({ x: v })} />
-          <NumberField label="Y (centre)" value={obj.y} onCommit={(v) => v !== undefined && patch({ y: v })} />
-          <NumberField label="Width" value={obj.width} onCommit={(v) => patch({ width: v })} min={0.01} allowEmpty hint="X extent" />
-          <NumberField label="Length" value={obj.length} onCommit={(v) => patch({ length: v })} min={0.01} allowEmpty hint="Y extent" />
-          <NumberField label="Height" value={obj.height} onCommit={(v) => v !== undefined && patch({ height: v })} min={0.01} />
-          <NumberField label="Z offset" value={obj.z_offset} onCommit={(v) => patch({ z_offset: v })} allowEmpty hint="above floor base (10u=1ft)" />
+          <ObjectMeasureField object={o} field="x" label="X" hint="top-left corner" patch={mpatch} />
+          <ObjectMeasureField object={o} field="y" label="Y" hint="top-left corner" patch={mpatch} />
+          <ObjectMeasureField object={o} field="width" label="Width" patch={mpatch} min={0.01} allowEmpty hint="X extent" />
+          <ObjectMeasureField object={o} field="length" label="Length" patch={mpatch} min={0.01} allowEmpty hint="Y extent" />
+          <ObjectMeasureField object={o} field="height" label="Height" patch={mpatch} min={0.01} />
+          <ObjectMeasureField object={o} field="z_offset" label="Z offset" patch={mpatch} allowEmpty hint="above floor base (10u=1ft)" />
         </div>
       </Section>
     </div>
@@ -43,6 +45,8 @@ export function BeamForm({
 }) {
   const replace = useConfigStore((s) => s.replaceObject);
   const patch = (next: Partial<typeof obj>) => replace(selection, { ...obj, ...next });
+  const mpatch = (p: Record<string, unknown>) => replace(selection, { ...obj, ...p } as typeof obj);
+  const o = obj as unknown as Record<string, unknown>;
   return (
     <div>
       <Section title="Identity">
@@ -50,27 +54,93 @@ export function BeamForm({
       </Section>
       <Section title="Position & size">
         <div className="grid grid-cols-2 gap-x-2">
-          <NumberField label="X" value={obj.x} onCommit={(v) => v !== undefined && patch({ x: v })} />
-          <NumberField label="Y" value={obj.y} onCommit={(v) => v !== undefined && patch({ y: v })} />
-          <NumberField label="Width" value={obj.width} onCommit={(v) => v !== undefined && patch({ width: v })} min={0.01} />
-          <NumberField label="Length" value={obj.length} onCommit={(v) => v !== undefined && patch({ length: v })} min={0.01} />
+          <ObjectMeasureField object={o} field="x" label="X" patch={mpatch} />
+          <ObjectMeasureField object={o} field="y" label="Y" patch={mpatch} />
+          <ObjectMeasureField object={o} field="width" label="Width" patch={mpatch} min={0.01} />
+          <ObjectMeasureField object={o} field="length" label="Length" patch={mpatch} min={0.01} />
         </div>
         <div className="grid grid-cols-2 gap-x-2">
-          <NumberField
+          <ObjectMeasureField
+            object={o}
+            field="height"
             label="Thickness"
-            value={obj.height}
-            onCommit={(v) => patch({ height: v })}
+            patch={mpatch}
             allowEmpty
             min={0.01}
             hint="defaults to floor's slab thickness"
           />
-          <NumberField
+          <ObjectMeasureField
+            object={o}
+            field="z_offset"
             label="Z offset"
-            value={obj.z_offset}
-            onCommit={(v) => patch({ z_offset: v })}
+            patch={mpatch}
             allowEmpty
             hint="lift above floor start (10u = 1ft)"
           />
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+export function PlinthForm({
+  obj, selection,
+}: {
+  obj: Extract<HouseObject, { type: "plinth" }>;
+  selection: Selection;
+}) {
+  const replace = useConfigStore((s) => s.replaceObject);
+  const patch = (next: Partial<typeof obj>) => replace(selection, { ...obj, ...next });
+  const mpatch = (p: Record<string, unknown>) => replace(selection, { ...obj, ...p } as typeof obj);
+  const o = obj as unknown as Record<string, unknown>;
+  return (
+    <div>
+      <Section title="Identity">
+        <TextField label="Name" value={obj.name ?? ""} onCommit={(v) => patch({ name: v || undefined })} />
+      </Section>
+      <Section title="Plinth (raised base)">
+        <div className="mb-2 text-[11px] text-slate-400">
+          Raised base the ground floor sits on. Its <b>height</b> is the rise of
+          this Plinth floor — set the floor's own height to match.
+        </div>
+        <div className="grid grid-cols-2 gap-x-2">
+          <ObjectMeasureField object={o} field="x" label="X" patch={mpatch} />
+          <ObjectMeasureField object={o} field="y" label="Y" patch={mpatch} />
+          <ObjectMeasureField object={o} field="width" label="Width" patch={mpatch} min={0.01} />
+          <ObjectMeasureField object={o} field="length" label="Length" patch={mpatch} min={0.01} />
+          <ObjectMeasureField object={o} field="height" label="Height" patch={mpatch} min={0.01} hint="above ground" />
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+export function GroundForm({
+  obj, selection,
+}: {
+  obj: Extract<HouseObject, { type: "ground" }>;
+  selection: Selection;
+}) {
+  const replace = useConfigStore((s) => s.replaceObject);
+  const patch = (next: Partial<typeof obj>) => replace(selection, { ...obj, ...next });
+  const mpatch = (p: Record<string, unknown>) => replace(selection, { ...obj, ...p } as typeof obj);
+  const o = obj as unknown as Record<string, unknown>;
+  return (
+    <div>
+      <Section title="Identity">
+        <TextField label="Name" value={obj.name ?? ""} onCommit={(v) => patch({ name: v || undefined })} />
+      </Section>
+      <Section title="Ground plane">
+        <div className="mb-2 text-[11px] text-slate-400">
+          The ground the house sits on. Extent usually matches the plot.
+          Sloping ground is a later feature.
+        </div>
+        <div className="grid grid-cols-2 gap-x-2">
+          <ObjectMeasureField object={o} field="x" label="X" patch={mpatch} />
+          <ObjectMeasureField object={o} field="y" label="Y" patch={mpatch} />
+          <ObjectMeasureField object={o} field="width" label="Width" patch={mpatch} min={0.01} />
+          <ObjectMeasureField object={o} field="length" label="Length" patch={mpatch} min={0.01} />
+          <ObjectMeasureField object={o} field="height" label="Thickness" patch={mpatch} allowEmpty min={0} hint="0 = flat plane" />
         </div>
       </Section>
     </div>
@@ -85,6 +155,8 @@ export function FloorSlabForm({
 }) {
   const replace = useConfigStore((s) => s.replaceObject);
   const patch = (next: Partial<typeof obj>) => replace(selection, { ...obj, ...next });
+  const mpatch = (p: Record<string, unknown>) => replace(selection, { ...obj, ...p } as typeof obj);
+  const o = obj as unknown as Record<string, unknown>;
   return (
     <div>
       <Section title="Identity">
@@ -92,24 +164,26 @@ export function FloorSlabForm({
       </Section>
       <Section title="Slab footprint">
         <div className="grid grid-cols-2 gap-x-2">
-          <NumberField label="X" value={obj.x} onCommit={(v) => v !== undefined && patch({ x: v })} />
-          <NumberField label="Y" value={obj.y} onCommit={(v) => v !== undefined && patch({ y: v })} />
-          <NumberField label="Width" value={obj.width} onCommit={(v) => v !== undefined && patch({ width: v })} min={0.01} />
-          <NumberField label="Length" value={obj.length} onCommit={(v) => v !== undefined && patch({ length: v })} min={0.01} />
+          <ObjectMeasureField object={o} field="x" label="X" patch={mpatch} />
+          <ObjectMeasureField object={o} field="y" label="Y" patch={mpatch} />
+          <ObjectMeasureField object={o} field="width" label="Width" patch={mpatch} min={0.01} />
+          <ObjectMeasureField object={o} field="length" label="Length" patch={mpatch} min={0.01} />
         </div>
         <div className="grid grid-cols-2 gap-x-2">
-          <NumberField
+          <ObjectMeasureField
+            object={o}
+            field="thickness"
             label="Thickness"
-            value={obj.thickness}
-            onCommit={(v) => patch({ thickness: v })}
+            patch={mpatch}
             allowEmpty
             min={0}
             hint="defaults to floor's slab thickness"
           />
-          <NumberField
+          <ObjectMeasureField
+            object={o}
+            field="z_offset"
             label="Z offset"
-            value={obj.z_offset}
-            onCommit={(v) => patch({ z_offset: v })}
+            patch={mpatch}
             allowEmpty
             hint="lift above floor (10u = 1ft) — e.g. a stair landing"
           />
@@ -127,25 +201,40 @@ export function StaircaseForm({
 }) {
   const replace = useConfigStore((s) => s.replaceObject);
   const patch = (next: Partial<typeof obj>) => replace(selection, { ...obj, ...next });
+  const mpatch = (p: Record<string, unknown>) => replace(selection, { ...obj, ...p } as typeof obj);
+  const o = obj as unknown as Record<string, unknown>;
   return (
     <div>
       <Section title="Identity">
         <TextField label="Name" value={obj.name ?? ""} onCommit={(v) => patch({ name: v || undefined })} />
       </Section>
       <Section title="Position & shape">
+        <div className="mb-2 text-[11px] text-slate-400">
+          Put the stair on the <b>upper</b> floor it leads to. X / Y / Z anchor its{" "}
+          <b>top</b> (where it meets this floor); it descends to the floor below.
+        </div>
         <div className="grid grid-cols-2 gap-x-2">
-          <NumberField label="Start X" value={obj.start_x} onCommit={(v) => v !== undefined && patch({ start_x: v })} />
-          <NumberField label="Start Y" value={obj.start_y} onCommit={(v) => v !== undefined && patch({ start_y: v })} />
-          <NumberField label="Step width" value={obj.step_width} onCommit={(v) => v !== undefined && patch({ step_width: v })} min={0.01} />
-          <NumberField label="Step tread" value={obj.step_tread} onCommit={(v) => v !== undefined && patch({ step_tread: v })} min={0.01} />
-          <NumberField label="Step rise" value={obj.step_rise} onCommit={(v) => v !== undefined && patch({ step_rise: v })} min={0.01} />
-          <NumberField label="# Steps" value={obj.num_steps} onCommit={(v) => v !== undefined && patch({ num_steps: Math.round(v) })} min={1} step={1} />
-          <NumberField
-            label="Z offset"
-            value={obj.z_offset}
-            onCommit={(v) => patch({ z_offset: v })}
+          <ObjectMeasureField object={o} field="start_x" label="Top X" patch={mpatch} hint="connection point" />
+          <ObjectMeasureField object={o} field="start_y" label="Top Y" patch={mpatch} hint="connection point" />
+          <ObjectMeasureField object={o} field="step_width" label="Step width" patch={mpatch} min={0.01} />
+          <ObjectMeasureField object={o} field="step_tread" label="Step tread" patch={mpatch} min={0.01} />
+          <ObjectMeasureField object={o} field="step_rise" label="Step rise" patch={mpatch} min={0.01} />
+          <ObjectMeasureField
+            object={o}
+            field="rise_height"
+            label="Height to cover"
+            patch={mpatch}
             allowEmpty
-            hint="first step lift above floor (10u = 1ft) — for a landing"
+            min={0.01}
+            hint="top → floor below; blank = floor-below height. Steps = ÷ step rise"
+          />
+          <ObjectMeasureField
+            object={o}
+            field="z_offset"
+            label="Top Z"
+            patch={mpatch}
+            allowEmpty
+            hint="top height above floor (blank → flush with this floor)"
           />
         </div>
         <SelectField
@@ -158,6 +247,62 @@ export function StaircaseForm({
           label="Material"
           value={obj.material}
           onCommit={(v) => patch({ material: v || undefined })}
+        />
+      </Section>
+      <Section title="Flights (switchback)">
+        <div className="mb-2 text-[11px] text-slate-400">
+          Set a max run to auto-split a long stair into switchback flights. The
+          number of flights is computed; <b># Steps</b> stays the total. Blank =
+          one flight.
+        </div>
+        <div className="grid grid-cols-2 gap-x-2">
+          <ObjectMeasureField
+            object={o}
+            field="max_run"
+            label="Max run / flight"
+            patch={mpatch}
+            allowEmpty
+            min={0.01}
+            hint="along the direction; splits when exceeded"
+          />
+          <ObjectMeasureField
+            object={o}
+            field="landing_depth"
+            label="Landing depth"
+            patch={mpatch}
+            allowEmpty
+            min={0.01}
+            hint="blank → equals step width"
+          />
+          <ObjectMeasureField
+            object={o}
+            field="landing_thickness"
+            label="Landing thickness"
+            patch={mpatch}
+            allowEmpty
+            min={0}
+            hint="blank → equals step rise"
+          />
+          <ObjectMeasureField
+            object={o}
+            field="flight_gap"
+            label="Flight gap"
+            patch={mpatch}
+            allowEmpty
+            min={0}
+            hint="stairwell void between flights (e.g. for a wall)"
+          />
+        </div>
+        <SelectField
+          label="Turn (going down)"
+          value={obj.turn ?? "clockwise"}
+          onChange={(v) =>
+            patch({ turn: v === "anticlockwise" ? "anticlockwise" : "clockwise" })
+          }
+          options={[
+            { value: "clockwise", label: "clockwise" },
+            { value: "anticlockwise", label: "anticlockwise" },
+          ]}
         />
       </Section>
     </div>

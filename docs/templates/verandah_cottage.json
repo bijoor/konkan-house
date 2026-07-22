@@ -5,16 +5,35 @@
     "plot_length": 400,
     "plot_width": 300
   },
-  "plinth": {
-    "x": 0,
-    "y": 0,
-    "length": 400,
-    "width": 300,
-    "height": 30
-  },
   "floors": [
     {
       "floor_number": 0,
+      "name": "Plinth",
+      "height": 30,
+      "objects": [
+        {
+          "type": "ground",
+          "name": "Ground",
+          "layer": "ground",
+          "x": 0,
+          "y": 0,
+          "width": 300,
+          "length": 400
+        },
+        {
+          "type": "plinth",
+          "name": "Plinth",
+          "layer": "plinth",
+          "x": 0,
+          "y": 0,
+          "width": 300,
+          "length": 400,
+          "height": 30
+        }
+      ]
+    },
+    {
+      "floor_number": 1,
       "name": "Ground Floor",
       "objects": [
         {
@@ -27,8 +46,8 @@
         {
           "type": "pillar",
           "name": "V_Pillar_NW",
-          "x": 5,
-          "y": 5,
+          "x": 0,
+          "y": 0,
           "width": 10,
           "length": 10,
           "height": 100
@@ -36,8 +55,8 @@
         {
           "type": "pillar",
           "name": "V_Pillar_N1",
-          "x": 100,
-          "y": 5,
+          "x": 95,
+          "y": 0,
           "width": 10,
           "length": 10,
           "height": 100
@@ -45,8 +64,8 @@
         {
           "type": "pillar",
           "name": "V_Pillar_N2",
-          "x": 190,
-          "y": 5,
+          "x": 185,
+          "y": 0,
           "width": 10,
           "length": 10,
           "height": 100
@@ -54,8 +73,8 @@
         {
           "type": "pillar",
           "name": "V_Pillar_NE",
-          "x": 285,
-          "y": 5,
+          "x": 280,
+          "y": 0,
           "width": 10,
           "length": 10,
           "height": 100
@@ -265,7 +284,7 @@
       ]
     },
     {
-      "floor_number": 1,
+      "floor_number": 2,
       "name": "Loft Floor",
       "objects": [
         {

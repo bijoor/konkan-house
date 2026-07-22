@@ -11,6 +11,8 @@
 
 import { useMemo } from "react";
 import { expandRoomWalls, type HouseConfig } from "../svg2d/expand";
+import { pillarRects, trimSpans, type PillarRect } from "../svg2d/wallTrim";
+import { BoxWithHoles } from "./slabCSG";
 import { DEFAULT_GLOBAL_CONFIG } from "../svg2d/config";
 import {
   computeFloorZBands,
@@ -97,12 +99,12 @@ export function House3D({ config }: { config: HouseConfig }) {
     // House-level defaults (defaults.floor_height / slab_thickness) win
     // over the code globals; per-floor overrides win over both.
     const houseDefaults = (config as { defaults?: { floor_height?: number; slab_thickness?: number; wall_thickness?: number } }).defaults;
-    const plinthHeight = (config.plinth as { height?: number } | undefined)?.height;
-    const globals = readGlobals(houseDefaults, plinthHeight);
+    const globals = readGlobals(houseDefaults);
     const plot = readPlotBounds(hc);
+    // The plinth is now the first floor (number 0); its `height` seeds the
+    // stack from ground(0). computeFloorZBands no longer takes a plinth height.
     const bands = computeFloorZBands(
       hc.floors ?? [],
-      globals.plinthHeight,
       globals.slabThickness,
       globals.floorHeight,
       globals.wallHeight,
@@ -144,9 +146,10 @@ export function House3D({ config }: { config: HouseConfig }) {
           wall_top_above_eave: derived.wall_top_above_eave as number | undefined,
         };
         // Ring-beam anchor rectangle — the roof's own footprint in world
-        // coords (position + size). Falls back to the plinth for
-        // backward-compat with configs that don't set x/y/width/length.
-        const p = hc.plinth as { x: number; y: number; width: number; length: number } | undefined;
+        // coords (position + size). Falls back to the plot footprint at the
+        // origin (the plinth's typical extent) for configs that don't set
+        // x/y/width/length.
+        const p = { x: 0, y: 0, width: plot.width, length: plot.length };
         const rx = (hipConfig as { x?: number }).x;
         const ry = (hipConfig as { y?: number }).y;
         const rw = (hipConfig as { width?: number }).width;
@@ -366,24 +369,9 @@ export function House3D({ config }: { config: HouseConfig }) {
       roofs: roofDebug,
     };
 
-    // Plinth
-    if (hc.plinth) {
-      const p = hc.plinth as {
-        x: number; y: number; width: number; length: number; height: number;
-      };
-      const c = toThreePos(p.x + p.width / 2, p.y + p.length / 2, 0, plot.width, plot.length);
-      push(
-        "plinth",
-        <PlinthBox
-          key="plinth"
-          cx={c.x}
-          cz={c.z}
-          width={p.width}
-          length={p.length}
-          height={p.height}
-        />,
-      );
-    }
+    // The plinth is no longer a top-level object — it's a `plinth` object on
+    // the Plinth floor (number 0), rendered in the per-floor loop below along
+    // with the `ground` object.
 
     // Per-floor: index openings by physical position first, then emit
     // walls with position-matched openings.
@@ -392,15 +380,40 @@ export function House3D({ config }: { config: HouseConfig }) {
       const band = bands[fi];
       const objects = (floor.objects as Obj[] | undefined) ?? [];
       const floorNum = (floor.floor_number as number) ?? fi;
-      const roomLayer = floorNum === 0 ? "f0" : "f1";
-      const slabLayer = floorNum === 0 ? "plinth" : "f1_slab";
+      // Floor 0 is the Plinth floor; habitable floors are 1..N. effFloor maps
+      // the ground floor (1) → 0 so the historical floor-0 layer semantics
+      // (ground rooms → "f0", ground slab → "plinth") carry over unchanged.
+      const effFloor = floorNum - 1;
+      const roomLayer = effFloor === 0 ? "f0" : "f1";
+      const slabLayer = effFloor === 0 ? "plinth" : "f1_slab";
       const openings = objects.filter((o) => o.type === "door" || o.type === "window");
+      // Pillar footprints on this floor — walls trim to their faces (no overlap).
+      const pillars = pillarRects(objects);
 
       for (let oi = 0; oi < objects.length; oi++) {
         const obj = objects[oi];
         const key = `f${fi}-${oi}`;
 
-        if (obj.type === "floor_slab") {
+        if (obj.type === "plinth") {
+          // Plinth object (on the Plinth floor). Rises from ground (its
+          // band.slabZ is 0); PlinthBox seats itself from y=0 to height.
+          const x = obj.x as number, y = obj.y as number;
+          const w = obj.width as number, l = obj.length as number;
+          const h = (obj.height as number | undefined) ?? band.floorHeight;
+          const c = toThreePos(x + w / 2, y + l / 2, 0, plot.width, plot.length);
+          push(
+            (obj.layer as string | undefined) ?? "plinth",
+            <PlinthBox key={key} cx={c.x} cz={c.z} width={w} length={l} height={h} />,
+          );
+        } else if (obj.type === "ground") {
+          // Ground plane (on the Plinth floor). GroundPlane centres on the
+          // origin and sizes to the object's own extent (× 1.5 internally).
+          const w = obj.width as number, l = obj.length as number;
+          push(
+            (obj.layer as string | undefined) ?? "ground",
+            <GroundPlane key={key} width={w} length={l} />,
+          );
+        } else if (obj.type === "floor_slab") {
           const x = obj.x as number, y = obj.y as number;
           const w = obj.width as number, l = obj.length as number;
           // Slab thickness defaults to the floor's slab_thickness
@@ -410,18 +423,35 @@ export function House3D({ config }: { config: HouseConfig }) {
           // stair landing at mid-height (matches beam's z_offset).
           const slabZOffset = (obj.z_offset as number | undefined) ?? 0;
           const c = toThreePos(x + w / 2, y + l / 2, 0, plot.width, plot.length);
-          push(
-            (obj.layer as string | undefined) ?? slabLayer,
-            <FloorSlabBox
-              key={key}
-              cx={c.x}
-              cz={c.z}
-              width={w}
-              length={l}
-              z={band.slabZ + slabZOffset}
-              thickness={slabT}
-            />,
-          );
+          // Pillars overlapping this slab → cut their footprints out so the
+          // columns pass through instead of overlapping the deck. Local-frame
+          // offsets (origin at slab centre) = plain world offsets (toThreePos is
+          // a translation).
+          const slabHoles = pillars
+            .filter((p) => p.x1 > x && p.x0 < x + w && p.y1 > y && p.y0 < y + l)
+            .map((p) => ({ x: (p.x0 + p.x1) / 2 - (x + w / 2), z: (p.y0 + p.y1) / 2 - (y + l / 2), w: p.x1 - p.x0, l: p.y1 - p.y0 }));
+          const slabObjLayer = (obj.layer as string | undefined) ?? slabLayer;
+          if (slabHoles.length) {
+            push(
+              slabObjLayer,
+              <BoxWithHoles
+                key={key}
+                cx={c.x}
+                cy={band.slabZ + slabZOffset + slabT / 2}
+                cz={c.z}
+                width={w}
+                length={l}
+                thickness={slabT}
+                color="#b8b8b8"
+                holes={slabHoles}
+              />,
+            );
+          } else {
+            push(
+              slabObjLayer,
+              <FloorSlabBox key={key} cx={c.x} cz={c.z} width={w} length={l} z={band.slabZ + slabZOffset} thickness={slabT} />,
+            );
+          }
         } else if (obj.type === "beam") {
           const x = obj.x as number, y = obj.y as number;
           const w = obj.width as number, l = obj.length as number;
@@ -433,24 +463,53 @@ export function House3D({ config }: { config: HouseConfig }) {
           // top-of-wall beams that sit at slab + wall height.
           const zOffsetU = (obj.z_offset as number | undefined) ?? 0;
           const c = toThreePos(x + w / 2, y + l / 2, 0, plot.width, plot.length);
-          push(
-            (obj.layer as string | undefined) ?? "f1_beam",
-            <BeamBox
-              key={key}
-              cx={c.x}
-              cz={c.z}
-              width={w}
-              length={l}
-              z={band.slabZ + zOffsetU}
-              height={h}
-            />,
-          );
+          const beamObjLayer = (obj.layer as string | undefined) ?? "f1_beam";
+          // Pillars overlapping this beam in plan → cut their footprints out so
+          // the column passes through instead of overlapping (and z-fighting
+          // with) the beam. Same treatment as slabs; local-frame offsets (origin
+          // at beam centre) = plain world offsets (toThreePos is a translation).
+          // Plan-overlap only (pillars are full floor height, so they reach every
+          // beam level) — matches the slab logic above.
+          const beamHoles = pillars
+            .filter((p) => p.x1 > x && p.x0 < x + w && p.y1 > y && p.y0 < y + l)
+            .map((p) => ({ x: (p.x0 + p.x1) / 2 - (x + w / 2), z: (p.y0 + p.y1) / 2 - (y + l / 2), w: p.x1 - p.x0, l: p.y1 - p.y0 }));
+          if (beamHoles.length) {
+            push(
+              beamObjLayer,
+              <BoxWithHoles
+                key={key}
+                cx={c.x}
+                cy={band.slabZ + zOffsetU + h / 2}
+                cz={c.z}
+                width={w}
+                length={l}
+                thickness={h}
+                color="#8a8a8a"
+                holes={beamHoles}
+              />,
+            );
+          } else {
+            push(
+              beamObjLayer,
+              <BeamBox
+                key={key}
+                cx={c.x}
+                cz={c.z}
+                width={w}
+                length={l}
+                z={band.slabZ + zOffsetU}
+                height={h}
+              />,
+            );
+          }
         } else if (obj.type === "pillar") {
           const x = obj.x as number, y = obj.y as number;
           const w = (obj.width as number | undefined) ?? (obj.size as number | undefined) ?? globals.wallThickness;
           const l = (obj.length as number | undefined) ?? (obj.size as number | undefined) ?? globals.wallThickness;
           const h = (obj.height as number | undefined) ?? band.floorHeight;
-          const c = toThreePos(x, y, 0, plot.width, plot.length);
+          // Stored x,y is the TOP-LEFT CORNER (like rooms/slabs/beams above);
+          // PillarBox centers on the passed position, so convert corner→center.
+          const c = toThreePos(x + w / 2, y + l / 2, 0, plot.width, plot.length);
           push(
             (obj.layer as string | undefined) ?? "pillars",
             <PillarBox
@@ -469,9 +528,9 @@ export function House3D({ config }: { config: HouseConfig }) {
             />,
           );
         } else if (obj.type === "room") {
-          emitRoomWalls(obj, band, globals, plot, key, openings, push, (obj.layer as string | undefined) ?? roomLayer);
+          emitRoomWalls(obj, band, globals, plot, key, openings, push, (obj.layer as string | undefined) ?? roomLayer, pillars);
         } else if (obj.type === "wall") {
-          emitStandaloneWall(obj, band, globals, plot, key, openings, push, (obj.layer as string | undefined) ?? roomLayer);
+          emitStandaloneWall(obj, band, globals, plot, key, openings, push, (obj.layer as string | undefined) ?? roomLayer, pillars);
         } else if (obj.type === "staircase") {
           // Supports the "new" schema (start_x/start_y + step_* +
           // compass direction). Legacy format (x/y/width/length) can be
@@ -564,8 +623,6 @@ export function House3D({ config }: { config: HouseConfig }) {
     return groups;
   }, [config]);
 
-  const plot = useMemo(() => readPlotBounds(expandRoomWalls(config)), [config]);
-
   // Layers to render, derived purely from the config (same helper the menu
   // uses) so scene + menu stay in lockstep. Any group id present in byLayer
   // is guaranteed to be in here by effectiveLayers (it replicates the push
@@ -574,9 +631,6 @@ export function House3D({ config }: { config: HouseConfig }) {
 
   return (
     <>
-      {visible.ground !== false && (
-        <GroundPlane width={plot.width} length={plot.length} />
-      )}
       {displayLayers.map((l) => (
         <group key={l.id} visible={visible[l.id] !== false}>
           {byLayer[l.id]}
@@ -596,7 +650,6 @@ interface Band {
 }
 interface Globals {
   wallThickness: number;
-  plinthHeight: number;
   slabThickness: number;
   roofThickness: number;
   beamSize: number;
@@ -714,6 +767,7 @@ function emitRoomWalls(
   openings: Obj[],
   push: PushFn,
   layer: string,
+  pillars: PillarRect[],
 ) {
   const rawWalls = obj.walls as string[] | Record<string, unknown> | undefined;
   const wallsList: string[] = rawWalls
@@ -738,61 +792,77 @@ function emitRoomWalls(
       if (m) matched.push(m);
     }
 
-    let cxW: number, cyW: number, wallLen: number, rotY: number;
+    // The wall as an axis-aligned run: axis ("x"/"y"), the perpendicular centre,
+    // and the world span. Openings' `along` is measured from the span start.
+    let axis: "x" | "y", perp: number, aStart: number, aEnd: number, rotY: number;
     if (side === "north") {
-      cxW = rx + rw / 2; cyW = ry + t / 2; wallLen = rw; rotY = 0;
+      axis = "x"; perp = ry + t / 2; aStart = rx; aEnd = rx + rw; rotY = 0;
     } else if (side === "south") {
-      cxW = rx + rw / 2; cyW = ry + rl - t / 2; wallLen = rw; rotY = 0;
+      axis = "x"; perp = ry + rl - t / 2; aStart = rx; aEnd = rx + rw; rotY = 0;
     } else if (side === "east") {
-      cxW = rx + rw - t / 2; cyW = ry + rl / 2; wallLen = rl - 2 * t; rotY = -Math.PI / 2;
+      axis = "y"; perp = rx + rw - t / 2; aStart = ry + t; aEnd = ry + rl - t; rotY = -Math.PI / 2;
     } else {
-      cxW = rx + t / 2; cyW = ry + rl / 2; wallLen = rl - 2 * t; rotY = -Math.PI / 2;
+      axis = "y"; perp = rx + t / 2; aStart = ry + t; aEnd = ry + rl - t; rotY = -Math.PI / 2;
     }
-    // East/west walls are inset from N/S walls by `t` on each end to
-    // avoid double-counting corners — shift the matched openings' along
-    // offset accordingly.
-    if (side === "east" || side === "west") {
-      for (const m of matched) m.along -= t;
-    }
-    const c = toThreePos(cxW, cyW, 0, plot.width, plot.length);
+    // East/west walls are inset by `t` on each end (corners belong to N/S), so
+    // measure `along` from the inset span start.
+    if (side === "east" || side === "west") for (const m of matched) m.along -= t;
 
-    push(
-      layer,
-      <WallWithOpenings
-        key={`${key}-${side}`}
-        cx={c.x}
-        cy={baseZ + wh / 2}
-        cz={c.z}
-        length={wallLen}
-        depth={t}
-        height={wh}
-        rotY={rotY}
-        color="#f5c9a0"
-        openings={matched}
-      />,
-    );
-    // Paint a translucent pane back into each opening so windows read
-    // as glass and doors as timber panels.
-    for (const m of matched) {
-      const localAlong = m.along + m.width / 2 - wallLen / 2;
-      const localFrom = m.from + m.height / 2 - wh / 2;
-      // Move the pane onto the same rotation frame as the wall.
-      const dx = Math.cos(rotY) * localAlong + Math.sin(rotY) * 0;
-      const dz = -Math.sin(rotY) * localAlong + Math.cos(rotY) * 0;
+    // Trim the run so it stops at any overlapping pillar's faces; a wall with
+    // no overlap yields the single full span (unchanged geometry).
+    const spans = pillars.length
+      ? trimSpans(axis === "x" ? "h" : "v", perp, aStart, aEnd, t, pillars)
+      : ([[aStart, aEnd]] as [number, number][]);
+
+    for (const [ws, we] of spans) {
+      const subLen = we - ws;
+      if (subLen < 1e-6) continue;
+      const off = ws - aStart; // this piece's offset into the original wall
+      const sub = matched
+        .filter((m) => {
+          const cen = m.along + m.width / 2;
+          return cen >= off - 1e-6 && cen <= off + subLen + 1e-6;
+        })
+        .map((m) => ({ ...m, along: m.along - off }));
+      const cxW = axis === "x" ? ws + subLen / 2 : perp;
+      const cyW = axis === "x" ? perp : ws + subLen / 2;
+      const c = toThreePos(cxW, cyW, 0, plot.width, plot.length);
       push(
-        "openings",
-        <OpeningPane
-          key={`${key}-${side}-op-${m.along.toFixed(2)}`}
-          cx={c.x + dx}
-          cy={baseZ + wh / 2 + localFrom}
-          cz={c.z + dz}
-          width={m.width}
-          height={m.height}
+        layer,
+        <WallWithOpenings
+          key={`${key}-${side}-${ws.toFixed(1)}`}
+          cx={c.x}
+          cy={baseZ + wh / 2}
+          cz={c.z}
+          length={subLen}
+          depth={t}
+          height={wh}
           rotY={rotY}
-          kind={m.kind}
-          wallDepth={t}
+          color="#f5c9a0"
+          openings={sub}
         />,
       );
+      // Paint a translucent pane back into each opening (glass / timber).
+      for (const m of sub) {
+        const localAlong = m.along + m.width / 2 - subLen / 2;
+        const localFrom = m.from + m.height / 2 - wh / 2;
+        const dx = Math.cos(rotY) * localAlong;
+        const dz = -Math.sin(rotY) * localAlong;
+        push(
+          "openings",
+          <OpeningPane
+            key={`${key}-${side}-op-${m.along.toFixed(2)}`}
+            cx={c.x + dx}
+            cy={baseZ + wh / 2 + localFrom}
+            cz={c.z + dz}
+            width={m.width}
+            height={m.height}
+            rotY={rotY}
+            kind={m.kind}
+            wallDepth={t}
+          />,
+        );
+      }
     }
   }
 }
@@ -806,6 +876,7 @@ function emitStandaloneWall(
   openings: Obj[],
   push: PushFn,
   layer: string,
+  pillars: PillarRect[],
 ) {
   const sx = obj.start_x as number, sy = obj.start_y as number;
   const ex = obj.end_x as number, ey = obj.end_y as number;
@@ -829,6 +900,41 @@ function emitStandaloneWall(
   for (const op of openings) {
     const m = matchOpeningToStandaloneWall(op, sx, sy, ex, ey, t);
     if (m) matched.push(m);
+  }
+
+  // Trim axis-aligned, flat, positive-direction walls at pillar faces. Sloped
+  // (heightEnd ≠ height) or diagonal walls emit unchanged.
+  const horiz = Math.abs(dy) < 1e-9 && dx > 0;
+  const vert = Math.abs(dx) < 1e-9 && dy > 0;
+  if (pillars.length && h === hEnd && (horiz || vert)) {
+    const perp = horiz ? sy : sx;
+    const aStart = horiz ? sx : sy;
+    const aEnd = horiz ? ex : ey;
+    for (const [ws, we] of trimSpans(horiz ? "h" : "v", perp, aStart, aEnd, t, pillars)) {
+      const subLen = we - ws;
+      if (subLen < 1e-6) continue;
+      const off = ws - aStart;
+      const sub = matched
+        .filter((m) => {
+          const cen = m.along + m.width / 2;
+          return cen >= off - 1e-6 && cen <= off + subLen + 1e-6;
+        })
+        .map((m) => ({ ...m, along: m.along - off }));
+      const cc = toThreePos(horiz ? ws + subLen / 2 : sx, horiz ? sy : ws + subLen / 2, 0, plot.width, plot.length);
+      push(
+        layer,
+        <WallWithOpenings key={`${key}-${ws.toFixed(1)}`} cx={cc.x} cy={baseZ + h / 2} cz={cc.z} length={subLen} depth={t} height={h} rotY={rotY} color="#f5c9a0" openings={sub} />,
+      );
+      for (const m of sub) {
+        const localAlong = m.along + m.width / 2 - subLen / 2;
+        const localFrom = m.from + m.height / 2 - h / 2;
+        push(
+          "openings",
+          <OpeningPane key={`${key}-op-${m.along.toFixed(2)}`} cx={cc.x + Math.cos(rotY) * localAlong} cy={baseZ + h / 2 + localFrom} cz={cc.z - Math.sin(rotY) * localAlong} width={m.width} height={m.height} rotY={rotY} kind={m.kind} wallDepth={t} />,
+        );
+      }
+    }
+    return;
   }
 
   const midX = (sx + ex) / 2, midY = (sy + ey) / 2;

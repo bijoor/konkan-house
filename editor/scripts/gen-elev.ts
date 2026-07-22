@@ -1,0 +1,10 @@
+import { readFileSync, writeFileSync } from "node:fs";
+import { generateElevationView } from "../src/svg2d/elevationView";
+import { expandRoomWalls } from "../src/svg2d/expand";
+const cfg = JSON.parse(readFileSync(process.argv[2], "utf8"));
+const view = (process.argv[3] || "front") as any;
+const hc = expandRoomWalls(cfg);
+const svg = generateElevationView(hc as any, view);
+const out = "/private/tmp/claude-502/-Users-ashutoshbijoor-Code-wadi/da8b7a3e-eb99-4bff-9512-bc7a34767937/scratchpad/elev.svg";
+writeFileSync(out, svg);
+console.log("wrote", out, svg.length);

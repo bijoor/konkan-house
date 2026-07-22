@@ -1,18 +1,16 @@
 import { DEFAULT_GLOBAL_CONFIG } from "./config";
 import { f, fFloat } from "./format";
+import { trimSpans, type PillarRect } from "./wallTrim";
 
-// Port of svg_2d.py::svg_draw_wall. Emits a polygon rotated by the wall's
-// perpendicular; identical byte layout to the Python `f'{v},{v}'` format.
-// All corner coords are produced by float arithmetic (perpendicular
-// offset × unit vector), so we emit them via `fFloat` — matches Python's
-// default repr where 1.0 → "1.0", 2.5 → "2.5".
-export function svgDrawWall(
+// The wall polygon itself (perpendicular offset × unit vector). Byte-identical
+// to the Python `svg_draw_wall` layout.
+function drawWallPoly(
   startX: number,
   startY: number,
   endX: number,
   endY: number,
   thickness: number,
-  color = "#8B4513",
+  color: string,
 ): string {
   const dx = endX - startX;
   const dy = endY - startY;
@@ -34,6 +32,42 @@ export function svgDrawWall(
   return `<polygon points="${fFloat(x1)},${fFloat(y1)} ${fFloat(x4)},${fFloat(y4)} ${fFloat(x3)},${fFloat(y3)} ${fFloat(x2)},${fFloat(y2)}" fill="${color}" stroke="#000" stroke-width="0.5"/>\n`;
 }
 
+// Port of svg_2d.py::svg_draw_wall. When `pillars` are supplied and the wall is
+// axis-aligned, it's trimmed so it stops at any overlapping pillar's faces
+// (walls butt into columns instead of running under them); a wall with no
+// overlap draws exactly as before.
+export function svgDrawWall(
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+  thickness: number,
+  color = "#8B4513",
+  pillars?: PillarRect[],
+): string {
+  if (pillars && pillars.length) {
+    const horiz = Math.abs(startY - endY) < 1e-9;
+    const vert = Math.abs(startX - endX) < 1e-9;
+    if (horiz || vert) {
+      const axis = horiz ? "h" : "v";
+      const center = horiz ? startY : startX;
+      const start = horiz ? startX : startY;
+      const end = horiz ? endX : endY;
+      const spans = trimSpans(axis, center, start, end, thickness, pillars);
+      const untouched = spans.length === 1 && Math.abs(spans[0][0] - Math.min(start, end)) < 1e-9 && Math.abs(spans[0][1] - Math.max(start, end)) < 1e-9;
+      if (!untouched) {
+        let svg = "";
+        for (const [s, e] of spans) {
+          if (horiz) svg += drawWallPoly(s, center, e, center, thickness, color);
+          else svg += drawWallPoly(center, s, center, e, thickness, color);
+        }
+        return svg;
+      }
+    }
+  }
+  return drawWallPoly(startX, startY, endX, endY, thickness, color);
+}
+
 // Port of svg_2d.py::svg_draw_room. Delegates to svgDrawWall for each
 // side present in the `walls` list. Coordinates for east/west walls
 // include `+ t` inset from top/bottom (matches Python exactly).
@@ -44,21 +78,23 @@ export function svgDrawRoom(
   length: number,
   thickness: number,
   walls: string[] = ["north", "south", "east", "west"],
+  pillars?: PillarRect[],
 ): string {
   const t = thickness;
   const sides = walls.map((w) => w.toLowerCase());
+  const c = "#8B4513";
   let svg = "";
   if (sides.includes("north")) {
-    svg += svgDrawWall(x, y + t / 2, x + width, y + t / 2, thickness);
+    svg += svgDrawWall(x, y + t / 2, x + width, y + t / 2, thickness, c, pillars);
   }
   if (sides.includes("south")) {
-    svg += svgDrawWall(x, y + length - t / 2, x + width, y + length - t / 2, thickness);
+    svg += svgDrawWall(x, y + length - t / 2, x + width, y + length - t / 2, thickness, c, pillars);
   }
   if (sides.includes("east")) {
-    svg += svgDrawWall(x + width - t / 2, y + t, x + width - t / 2, y + length - t, thickness);
+    svg += svgDrawWall(x + width - t / 2, y + t, x + width - t / 2, y + length - t, thickness, c, pillars);
   }
   if (sides.includes("west")) {
-    svg += svgDrawWall(x + t / 2, y + t, x + t / 2, y + length - t, thickness);
+    svg += svgDrawWall(x + t / 2, y + t, x + t / 2, y + length - t, thickness, c, pillars);
   }
   return svg;
 }
@@ -101,6 +137,26 @@ export function svgDrawFloorSlab(
   return `<rect x="${f(x)}" y="${f(y)}" width="${f(width)}" height="${f(length)}" fill="#D3D3D3" stroke="#999" stroke-width="1" opacity="0.6"/>\n`;
 }
 
+// Ground plane footprint on the Plinth-floor plan — light green, drawn first.
+export function svgDrawGround(
+  x: number,
+  y: number,
+  width: number,
+  length: number,
+): string {
+  return `<rect x="${f(x)}" y="${f(y)}" width="${f(width)}" height="${f(length)}" fill="#c7d6b5" stroke="#8ba06f" stroke-width="1" opacity="0.5"/>\n`;
+}
+
+// Plinth footprint on the Plinth-floor plan — plinth-brown (matches the 3D box).
+export function svgDrawPlinth(
+  x: number,
+  y: number,
+  width: number,
+  length: number,
+): string {
+  return `<rect x="${f(x)}" y="${f(y)}" width="${f(width)}" height="${f(length)}" fill="#a0826d" stroke="#7a6151" stroke-width="1" opacity="0.7"/>\n`;
+}
+
 export function svgDrawPillar(
   x: number,
   y: number,
@@ -111,8 +167,9 @@ export function svgDrawPillar(
   const defaultSize = DEFAULT_GLOBAL_CONFIG.wall_thickness;
   const w = width ?? size ?? defaultSize;
   const l = length ?? size ?? defaultSize;
-  const px = x - w / 2;
-  const py = y - l / 2;
+  // x,y is the TOP-LEFT CORNER (consistent with svgDrawBeam / rooms / slabs).
+  const px = x;
+  const py = y;
   return `<rect x="${fFloat(px)}" y="${fFloat(py)}" width="${f(w)}" height="${f(l)}" fill="#000" stroke="#000" stroke-width="0.5"/>\n`;
 }
 

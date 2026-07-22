@@ -8,6 +8,11 @@
 // only has one number type so this is a non-issue in TS.
 
 import { DEFAULT_GLOBAL_CONFIG } from "./config";
+import { activeObjects } from "../schema/enabled";
+import { resolveParametric } from "../param/resolve";
+import { buildScope } from "../param/resolve";
+import { evalFormula } from "../param/formula";
+import { expandStaircase } from "./stairExpand";
 
 type Side = "north" | "south" | "east" | "west";
 const SIDES: readonly Side[] = ["north", "south", "east", "west"];
@@ -87,6 +92,9 @@ export function expandRoomWalls(
   houseConfig: HouseConfig,
   wallThickness?: number,
   opts?: ExpandOptions,
+  // Internal: component-instance nesting depth (guards against a component that
+  // references itself / a cycle). Callers never pass this.
+  _depth = 0,
 ): HouseConfig {
   if (houseConfig._walls_expanded) return houseConfig;
   const t =
@@ -95,12 +103,74 @@ export function expandRoomWalls(
     DEFAULT_GLOBAL_CONFIG.wall_thickness;
 
   const hc = structuredClone(houseConfig);
-  for (const floor of hc.floors ?? []) {
+  // Drop switched-off FLOORS entirely (a floor `enabled === false`/`0`, e.g.
+  // driven by "= has_upper_floor") — every 2D/3D/roof consumer reads hc.floors,
+  // and the 3D z-band stacking is computed from this same list, so a disabled
+  // upper floor simply doesn't exist and the house becomes single-storey.
+  if (hc.floors) hc.floors = activeObjects(hc.floors);
+  const floorList = (hc.floors ?? []) as Floor[];
+  for (let fi = 0; fi < floorList.length; fi++) {
+    const floor = floorList[fi];
+    // Drop switched-off objects up front, so they generate no walls and reach
+    // no downstream view (3D / roof / bounds / dimensions).
+    floor.objects = activeObjects(floor.objects as Obj[] | undefined);
     const objs = floor.objects ?? [];
     const head: Obj[] = [];
     const deferredDoors: Obj[] = [];
     const deferredWindows: Obj[] = [];
+    // Effective slab thickness for THIS floor — the default TOP height of a
+    // staircase (see stairExpand). Mirrors computeFloorZBands' resolution.
+    const houseDefaults = hc.defaults as
+      | { slab_thickness?: number; floor_height?: number }
+      | undefined;
+    const floorSlabThickness =
+      (floor.slab_thickness as number | undefined) ??
+      houseDefaults?.slab_thickness ??
+      DEFAULT_GLOBAL_CONFIG.floor_slab_thickness;
+    // Height of the floor immediately BELOW this one (array order = stack) — the
+    // default `rise_height` for a staircase that owns this floor and descends to
+    // it. Falls back to the house/global default floor height.
+    const belowHeightRaw = fi > 0 ? floorList[fi - 1].height : undefined;
+    const floorBelowHeight =
+      typeof belowHeightRaw === "number" && belowHeightRaw > 0
+        ? belowHeightRaw
+        : houseDefaults?.floor_height ?? DEFAULT_GLOBAL_CONFIG.floor_height;
     for (const obj of objs) {
+      // A component instance expands into a whole set of already-flattened
+      // primitives (resolve the referenced component with param+placement
+      // overrides → recurse → offset). Distribute them like any expanded
+      // objects: doors/windows last, everything else in head order.
+      if (obj.type === "component") {
+        let comp: Obj[];
+        try {
+          comp = expandComponent(obj, houseConfig, t, opts, _depth);
+        } catch (e) {
+          if (!opts?.lenient) throw e;
+          opts.onWarning?.(e instanceof Error ? e.message : String(e));
+          comp = [];
+        }
+        for (const c of comp) {
+          if (c.type === "door") deferredDoors.push(c);
+          else if (c.type === "window") deferredWindows.push(c);
+          else head.push(c);
+        }
+        continue;
+      }
+      // A staircase is TOP-anchored and descends: expand to single-flight
+      // staircase(s) + any switchback landings, with num_steps derived from
+      // rise_height (defaulting to the floor-below height).
+      if (obj.type === "staircase") {
+        let flights: Obj[];
+        try {
+          flights = expandStaircase(obj, floorSlabThickness, floorBelowHeight);
+        } catch (e) {
+          if (!opts?.lenient) throw e;
+          opts.onWarning?.(e instanceof Error ? e.message : String(e));
+          flights = [obj];
+        }
+        for (const f of flights) head.push(f);
+        continue;
+      }
       let first: Obj;
       let extras: Obj[];
       try {
@@ -144,6 +214,98 @@ function stripOpenings(obj: Obj): Obj {
     }
   }
   return obj;
+}
+
+const MAX_COMPONENT_DEPTH = 8;
+
+type ComponentDefLoose = {
+  objects: Obj[];
+  variables?: Record<string, number | string>;
+  points?: Record<string, { x: number | string; y: number | string }>;
+};
+
+// Shift a set of already-resolved objects by (dx, dy) in plan and lift them by
+// dz. Handles every positional field — x/y, wall/staircase endpoints, kitchen
+// path points — and composes z_offset. Strips resolved `formulas` so the offset
+// can't be undone by a later resolve. Never touches sizes (width/length/height).
+function offsetObjects(objs: Obj[], dx: number, dy: number, dz: number): Obj[] {
+  return objs.map((o) => {
+    const n: Obj = { ...o };
+    if (typeof n.x === "number") n.x = n.x + dx;
+    if (typeof n.y === "number") n.y = n.y + dy;
+    if (typeof n.start_x === "number") n.start_x = n.start_x + dx;
+    if (typeof n.end_x === "number") n.end_x = n.end_x + dx;
+    if (typeof n.start_y === "number") n.start_y = n.start_y + dy;
+    if (typeof n.end_y === "number") n.end_y = n.end_y + dy;
+    if (Array.isArray(n.path)) {
+      n.path = (n.path as unknown[]).map((pt) =>
+        Array.isArray(pt) && pt.length >= 2
+          ? [(pt[0] as number) + dx, (pt[1] as number) + dy]
+          : pt,
+      );
+    }
+    if (dz !== 0) {
+      n.z_offset = (typeof n.z_offset === "number" ? n.z_offset : 0) + dz;
+    }
+    if ("formulas" in n) delete n.formulas;
+    return n;
+  });
+}
+
+// Expand a `component` instance into concrete, placed primitives:
+//  1. look up hostConfig.components[ref];
+//  2. resolve the component's own sub-config with its input variables overridden
+//     by the instance `params` (a "= …" param is evaluated in the HOST scope, so
+//     it can reference the host's variables/points);
+//  3. recursively expandRoomWalls the body (rooms→walls, nested components…);
+//  4. offset every result by the instance (x, y, z_offset).
+function expandComponent(
+  inst: Obj,
+  hostConfig: HouseConfig,
+  wallThickness: number,
+  opts: ExpandOptions | undefined,
+  depth: number,
+): Obj[] {
+  if (depth >= MAX_COMPONENT_DEPTH) {
+    throw new Error(`component nesting too deep (ref '${String(inst.ref)}')`);
+  }
+  const library = (hostConfig.components ?? {}) as Record<string, ComponentDefLoose>;
+  const ref = String(inst.ref ?? "");
+  const def = library[ref];
+  if (!def) throw new Error(`unknown component '${ref}'`);
+
+  // Resolve param overrides against the HOST scope (a "= …" param may reference
+  // the host's variables/points; a number is used directly).
+  const hostScope = buildScope(hostConfig as never).scope;
+  const overrides: Record<string, number | string> = {};
+  const params = (inst.params ?? {}) as Record<string, number | string>;
+  for (const [k, v] of Object.entries(params)) {
+    if (typeof v === "string") {
+      const r = evalFormula(v, hostScope);
+      if (r.value !== null) overrides[k] = r.value;
+      else opts?.onWarning?.(`component '${ref}' param '${k}': ${r.error ?? "bad formula"}`);
+    } else {
+      overrides[k] = v;
+    }
+  }
+
+  const subConfig = {
+    components: hostConfig.components,
+    variables: { ...(def.variables ?? {}), ...overrides },
+    points: def.points,
+    floors: [{ floor_number: 0, name: ref, objects: structuredClone(def.objects) }],
+  } as unknown as HouseConfig;
+
+  const resolved = resolveParametric(
+    subConfig as never,
+  ).config as unknown as HouseConfig;
+  const expanded = expandRoomWalls(resolved, wallThickness, opts, depth + 1);
+  const bodyObjs = (expanded.floors ?? []).flatMap((f) => (f.objects ?? []) as Obj[]);
+
+  const dx = typeof inst.x === "number" ? inst.x : 0;
+  const dy = typeof inst.y === "number" ? inst.y : 0;
+  const dz = typeof inst.z_offset === "number" ? inst.z_offset : 0;
+  return offsetObjects(bodyObjs, dx, dy, dz);
 }
 
 function expandObject(obj: Obj, wallThickness: number): [Obj, Obj[]] {

@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import type { Room, Opening, Side } from "../schema/houseConfig";
 import type { Selection } from "../state/configStore";
 import { useConfigStore } from "../state/configStore";
-import { NumberField, TextField, Section, SelectField } from "./fields";
+import { NumberField, TextField, Section, SelectField, ObjectMeasureField } from "./fields";
 
 const SIDES: Side[] = ["north", "south", "east", "west"];
 const KINDS = [
@@ -17,6 +17,11 @@ export function RoomForm({ room, selection }: { room: Room; selection: Selection
   const replace = useConfigStore((s) => s.replaceObject);
 
   const patch = (next: Partial<Room>) => replace(selection, { ...room, ...next });
+  // Formula-aware patch for ObjectMeasureField (accepts a loose key map so it
+  // can also set the object's `formulas`).
+  const mpatch = (p: Record<string, unknown>) =>
+    replace(selection, { ...room, ...p } as Room);
+  const robj = room as unknown as Record<string, unknown>;
 
   // Normalize walls to the nested-dict form for editing. On save we keep
   // the same shape the user provided (either list or dict) — but when
@@ -136,12 +141,12 @@ export function RoomForm({ room, selection }: { room: Room; selection: Selection
 
       <Section title="Position & size">
         <div className="grid grid-cols-2 gap-x-2">
-          <NumberField label="X" value={room.x} onCommit={(v) => v !== undefined && patch({ x: v })} />
-          <NumberField label="Y" value={room.y} onCommit={(v) => v !== undefined && patch({ y: v })} />
-          <NumberField label="Width" value={room.width} onCommit={(v) => v !== undefined && patch({ width: v })} min={0.01} />
-          <NumberField label="Length" value={room.length} onCommit={(v) => v !== undefined && patch({ length: v })} min={0.01} />
-          <NumberField label="Height" value={room.height} onCommit={(v) => patch({ height: v && v > 0 ? v : undefined })} allowEmpty hint="optional; defaults to floor" />
-          <NumberField label="Z offset" value={room.z_offset} onCommit={(v) => patch({ z_offset: v })} allowEmpty hint="above floor base (10u=1ft); blank = on slab" />
+          <ObjectMeasureField object={robj} field="x" label="X" patch={mpatch} />
+          <ObjectMeasureField object={robj} field="y" label="Y" patch={mpatch} />
+          <ObjectMeasureField object={robj} field="width" label="Width" patch={mpatch} min={0.01} />
+          <ObjectMeasureField object={robj} field="length" label="Length" patch={mpatch} min={0.01} />
+          <ObjectMeasureField object={robj} field="height" label="Height" patch={mpatch} allowEmpty hint="optional; defaults to floor" />
+          <ObjectMeasureField object={robj} field="z_offset" label="Z offset" patch={mpatch} allowEmpty hint="above floor base (10u=1ft); blank = on slab" />
         </div>
       </Section>
 

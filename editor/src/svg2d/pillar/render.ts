@@ -41,22 +41,53 @@ export function renderPillarView(
   options: RenderPillarOptions,
 ): string {
   const scale = options.scale ?? 2.0;   // float
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const plinthConfig = (houseConfig as any).plinth ?? {};
-  const floors = houseConfig.floors ?? [];
+  const floors = (houseConfig.floors ?? []) as Array<{
+    height?: number;
+    objects?: Array<Record<string, unknown>>;
+  }>;
 
   const gc = DEFAULT_GLOBAL_CONFIG;
   const houseDefaults = (houseConfig as { defaults?: { floor_height?: number; slab_thickness?: number } }).defaults;
-  const plinth_height = plinthConfig.height ?? gc.plinth_height;   // int
+  const site = (houseConfig.site as { plot_width?: number; plot_length?: number } | undefined) ?? {};
   const slab_thickness =
     houseDefaults?.slab_thickness ?? gc.floor_slab_thickness ?? 8; // int
-  // Prefer per-floor override on floor 0 → house default → global.
-  const floor0 = floors[0] as { height?: number } | undefined;
-  const floor_0_height =
-    floor0?.height ?? houseDefaults?.floor_height ?? gc.floor_height ?? 100;   // int
+  const defaultFloorHeight =
+    houseDefaults?.floor_height ?? gc.floor_height ?? 100;
 
-  const building_width = plinthConfig.width ?? 0;    // int
-  const building_length = plinthConfig.length ?? 0;  // int
+  // Uniform floor-band stack (seed 0) — the same model as the 3D + main
+  // elevation. No plinth-floor detection, no plinth_height constant.
+  const bandBase: number[] = [];
+  {
+    let acc = 0;
+    for (const fl of floors) {
+      bandBase.push(acc);
+      acc += fl.height ?? defaultFloorHeight;
+    }
+  }
+
+  // Plinth rectangle comes from the plinth OBJECT (type dispatch) at its band.
+  let plinthBase = 0;
+  let plinthObjHeight = 0;
+  for (let i = 0; i < floors.length; i++) {
+    const p = (floors[i].objects ?? []).find(
+      (o) => (o as { type?: string }).type === "plinth",
+    ) as { height?: number } | undefined;
+    if (p) {
+      plinthBase = bandBase[i];
+      plinthObjHeight = p.height ?? (floors[i].height ?? 0);
+      break;
+    }
+  }
+
+  // Ground floor = the lowest floor with pillars (this view's subject).
+  let groundIdx = floors.findIndex((f) =>
+    (f.objects ?? []).some((o) => (o as { type?: string }).type === "pillar"),
+  );
+  if (groundIdx < 0) groundIdx = 0;
+  const floor_0_height = floors[groundIdx]?.height ?? defaultFloorHeight; // int
+
+  const building_width = site.plot_width ?? 0;    // int
+  const building_length = site.plot_length ?? 0;  // int
 
   let view_extent: number;
   if (options.viewType === "front" || options.viewType === "back") {
@@ -65,14 +96,14 @@ export function renderPillarView(
     view_extent = building_length;
   }
 
-  // Z stack per user's directive:
-  //   next-floor Z = current Z + floor_height  (slab NOT added into stack)
-  //   pillars start at the plinth TOP (they pass THROUGH the slab up
-  //   to the ring beam above), matching the 3D scene + main elevation.
-  const z_plinth_top = plinth_height;                                 // int
-  const z_floor0_slab_top = plinth_height + slab_thickness;           // int (visual only)
-  const z_pillar_start = z_plinth_top;                                // pillars from plinth top
-  const z_floor1_slab_bottom = z_plinth_top + floor_0_height;         // float when fh is float
+  // Z stack, all derived from the band map above:
+  //   pillars start at the ground floor's base (= plinth top); they pass
+  //   THROUGH the slab up to the ring beam above, matching the 3D + main
+  //   elevation. slab_thickness is NOT part of the floor stack.
+  const z_plinth_top = plinthBase + plinthObjHeight;                  // plinth band top
+  const z_pillar_start = bandBase[groundIdx];                         // ground floor base
+  const z_floor0_slab_top = z_pillar_start + slab_thickness;          // int (visual only)
+  const z_floor1_slab_bottom = z_pillar_start + floor_0_height;       // float when fh is float
   const z_floor1_slab_top = z_floor1_slab_bottom + slab_thickness;    // float
 
   const rendered: RenderedPillar[] = [];
@@ -90,20 +121,16 @@ export function renderPillarView(
   }
   rendered.sort((a, b) => a.depth - b.depth);
 
-  const floor0_slabs: SlabLike[] = [];
-  const floor1_slabs: SlabLike[] = [];
-  for (const floorConfig of floors) {
-    const fn = floorConfig.floor_number;
-    for (const obj of floorConfig.objects ?? []) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const o = obj as any;
-      if (o.type === "floor_slab") {
-        const s: SlabLike = { x: o.x, y: o.y, width: o.width, length: o.length };
-        if (fn === 0) floor0_slabs.push(s);
-        else if (fn === 1) floor1_slabs.push(s);
-      }
-    }
-  }
+  // Slabs of the ground floor (below the columns) + the floor above it.
+  const slabsOf = (fl: { objects?: Array<Record<string, unknown>> } | undefined): SlabLike[] =>
+    (fl?.objects ?? [])
+      .filter((o) => (o as { type?: string }).type === "floor_slab")
+      .map((o) => {
+        const s = o as { x: number; y: number; width: number; length: number };
+        return { x: s.x, y: s.y, width: s.width, length: s.length };
+      });
+  const floor0_slabs: SlabLike[] = slabsOf(floors[groundIdx]);
+  const floor1_slabs: SlabLike[] = slabsOf(floors[groundIdx + 1]);
 
   const max_pillar_z = rendered.length > 0
     ? Math.max(...rendered.map((r) => r.z_top))
@@ -173,9 +200,12 @@ export function renderPillarView(
   svg += `<line x1="0" y1="${f(ground_y)}" x2="${f(view_extent)}" y2="${f(ground_y)}" ` +
     'stroke="#666" stroke-width="2" stroke-dasharray="5,5"/>\n';
 
-  // Plinth band
-  svg += `<rect x="0" y="${f(z_to_y(z_plinth_top))}" width="${f(view_extent)}" ` +
-    `height="${f(plinth_height)}" fill="#A0826D" stroke="#000" stroke-width="0.5"/>\n`;
+  // Plinth band — drawn from the plinth object's own height (nothing when the
+  // config has no plinth object).
+  if (plinthObjHeight > 0) {
+    svg += `<rect x="0" y="${f(z_to_y(z_plinth_top))}" width="${f(view_extent)}" ` +
+      `height="${f(plinthObjHeight)}" fill="#A0826D" stroke="#000" stroke-width="0.5"/>\n`;
+  }
 
   for (const slab of floor0_slabs) {
     const [sx, sw] = projectSlabBand(slab, options.viewType, building_width, building_length);
@@ -245,6 +275,7 @@ export function renderPillarView(
   ];
   const dim_x = -8;
   for (const [z_lo, z_hi, loFloat, hiFloat] of dim_levels) {
+    if (z_hi <= z_lo) continue; // skip a degenerate band (e.g. no plinth)
     const y_lo = z_to_y(z_lo);
     const y_hi = z_to_y(z_hi);
     const yLoStr = loFloat ? fFloat(y_lo) : f(y_lo);

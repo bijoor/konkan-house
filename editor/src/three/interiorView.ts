@@ -86,10 +86,9 @@ export function listRooms(config: unknown): RoomEntry[] {
 
   const eyeUnits = feetToProjectUnits(EYE_HEIGHT_FEET, hc.units);
 
-  const g = readGlobals(hc.defaults, hc.plinth?.height);
+  const g = readGlobals(hc.defaults);
   const bands = computeFloorZBands(
     hc.floors as Array<Record<string, unknown>>,
-    g.plinthHeight,
     g.slabThickness,
     g.floorHeight,
     g.wallHeight,

@@ -2,6 +2,7 @@
 
 import { DEFAULT_GLOBAL_CONFIG } from "../config";
 import type { HouseConfig } from "../expand";
+import { pillarExtents } from "./extents";
 
 export interface Pillar {
   name: string;
@@ -28,18 +29,23 @@ export const PILLAR_CLUSTER_TOLERANCE = 20.0;
 export function collectGroundFloorPillars(houseConfig: HouseConfig): Pillar[] {
   const defaultSize = DEFAULT_GLOBAL_CONFIG.wall_thickness ?? 8;
   const pillars: Pillar[] = [];
-  for (const floorConfig of houseConfig.floors ?? []) {
-    if (floorConfig.floor_number !== 0) continue;
-    for (const obj of floorConfig.objects ?? []) {
+  // The pillar detail views show the column layout of the LOWEST floor that has
+  // pillars (the plinth floor has none, so it's naturally skipped). Purely
+  // content-based — no plinth-floor detection.
+  const groundFloor = (houseConfig.floors ?? []).find((f) =>
+    (f.objects ?? []).some((o) => (o as { type?: string }).type === "pillar"),
+  );
+  if (groundFloor) {
+    for (const obj of groundFloor.objects ?? []) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const o = obj as any;
       if (o.type !== "pillar") continue;
-      const width = o.width ?? o.size ?? defaultSize;
-      const length = o.length ?? o.size ?? defaultSize;
+      const { width, length } = pillarExtents(o, defaultSize);
+      // Stored x,y is the TOP-LEFT CORNER; the pillar module works in centers.
       pillars.push({
         name: o.name ?? "",
-        x: o.x,
-        y: o.y,
+        x: o.x + width / 2,
+        y: o.y + length / 2,
         width,
         length,
         height: o.height,

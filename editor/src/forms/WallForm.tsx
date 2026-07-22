@@ -1,7 +1,7 @@
 import type { Wall, Opening, Side } from "../schema/houseConfig";
 import type { Selection } from "../state/configStore";
 import { useConfigStore } from "../state/configStore";
-import { NumberField, SelectField, TextField, Section } from "./fields";
+import { NumberField, SelectField, TextField, Section, ObjectMeasureField } from "./fields";
 
 const SIDES: Side[] = ["north", "south", "east", "west"];
 const KINDS = [
@@ -12,6 +12,9 @@ const KINDS = [
 export function WallForm({ wall, selection }: { wall: Wall; selection: Selection }) {
   const replace = useConfigStore((s) => s.replaceObject);
   const patch = (next: Partial<Wall>) => replace(selection, { ...wall, ...next });
+  const mpatch = (p: Record<string, unknown>) =>
+    replace(selection, { ...wall, ...p } as Wall);
+  const wobj = wall as unknown as Record<string, unknown>;
 
   const dx = wall.end_x - wall.start_x;
   const dy = wall.end_y - wall.start_y;
@@ -57,10 +60,10 @@ export function WallForm({ wall, selection }: { wall: Wall; selection: Selection
 
       <Section title="Endpoints">
         <div className="grid grid-cols-2 gap-x-2">
-          <NumberField label="Start X" value={wall.start_x} onCommit={(v) => v !== undefined && patch({ start_x: v })} />
-          <NumberField label="Start Y" value={wall.start_y} onCommit={(v) => v !== undefined && patch({ start_y: v })} />
-          <NumberField label="End X" value={wall.end_x} onCommit={(v) => v !== undefined && patch({ end_x: v })} />
-          <NumberField label="End Y" value={wall.end_y} onCommit={(v) => v !== undefined && patch({ end_y: v })} />
+          <ObjectMeasureField object={wobj} field="start_x" label="Start X" patch={mpatch} />
+          <ObjectMeasureField object={wobj} field="start_y" label="Start Y" patch={mpatch} />
+          <ObjectMeasureField object={wobj} field="end_x" label="End X" patch={mpatch} />
+          <ObjectMeasureField object={wobj} field="end_y" label="End Y" patch={mpatch} />
         </div>
         <div className="text-[10px] text-slate-500">
           Length {wallLength.toFixed(1)} · {isHorizontal ? "E–W" : "N–S"}
@@ -68,18 +71,20 @@ export function WallForm({ wall, selection }: { wall: Wall; selection: Selection
       </Section>
 
       <Section title="Height & orientation">
-        <NumberField label="Height" value={wall.height} onCommit={(v) => patch({ height: v })} allowEmpty />
-        <NumberField
+        <ObjectMeasureField object={wobj} field="height" label="Height" patch={mpatch} allowEmpty />
+        <ObjectMeasureField
+          object={wobj}
+          field="height_end"
           label="Height end"
-          value={wall.height_end}
-          onCommit={(v) => patch({ height_end: v })}
+          patch={mpatch}
           allowEmpty
           hint="sloping wall — height at end"
         />
-        <NumberField
+        <ObjectMeasureField
+          object={wobj}
+          field="z_offset"
           label="Z offset"
-          value={wall.z_offset}
-          onCommit={(v) => patch({ z_offset: v })}
+          patch={mpatch}
           allowEmpty
           hint="above floor base (10u=1ft); blank = on slab"
         />
