@@ -574,6 +574,11 @@
             margin: 0 auto;
             padding-bottom: 2rem;
         }
+        /* Quantities cards hold wide tables — always one full-width column
+           (ID beats .svg-grid, including the mobile media query). */
+        #quantities-grid {
+            grid-template-columns: 1fr;
+        }
         /* --- Layout tab: fixed shell + inline pan/zoom viewport ------- */
         .layout-shell {
             display: flex;
@@ -1017,6 +1022,12 @@
                 padding: 0 !important;
                 background: white !important;
                 border-radius: 0 !important;
+            }
+            /* When the HTML (BOM / quantities) lightbox is the one open,
+               don't also print the SVG container — otherwise its stale
+               content lands as a blank/garbage first page. */
+            body.html-lb-open #svg-container {
+                display: none !important;
             }
         }
         /* ---- HTML lightbox --------------------------------------------
@@ -2858,10 +2869,12 @@
             content.innerHTML = html;
             box.style.display = 'block';
             box.dataset.caption = caption || '';
+            document.body.classList.add('html-lb-open');
         }
 
         function closeHtmlLightbox() {
             document.getElementById('html-lightbox').style.display = 'none';
+            document.body.classList.remove('html-lb-open');
         }
 
         // Print → user picks "Save as PDF" in the browser's print dialog.
