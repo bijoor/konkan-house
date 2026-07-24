@@ -1,8 +1,8 @@
 // V2 perspective (isometric) panel — projects the RoofSpec's 3D
-// geometry onto a 30° isometric view. Each plane draws as a filled
-// polygon; each spine member (ridge/hip/valley) draws as a line on
-// top. The panel is self-contained SVG suitable for embedding in the
-// master roof canvas.
+// geometry onto a 30° isometric view as a STRUCTURAL FRAME: trusses,
+// ring beam, tie beams, ridge/hip/valley + eave perimeter. The tile
+// SHELL and the rafter/purlin surface layer are intentionally NOT
+// drawn — this is the frame view. Self-contained SVG.
 //
 // Isometric projection formula (matches legacy `perspective.ts`):
 //   iso_x = (x - y) * cos30
@@ -10,7 +10,8 @@
 //
 // The result is then scaled to fit the panel and centered.
 
-import type { Point3D, RoofPlane, RoofSpec, StraightMember } from "./model";
+import type { Point3D, RoofSpec, StraightMember } from "./model";
+import { buildTrussMembers } from "./truss";
 
 const COS30 = Math.cos((30 * Math.PI) / 180);
 const SIN30 = Math.sin((30 * Math.PI) / 180);
@@ -19,27 +20,31 @@ function iso(p: Point3D): [number, number] {
   return [(p[0] - p[1]) * COS30, p[2] - (p[0] + p[1]) * SIN30];
 }
 
-// Colour palette matching the elevation projection.
-const PLANE_COLORS: Record<string, { fill: string; stroke: string }> = {
-  slope: { fill: "#c66", stroke: "#5a2e0b" },
-  hip_face: { fill: "#c66", stroke: "#5a2e0b" },
-  gable_wall: { fill: "#e0c9a6", stroke: "#8a6a3f" },
-  flat_slab: { fill: "#a8a4a0", stroke: "#5a5854" },
-  parapet: { fill: "#a8a4a0", stroke: "#5a5854" },
-};
+// Surface layer — a DIFFERENT layer, not part of this frame view.
+const SURFACE_ROLES = new Set<StraightMember["role"]>(["rafter", "purlin"]);
 
-const MEMBER_STROKES: Partial<Record<StraightMember["role"], string>> = {
+// Stroke colour + width per frame member role.
+const FRAME_STROKES: Partial<Record<StraightMember["role"], string>> = {
   ridge: "#3b1a05",
   hip: "#5a2e0b",
   valley: "#1e3a8a",
+  ring_beam: "#166534",
+  hip_beam: "#b45309",
+  vent_strut: "#a16207",
+  tie_beam: "#0369a1",
+  truss_top_chord: "#7c3aed",
+  truss_bottom_chord: "#6d28d9",
+  truss_web: "#8b5cf6",
+  pani_patti: "#9ca3af",
+  eave_L_channel: "#6b7280",
+  corner_double_angle: "#6b7280",
 };
-
-// Sort planes back-to-front by centroid iso_y (SVG painter's algorithm)
-// so front-facing planes overlay back-facing ones correctly.
-function centroidIsoY(p: RoofPlane): number {
-  let sum = 0;
-  for (const v of p.vertices) sum += iso(v)[1];
-  return sum / p.vertices.length;
+function frameWidth(role: StraightMember["role"]): number {
+  if (role === "ridge") return 2.4;
+  if (role === "ring_beam" || role === "hip" || role === "valley" || role === "tie_beam") return 2;
+  if (role.startsWith("truss")) return 1.2;
+  if (role === "pani_patti" || role === "eave_L_channel" || role === "corner_double_angle") return 1;
+  return 1.6;
 }
 
 export function v2PerspectivePanel(
@@ -86,26 +91,24 @@ export function v2PerspectivePanel(
     svg += `<text x="${x0 + width / 2}" y="${y0 + 24}" text-anchor="middle" font-size="14" font-weight="bold" fill="#222">${opts.title}</text>\n`;
   }
 
-  // Sort planes back-to-front.
-  const sortedPlanes = [...spec.planes]
-    .filter((p) => p.role !== "parapet" || p.vertices.length >= 3)
-    .sort((a, b) => centroidIsoY(b) - centroidIsoY(a));
-
-  for (const p of sortedPlanes) {
-    if (p.vertices.length < 3) continue;
-    const pts = p.vertices.map(toSvg)
-      .map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(" ");
-    const color = PLANE_COLORS[p.role] ?? PLANE_COLORS.slope;
-    svg += `<polygon points="${pts}" fill="${color.fill}" fill-opacity="0.85" stroke="${color.stroke}" stroke-width="1"/>\n`;
-  }
-
-  // Members on top.
-  for (const m of spec.members) {
-    const stroke = MEMBER_STROKES[m.role];
-    if (!stroke) continue;
+  const line = (m: StraightMember): string => {
     const [x1, y1] = toSvg(m.start);
     const [x2, y2] = toSvg(m.end);
-    svg += `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${stroke}" stroke-width="2"/>\n`;
+    const stroke = FRAME_STROKES[m.role] ?? "#475569";
+    return `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${stroke}" stroke-width="${frameWidth(m.role)}" stroke-linecap="round"/>\n`;
+  };
+
+  // Frame members — everything except the rafter/purlin surface layer
+  // and the tile shell. Trusses (below) draw on top.
+  for (const m of spec.members) {
+    if (SURFACE_ROLES.has(m.role)) continue;
+    svg += line(m);
+  }
+
+  // Trusses — expand each triangle to its chord/web members.
+  for (const t of spec.trusses) {
+    const members = t.members ?? buildTrussMembers(t);
+    for (const m of members) svg += line(m);
   }
 
   svg += `</g>\n`;

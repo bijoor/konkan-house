@@ -42,6 +42,7 @@ const ROLE_COLOR: Partial<Record<MemberRole, string>> = {
   truss_top_chord: "#a855f7",
   truss_bottom_chord: "#8b5cf6",
   truss_web: "#7c3aed",
+  tie_beam: "#0ea5e9",
 };
 
 const PLANE_COLOR: Record<string, string> = {

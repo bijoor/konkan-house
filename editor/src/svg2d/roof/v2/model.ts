@@ -64,6 +64,12 @@ export interface RoofSegment {
   // (hip) along-overhangs are derived from the segment's hip pitch
   // and are not directly overridable.
   min_overhang?: number;
+
+  // Flat wall-top TIE BEAMS (horizontal ceiling ties): N members
+  // running the full segment length (start→end), spread at equal
+  // INTERIOR gaps across the segment width, sitting at wall-top Z
+  // (below the roof, not on the slopes). 0 / omitted → none.
+  tie_beam_count?: number;
 }
 
 export type EndpointStyle = "open" | "closed";
@@ -180,6 +186,7 @@ export type MemberRole =
   | "truss_top_chord"
   | "truss_bottom_chord"
   | "truss_web"
+  | "tie_beam"           // flat wall-top ceiling tie (horizontal, along segment)
   // Eave border elements — flashing + trim that runs along the outer
   // roof perimeter. Legacy naming preserved for BOM continuity.
   | "pani_patti"          // GI water-protector strip along each eave

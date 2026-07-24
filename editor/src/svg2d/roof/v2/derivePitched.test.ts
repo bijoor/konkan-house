@@ -33,6 +33,28 @@ const xAxisCfg = (overrides: Partial<RoofConfig> = {}): RoofConfig => ({
   ...overrides,
 });
 
+describe("derivePitchedRoof — ridge vent extension cover", () => {
+  it("a closed endpoint with hip_ridge_extension gets shell cover planes", () => {
+    const cfg = yAxisCfg({
+      segments: [{ id: "s0", start: [150, 0], end: [150, 500], width: 300,
+        hip_ridge_extension_start: 40, hip_ridge_extension_end: 40 }],
+    });
+    const spec = derivePitchedRoof(cfg, { wallTopZ: 100 });
+    const covers = spec.planes.filter((p) => p.id.includes("vent_cover"));
+    // 2 ends × 2 sides = 4 triangular cover faces (role hip_face → shelled).
+    expect(covers.length).toBe(4);
+    expect(covers.every((p) => p.role === "hip_face" && p.vertices.length === 3)).toBe(true);
+    // one apex + one ridge tip (both at ridge height) per cover
+    const struts = spec.members.filter((m) => m.role === "vent_strut");
+    expect(struts.length).toBe(4);
+  });
+
+  it("no extension → no vent cover planes", () => {
+    const spec = derivePitchedRoof(yAxisCfg(), { wallTopZ: 100 });
+    expect(spec.planes.filter((p) => p.id.includes("vent_cover")).length).toBe(0);
+  });
+});
+
 describe("derivePitchedRoof — basic", () => {
   it("empty segments → empty spec", () => {
     const spec = derivePitchedRoof(

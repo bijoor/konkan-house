@@ -36,6 +36,9 @@ export interface FramingConfig {
   valley_wall_mm?: number;
   ring_beam_size_in: [number, number];
   ring_beam_wall_mm: number;
+  // Flat wall-top tie beams (ceiling ties). Default = ring-beam section.
+  tie_beam_size_in?: [number, number];
+  tie_beam_wall_mm?: number;
   // Truss section — chords carry the roof load, webs stiffen the
   // triangle. Legacy default is 2×4 chords + 2×2 webs (MS pipe).
   truss?: TrussSectionConfig;
@@ -127,6 +130,7 @@ const FRAME_ROLES: MemberRole[] = [
   "ring_beam",
   "rafter",
   "purlin",
+  "tie_beam",
   "hip_beam",
   "vent_strut",
   "parapet_cap",
@@ -202,6 +206,11 @@ export function computeFrameBom(
   push("ring_beam", "Ring beam", cfg.ring_beam_size_in, cfg.ring_beam_wall_mm);
   push("rafter", "Rafters", cfg.rafter_size_in, cfg.rafter_wall_mm);
   push("purlin", "Purlins", cfg.purlin_size_in, cfg.purlin_wall_mm);
+  push(
+    "tie_beam", "Tie beams",
+    cfg.tie_beam_size_in ?? cfg.ring_beam_size_in,
+    cfg.tie_beam_wall_mm ?? cfg.ring_beam_wall_mm,
+  );
   // Vent struts — braces from extended ridge tip to hip diagonals.
   // Use same section as truss webs by default (2×2 MS pipe).
   push(

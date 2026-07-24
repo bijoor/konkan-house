@@ -36,6 +36,7 @@ const MEMBER_STROKE: Record<string, string> = {
   ring_beam: "#16a34a",     // green-600
   rafter: "#94a3b8",        // slate-400
   purlin: "#cbd5e1",        // slate-300
+  tie_beam: "#0ea5e9",      // sky-500 — wall-top tie
   hip_beam: "#eab308",      // yellow-500
   parapet_cap: "#d97706",   // amber-600
 };
@@ -125,10 +126,12 @@ function memberSvg(
   const width =
     member.role === "ridge" || member.role === "valley" ? 2 :
     member.role === "rafter" || member.role === "purlin" ? 0.4 :
+    member.role === "tie_beam" ? 1.4 :
     1;
   const dash =
     member.role === "valley" ? " stroke-dasharray=\"4,3\"" :
-    member.role === "hip" ? " stroke-dasharray=\"6,2\"" : "";
+    member.role === "hip" ? " stroke-dasharray=\"6,2\"" :
+    member.role === "tie_beam" ? " stroke-dasharray=\"3,3\"" : "";
   return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${stroke}" stroke-width="${width}"${dash} />`;
 }
 
@@ -185,7 +188,7 @@ export function renderTopViewPanel(
     // Members drawn in Z-order so structural spine (ridge/hip/valley/
     // ring beam) sits ON TOP of the finer surface members (rafters,
     // purlins). Otherwise rafters cross the ridge lines visually.
-    const surfaceOrder: MemberRole[] = ["rafter", "purlin"];
+    const surfaceOrder: MemberRole[] = ["rafter", "purlin", "tie_beam"];
     const spineOrder: MemberRole[] = ["ring_beam", "hip", "valley", "ridge"];
     for (const role of surfaceOrder) {
       for (const m of spec.members) {

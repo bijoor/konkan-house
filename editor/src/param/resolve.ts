@@ -148,14 +148,92 @@ function hasOpeningFormulas(obj: unknown): boolean {
   return openingLists(obj).some((ops) => ops.some(hasFormulas));
 }
 
-// A roof carries a `segments[]` array and a `slope` object, each of which can
-// hold its own `formulas` (segment width / overhangs / setbacks; slope ridge_h).
+// A roof carries a `segments[]` array, a `slope` object, and a `trusses[]`
+// array, each of which can hold its own `formulas` (segment width / overhangs /
+// setbacks; slope ridge_h; truss positions_along[i] via pos0/pos1/… keys).
 function hasRoofNestedFormulas(obj: unknown): boolean {
   const o = obj as Record<string, unknown> | null | undefined;
   if (o?.type !== "roof") return false;
   const segs = o.segments;
   if (Array.isArray(segs) && segs.some(hasFormulas)) return true;
+  const trusses = o.trusses;
+  if (Array.isArray(trusses) && trusses.some(hasFormulas)) return true;
   return hasFormulas(o.slope);
+}
+
+// A segment's `start`/`end` are [x,y] arrays; their coordinates are driven by
+// the synthetic formula keys start_x/start_y/end_x/end_y (there's no scalar field
+// to write, so these map INTO the array). Everything else is a plain scalar field.
+const SEGMENT_POINT_KEYS: Record<string, ["start" | "end", 0 | 1]> = {
+  start_x: ["start", 0],
+  start_y: ["start", 1],
+  end_x: ["end", 0],
+  end_y: ["end", 1],
+};
+
+// Resolve one roof segment's formulas — scalar fields write in place; point-coord
+// keys write into the start/end arrays. Immutable; same ref when unchanged.
+function resolveSegment(
+  seg: unknown,
+  scope: Scope,
+  warnings: FormulaWarning[],
+  where: string,
+): { value: unknown; changed: boolean } {
+  const s = seg as Record<string, unknown> | null | undefined;
+  const fm = s?.formulas as Record<string, string> | undefined;
+  if (!s || !fm || Object.keys(fm).length === 0) return { value: seg, changed: false };
+  let changed = false;
+  const next: Record<string, unknown> = { ...s };
+  const start = Array.isArray(s.start) ? [...(s.start as number[])] : undefined;
+  const end = Array.isArray(s.end) ? [...(s.end as number[])] : undefined;
+  for (const [field, src] of Object.entries(fm)) {
+    const r = evalFormula(src, scope);
+    if (r.value === null) {
+      warnings.push({ where: `${where}/${field}`, formula: src, message: r.error ?? "invalid formula" });
+      continue;
+    }
+    const pc = SEGMENT_POINT_KEYS[field];
+    if (pc) {
+      const arr = pc[0] === "start" ? start : end;
+      if (arr && arr[pc[1]] !== r.value) { arr[pc[1]] = r.value; changed = true; }
+    } else {
+      const v = INTEGER_FIELDS.has(field) ? Math.round(r.value) : r.value;
+      if (next[field] !== v) { next[field] = v; changed = true; }
+    }
+  }
+  if (!changed) return { value: seg, changed: false };
+  if (start) next.start = start;
+  if (end) next.end = end;
+  return { value: next, changed: true };
+}
+
+// A truss entry's `positions_along` is a number[]; each index is driven by a
+// synthetic formula key `pos<i>` (no scalar field to write, so it maps INTO the
+// array — like a segment's start/end coords). Immutable; same ref when unchanged.
+function resolveTruss(
+  truss: unknown,
+  scope: Scope,
+  warnings: FormulaWarning[],
+  where: string,
+): { value: unknown; changed: boolean } {
+  const t = truss as Record<string, unknown> | null | undefined;
+  const fm = t?.formulas as Record<string, string> | undefined;
+  if (!t || !fm || Object.keys(fm).length === 0) return { value: truss, changed: false };
+  const positions = Array.isArray(t.positions_along) ? [...(t.positions_along as number[])] : [];
+  let changed = false;
+  for (const [field, src] of Object.entries(fm)) {
+    const r = evalFormula(src, scope);
+    if (r.value === null) {
+      warnings.push({ where: `${where}/${field}`, formula: src, message: r.error ?? "invalid formula" });
+      continue;
+    }
+    const m = /^pos(\d+)$/.exec(field);
+    if (m) {
+      const idx = Number(m[1]);
+      if (idx < positions.length && positions[idx] !== r.value) { positions[idx] = r.value; changed = true; }
+    }
+  }
+  return changed ? { value: { ...t, positions_along: positions }, changed: true } : { value: truss, changed: false };
 }
 
 function resolveRoofNested(
@@ -171,11 +249,20 @@ function resolveRoofNested(
   if (Array.isArray(o.segments)) {
     let segChanged = false;
     const next = (o.segments as unknown[]).map((s, i) => {
-      const r = applyContainerFormulas(s, scope, warnings, `${where}/seg${i}`);
+      const r = resolveSegment(s, scope, warnings, `${where}/seg${i}`);
       if (r.changed) segChanged = true;
       return r.value;
     });
     if (segChanged) { patch.segments = next; changed = true; }
+  }
+  if (Array.isArray(o.trusses)) {
+    let tChanged = false;
+    const next = (o.trusses as unknown[]).map((t, i) => {
+      const r = resolveTruss(t, scope, warnings, `${where}/truss${i}`);
+      if (r.changed) tChanged = true;
+      return r.value;
+    });
+    if (tChanged) { patch.trusses = next; changed = true; }
   }
   if (o.slope && typeof o.slope === "object") {
     const r = applyContainerFormulas(o.slope, scope, warnings, `${where}/slope`);
@@ -228,7 +315,7 @@ function resolveOpenings(
 // fractional value (e.g. num_steps = "= floor_height / step_rise"), but every
 // consumer expects an integer, so we round here — the single point where a
 // formula result is written — rather than in each renderer.
-const INTEGER_FIELDS = new Set(["num_steps"]);
+const INTEGER_FIELDS = new Set(["num_steps", "tie_beam_count"]);
 
 // Evaluate a container's `formulas` map against `scope`, writing resolved
 // numbers into the container's own fields. Returns the same reference when

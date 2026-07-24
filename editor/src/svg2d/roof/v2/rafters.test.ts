@@ -22,6 +22,43 @@ const pureGable = (): RoofConfig => ({
   min_overhang: 25,
 });
 
+describe("populateRoofFraming — wall-top tie beams", () => {
+  const wallTopZ = 100;
+  const cfg: RoofConfig = {
+    type: "roof", roof_type: "pitched",
+    segments: [{ id: "s0", start: [150, 0], end: [150, 500], width: 300, tie_beam_count: 3 }],
+    default_endpoint: "open", slope: { by: "height", ridge_h: 50 }, min_overhang: 25,
+  };
+  const spec = derivePitchedRoof(cfg, { wallTopZ });
+  const populated = populateRoofFraming(spec, DEFAULT_V2_FRAMING, cfg, wallTopZ);
+  const ties = populated.members.filter((m) => m.role === "tie_beam");
+
+  it("emits `count` tie beams", () => {
+    expect(ties.length).toBe(3);
+  });
+
+  it("places them at equal interior gaps across the width (centred on the segment)", () => {
+    // width 300 centred at x=150 → interior quarters at 75/150/225
+    const xs = ties.map((t) => t.start[0]).sort((a, b) => a - b);
+    expect(xs).toEqual([75, 150, 225]);
+  });
+
+  it("runs the full segment length, flat at wall-top Z", () => {
+    for (const t of ties) {
+      expect(t.start[2]).toBe(wallTopZ);
+      expect(t.end[2]).toBe(wallTopZ);
+      expect(t.start[1]).toBe(0);
+      expect(t.end[1]).toBe(500);
+    }
+  });
+
+  it("emits none when tie_beam_count is 0 / absent", () => {
+    const bare: RoofConfig = { ...cfg, segments: [{ ...cfg.segments[0], tie_beam_count: 0 }] };
+    const s = populateRoofFraming(derivePitchedRoof(bare, { wallTopZ }), DEFAULT_V2_FRAMING, bare, wallTopZ);
+    expect(s.members.filter((m) => m.role === "tie_beam").length).toBe(0);
+  });
+});
+
 describe("populateRoofFraming — pure hip", () => {
   const cfg = pureHip();
   const wallTopZ = 100;

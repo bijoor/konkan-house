@@ -172,8 +172,9 @@ describe("resolveParametric", () => {
           { type: "roof", roof_type: "pitched", name: "R", min_overhang: 1,
             formulas: { min_overhang: "= oh" },
             segments: [
-              { id: "s0", start: [0, 0], end: [0, 800], width: 1,
-                formulas: { width: "= roofW", hip_setback_start: "= oh / 2" } },
+              { id: "s0", start: [1, 2], end: [3, 4], width: 1,
+                formulas: { width: "= roofW", hip_setback_start: "= oh / 2",
+                  start_x: "= roofW / 2", start_y: "= 0", end_x: "= roofW / 2", end_y: "= 800" } },
               { id: "s1", start: [0, 800], end: [800, 800], width: 800 },
             ],
             slope: { by: "height", ridge_h: 1, formulas: { ridge_h: "= ridge" } } },
@@ -183,13 +184,40 @@ describe("resolveParametric", () => {
     const out = resolveParametric(cfg);
     expect(out.warnings).toEqual([]);
     const roof = out.config.floors[0].objects[0] as unknown as {
-      min_overhang: number; segments: Record<string, number>[]; slope: { ridge_h: number };
+      min_overhang: number;
+      segments: (Record<string, number> & { start: number[]; end: number[] })[];
+      slope: { ridge_h: number };
     };
     expect(roof.min_overhang).toBe(50);
     expect(roof.segments[0].width).toBe(1046);
     expect(roof.segments[0].hip_setback_start).toBe(25);
+    // point-coord formulas write INTO the start/end arrays (no bogus scalar field)
+    expect(roof.segments[0].start).toEqual([523, 0]);
+    expect(roof.segments[0].end).toEqual([523, 800]);
+    expect("start_x" in roof.segments[0]).toBe(false);
     expect(roof.segments[1].width).toBe(800); // untouched
     expect(roof.slope.ridge_h).toBe(250);
+  });
+
+  it("resolves roof truss positions via pos<i> formula keys", () => {
+    const cfg = {
+      variables: { bay: 100, mid: 225 },
+      floors: [
+        { floor_number: 0, name: "F", objects: [
+          { type: "roof", roof_type: "pitched", name: "R",
+            segments: [{ id: "s0", start: [135, 0], end: [135, 450], width: 270 }],
+            trusses: [{ segment_id: "s0", type: "fink", positions_along: [1, 2, 3],
+              formulas: { pos0: "= bay", pos1: "= mid", pos2: "= 450 - bay" } }],
+            slope: { by: "height", ridge_h: 70 } },
+        ] },
+      ],
+    } as unknown as HouseConfig;
+    const out = resolveParametric(cfg);
+    expect(out.warnings).toEqual([]);
+    const truss = (out.config.floors[0].objects[0] as unknown as { trusses: { positions_along: number[] }[] }).trusses[0];
+    expect(truss.positions_along).toEqual([100, 225, 350]);
+    // source untouched (immutable resolve)
+    expect((cfg.floors[0].objects[0] as unknown as { trusses: { positions_along: number[] }[] }).trusses[0].positions_along).toEqual([1, 2, 3]);
   });
 
   it("formulaFieldError flags unknown refs and syntax errors, null when clean", () => {

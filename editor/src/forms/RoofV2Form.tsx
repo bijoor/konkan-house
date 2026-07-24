@@ -18,7 +18,8 @@
 import type { HouseObject } from "../schema/houseConfig";
 import type { Selection } from "../state/configStore";
 import { useConfigStore } from "../state/configStore";
-import { NumberField, SelectField, Section, TextField, ObjectMeasureField } from "./fields";
+import { NumberField, SelectField, Section, TextField, ObjectMeasureField, MeasureField } from "./fields";
+import { formulaFieldError } from "../param/resolve";
 import { isLeafEndpoint, resolveEndpoints } from "../svg2d/roof/v2/segments";
 import type { RoofSegment } from "../svg2d/roof/v2/model";
 
@@ -286,7 +287,7 @@ export function RoofV2Form({
               segment={seg}
               index={i}
               trusses={(get<Bag[]>(bag, ["trusses"]) ?? []) as Bag[]}
-              onSet={(positions) => {
+              onSet={(positions, formulas) => {
                 const cur = (get<Bag[]>(bag, ["trusses"]) ?? []) as Bag[];
                 const segId = get<string>(seg, ["id"]) ?? `seg${i}`;
                 const otherEntries = cur.filter((e) => get<string>(e, ["segment_id"]) !== segId);
@@ -296,10 +297,9 @@ export function RoofV2Form({
                 if (positions.length === 0) {
                   setAt(["trusses"], otherEntries.length === 0 ? undefined : otherEntries);
                 } else {
-                  setAt(["trusses"], [
-                    ...otherEntries,
-                    { segment_id: segId, type: trussType, positions_along: positions },
-                  ]);
+                  const entry: Bag = { segment_id: segId, type: trussType, positions_along: positions };
+                  if (formulas && Object.keys(formulas).length) entry.formulas = formulas;
+                  setAt(["trusses"], [...otherEntries, entry]);
                 }
               }}
             />
@@ -450,6 +450,53 @@ function SectionSizePair({
 // Per-segment editor
 // ------------------------------------------------------------------
 
+// A formula-aware editor for one coordinate of a segment's start/end point.
+// The point is an [x,y] array, so a formula drives it via the synthetic key
+// `start_x`/`start_y`/`end_x`/`end_y` in the segment's `formulas` map (resolved
+// into the array by resolveParametric); a plain number writes the array in place.
+function SegPointField({
+  seg,
+  onPatch,
+  arrName,
+  idx,
+  label,
+}: {
+  seg: Record<string, unknown>;
+  onPatch: (patch: Record<string, unknown>) => void;
+  arrName: "start" | "end";
+  idx: 0 | 1;
+  label: string;
+}) {
+  const config = useConfigStore((s) => s.config);
+  const arr = Array.isArray(seg[arrName]) ? (seg[arrName] as number[]) : [0, 0];
+  const value = arr[idx];
+  const coordKey = `${arrName}_${idx === 0 ? "x" : "y"}`;
+  const formulas = seg.formulas as Record<string, string> | undefined;
+  const formula = formulas?.[coordKey];
+  const formulaError = formulaFieldError(config, formula) ?? undefined;
+
+  const setNumber = (n: number | undefined) => {
+    const nextArr = [...arr];
+    nextArr[idx] = n ?? 0;
+    const nf = { ...(formulas ?? {}) };
+    delete nf[coordKey];
+    onPatch({ [arrName]: nextArr, formulas: Object.keys(nf).length ? nf : undefined });
+  };
+  const setFormula = (src: string) =>
+    onPatch({ formulas: { ...(formulas ?? {}), [coordKey]: src } });
+
+  return (
+    <MeasureField
+      label={label}
+      value={value}
+      formula={formula}
+      formulaError={formulaError}
+      onCommitNumber={setNumber}
+      onCommitFormula={setFormula}
+    />
+  );
+}
+
 function SegmentEditor({
   segment,
   index,
@@ -474,8 +521,6 @@ function SegmentEditor({
   onRemove: () => void;
 }) {
   const seg = segment as Record<string, unknown>;
-  const start = (get<number[]>(segment, ["start"]) ?? [0, 0]).slice(0, 2);
-  const end = (get<number[]>(segment, ["end"]) ?? [0, 0]).slice(0, 2);
   const id = get<string>(segment, ["id"]) ?? `seg${index}`;
   const startStyle =
     (get<string>(segment, ["start_endpoint"]) as "open" | "closed" | undefined) ??
@@ -501,26 +546,10 @@ function SegmentEditor({
         </button>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <NumberField
-          label="Start X"
-          value={start[0]}
-          onCommit={(n) => onUpdate(["start"], [n ?? 0, start[1]])}
-        />
-        <NumberField
-          label="Start Y"
-          value={start[1]}
-          onCommit={(n) => onUpdate(["start"], [start[0], n ?? 0])}
-        />
-        <NumberField
-          label="End X"
-          value={end[0]}
-          onCommit={(n) => onUpdate(["end"], [n ?? 0, end[1]])}
-        />
-        <NumberField
-          label="End Y"
-          value={end[1]}
-          onCommit={(n) => onUpdate(["end"], [end[0], n ?? 0])}
-        />
+        <SegPointField seg={seg} onPatch={onPatch} arrName="start" idx={0} label="Start X" />
+        <SegPointField seg={seg} onPatch={onPatch} arrName="start" idx={1} label="Start Y" />
+        <SegPointField seg={seg} onPatch={onPatch} arrName="end" idx={0} label="End X" />
+        <SegPointField seg={seg} onPatch={onPatch} arrName="end" idx={1} label="End Y" />
       </div>
       <ObjectMeasureField
         object={seg}
@@ -536,6 +565,14 @@ function SegmentEditor({
         hint="Overrides the roof-level min_overhang for this segment only. Leave blank to inherit."
         patch={onPatch}
         min={0} suffix="u" allowEmpty
+      />
+      <ObjectMeasureField
+        object={seg}
+        field="tie_beam_count"
+        label="Tie beams (count)"
+        hint="Flat wall-top ceiling ties running the segment length, spread evenly across the width. 0 / blank = none."
+        patch={onPatch}
+        min={0} allowEmpty
       />
 
       {roofType === "shed" && (
@@ -687,17 +724,44 @@ function TrussEditor({
   segment: Bag;
   index: number;
   trusses: Bag[];
-  onSet: (positions: number[]) => void;
+  onSet: (positions: number[], formulas?: Record<string, string>) => void;
 }) {
+  const config = useConfigStore((s) => s.config);
   const segId = get<string>(segment, ["id"]) ?? `seg${index}`;
   const entry = trusses.find((e) => get<string>(e, ["segment_id"]) === segId);
   const positions = (get<number[]>(entry ?? {}, ["positions_along"]) ?? []).slice();
+  const formulas = (get<Record<string, string>>(entry ?? {}, ["formulas"]) ?? {});
+  const key = (i: number) => `pos${i}`;
 
-  const setPos = (i: number, v: number | undefined) => {
+  // A plain number for position i: write the value, drop any formula on it.
+  const setNumber = (i: number, v: number | undefined) => {
     const next = positions.slice();
-    if (v === undefined) next.splice(i, 1);
-    else next[i] = v;
-    onSet(next.sort((a, b) => a - b));
+    next[i] = v ?? 0;
+    const nf = { ...formulas };
+    delete nf[key(i)];
+    onSet(next, nf);
+  };
+  const setFormula = (i: number, src: string) => {
+    onSet(positions.slice(), { ...formulas, [key(i)]: src });
+  };
+  // Remove position i and re-index the pos<n> formula keys (drop i, shift the
+  // higher ones down) so each formula stays attached to its position.
+  const removePos = (i: number) => {
+    const next = positions.slice();
+    next.splice(i, 1);
+    const nf: Record<string, string> = {};
+    for (const [k, val] of Object.entries(formulas)) {
+      const m = /^pos(\d+)$/.exec(k);
+      if (!m) { nf[k] = val; continue; }
+      const idx = Number(m[1]);
+      if (idx === i) continue;
+      nf[key(idx > i ? idx - 1 : idx)] = val;
+    }
+    onSet(next, nf);
+  };
+  const addPos = () => {
+    const last = positions.length === 0 ? 50 : positions[positions.length - 1] + 50;
+    onSet([...positions, last], formulas);
   };
 
   return (
@@ -705,27 +769,35 @@ function TrussEditor({
       <div className="mb-1 text-xs text-slate-400">
         Segment <code>{segId}</code> — {positions.length} truss(es)
       </div>
-      {positions.map((p, i) => (
-        <div key={i} className="mb-1 flex items-center gap-2">
-          <NumberField
-            label={`Position ${i + 1} (along)`}
-            value={p}
-            onCommit={(n) => setPos(i, n)}
-            min={0} suffix="u"
-          />
-          <button
-            type="button"
-            className="rounded bg-red-800 px-2 py-1 text-[10px] text-white hover:bg-red-700"
-            onClick={() => setPos(i, undefined)}
-          >
-            ×
-          </button>
-        </div>
-      ))}
+      {positions.map((p, i) => {
+        const f = formulas[key(i)];
+        return (
+          <div key={i} className="mb-1 flex items-center gap-2">
+            <div className="flex-1">
+              <MeasureField
+                label={`Position ${i + 1} (along)`}
+                value={p}
+                formula={f}
+                formulaError={formulaFieldError(config, f) ?? undefined}
+                onCommitNumber={(n) => setNumber(i, n)}
+                onCommitFormula={(src) => setFormula(i, src)}
+                min={0} suffix="u"
+              />
+            </div>
+            <button
+              type="button"
+              className="rounded bg-red-800 px-2 py-1 text-[10px] text-white hover:bg-red-700"
+              onClick={() => removePos(i)}
+            >
+              ×
+            </button>
+          </div>
+        );
+      })}
       <button
         type="button"
         className="mt-1 rounded bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
-        onClick={() => onSet([...positions, positions.length === 0 ? 50 : (positions[positions.length - 1] + 50)])}
+        onClick={addPos}
       >
         + Add truss
       </button>

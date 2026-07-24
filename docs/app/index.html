@@ -1415,7 +1415,7 @@
          generators in memory, patches window.fetch so the vanilla-JS
          loaders below silently see generated content, and mounts the
          Three.js scene into #viewer-3d-scene. -->
-  <script type="module" crossorigin src="./assets/viewer-CX55hZ7x.js"></script>
+  <script type="module" crossorigin src="./assets/viewer-GBoy0ZBZ.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/viewer-CsMKjoL0.css">
 </head>
 <body>
@@ -1538,6 +1538,16 @@
                     <rect x="17.5" y="9" width="4.5" height="6" stroke="currentColor" stroke-width="1.3"/>
                 </svg><span class="tab-label"> Layout</span>
             </button>
+            <button class="tab" onclick="switchView('quantities')" title="Quantities (wall areas)">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <!-- estimator: laterite header bar over a ruled takeoff sheet -->
+                    <rect x="4" y="3" width="16" height="4" fill="#B85028"/>
+                    <rect x="4" y="3" width="16" height="18" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <line x1="8" y1="11" x2="16" y2="11" stroke="currentColor" stroke-width="1.5"/>
+                    <line x1="8" y1="14.5" x2="16" y2="14.5" stroke="currentColor" stroke-width="1.5"/>
+                    <line x1="8" y1="18" x2="13" y2="18" stroke="currentColor" stroke-width="1.5"/>
+                </svg><span class="tab-label"> Quantities</span>
+            </button>
         </nav>
         <div id="viewer-views">
         <!-- 3D Model View -->
@@ -1609,6 +1619,18 @@
             </div>
         </div>
         <!-- End Roof Details View -->
+
+        <!-- Quantities View — wall-area estimate (external + internal), net of
+             openings, plus gable ends. Re-computed on every config edit. -->
+        <div id="view-quantities" class="view-container">
+            <div class="svg-views-container">
+                <h2 class="section-header">Quantities</h2>
+                <div class="svg-grid" id="quantities-grid">
+                    <!-- Wall-area report card injected from window.quantitiesManifest -->
+                </div>
+            </div>
+        </div>
+        <!-- End Quantities View -->
 
         <!-- Layout View — composite general-arrangement sheet (plan centre
              + four elevations) per floor. Fixed header + toggleable filter
@@ -1823,6 +1845,10 @@
                 document.getElementById('view-layout').classList.add('active');
                 svgContainer.style.display = 'none';
                 loadLayout();
+            } else if (view === 'quantities') {
+                document.getElementById('view-quantities').classList.add('active');
+                svgContainer.style.display = 'none';
+                loadQuantities();
             }
         }
 
@@ -2037,28 +2063,45 @@
                     console.warn('[roof panels]', p.id, e);
                 }
             }
-            // HTML BOM cards: frame + metal + roof material. Published by
-            // the TS bootstrap on window.roofBomManifest.
-            const bomCards = window.roofBomManifest || [];
-            for (const c of bomCards) {
-                if (myToken !== window.__roofPanelsToken) return;
+            // The frame / metal / roof-material BOM tables now live in the
+            // Quantities tab (window.roofBomManifest, rendered by
+            // loadQuantities) — this tab shows only the roof drawings.
+            if (myToken !== window.__roofPanelsToken) return;
+            window.roofPanelsLoaded = true;
+        }
+
+        // Quantities tab — wall-area report (window.quantitiesManifest) plus
+        // the roof BOM tables (window.roofBomManifest: frame / metal / roof
+        // material). Both published by the TS bootstrap (rebuildSvgMap).
+        window.quantitiesLoaded = false;
+        async function loadQuantities() {
+            if (window.quantitiesLoaded) return;
+            const grid = document.getElementById('quantities-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            const cards = [...(window.quantitiesManifest || []), ...(window.roofBomManifest || [])];
+            if (!cards.length) {
+                grid.innerHTML = '<div class="svg-item"><p style="padding:1rem;color:#64748b">No quantities available for this model.</p></div>';
+                window.quantitiesLoaded = true;
+                return;
+            }
+            for (const c of cards) {
                 try {
                     const r = await fetch(c.filename + '?t=' + Date.now());
                     if (!r.ok) continue;
                     const html = await r.text();
-                    if (myToken !== window.__roofPanelsToken) return;
                     const item = document.createElement('div');
                     item.className = 'svg-item roof-bom-item';
                     item.innerHTML = html;
                     item.addEventListener('click', () => openHtmlLightbox(html, c.displayName));
                     grid.appendChild(item);
                 } catch (e) {
-                    console.warn('[roof BOM]', c.filename, e);
+                    console.warn('[quantities]', c.filename, e);
                 }
             }
-            if (myToken !== window.__roofPanelsToken) return;
-            window.roofPanelsLoaded = true;
+            window.quantitiesLoaded = true;
         }
+        window.loadQuantities = loadQuantities;
 
         // The Layout tab is an interactive composite sheet. Three
         // independent AND object filters (Types / Layers / Objects) plus

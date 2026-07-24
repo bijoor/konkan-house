@@ -107,6 +107,32 @@ export function populateRoofFraming(
     }
   }
 
+  // TIE BEAMS — flat wall-top ceiling ties. For each segment, N members
+  // run the full segment length (start→end), spread at equal INTERIOR
+  // gaps across the width, at wall-top Z (below the roof, not on a slope).
+  for (const seg of cfg.segments ?? []) {
+    const n = Math.max(0, Math.round(Number(seg.tie_beam_count ?? 0)));
+    if (n <= 0) continue;
+    const [sx, sy] = seg.start;
+    const [ex, ey] = seg.end;
+    const dx = ex - sx, dy = ey - sy;
+    const segLen = Math.hypot(dx, dy);
+    if (segLen < 1e-6) continue;
+    // unit perpendicular to the segment axis (in the XY plane)
+    const px = -dy / segLen, py = dx / segLen;
+    const W = seg.width;
+    for (let k = 1; k <= n; k++) {
+      const t = -W / 2 + (W * k) / (n + 1); // interior, equal gaps
+      extra.push({
+        id: `${seg.id}.tie_beam.${counter++}`,
+        start: [sx + px * t, sy + py * t, wallTopZ],
+        end: [ex + px * t, ey + py * t, wallTopZ],
+        role: "tie_beam",
+        source_segment_id: seg.id,
+      });
+    }
+  }
+
   if (extra.length === 0) return spec;
   return { ...spec, members: [...spec.members, ...extra] };
 }

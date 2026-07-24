@@ -179,7 +179,7 @@ const SPINE_MEMBER_ROLES: Set<StraightMember["role"]> = new Set([
   "ridge", "hip", "valley", "ring_beam",
   "truss_top_chord", "truss_bottom_chord", "truss_web",
   "pani_patti", "eave_L_channel", "corner_double_angle",
-  "vent_strut",
+  "vent_strut", "tie_beam",
 ]);
 
 // Surface roles → "Purlins & rafters" layer (frame_surface).
@@ -206,6 +206,8 @@ function sectionForMember(
       return framing.valley_size_in ?? framing.ridge_size_in;
     case "ring_beam":
       return framing.ring_beam_size_in;
+    case "tie_beam":
+      return framing.tie_beam_size_in ?? framing.ring_beam_size_in;
     case "rafter":
       return framing.rafter_size_in;
     case "purlin":
@@ -232,6 +234,7 @@ function colorForRole(role: StraightMember["role"]): string {
     case "hip":                  return "#4b4b4b";
     case "valley":               return "#374151";
     case "ring_beam":            return "#525252";
+    case "tie_beam":             return "#0369a1";   // steel-blue wall-top tie
     case "pani_patti":           return "#9ca3af";   // GI galvanised — lighter
     case "eave_L_channel":       return "#6b7280";
     case "corner_double_angle":  return "#525252";

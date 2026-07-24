@@ -293,11 +293,14 @@ export function derivePitchedRoof(
       source_segment_id: seg.id,
     });
 
-    // Vent struts — when the ridge extends past a hip apex, brace
+    // Vent extension — when the ridge extends past a hip apex, brace
     // the flying ridge tip with 2 diagonal struts angling down to
-    // the two hip diagonals at distance `ext` from the apex.
-    // Matches legacy `R1' / R2'` bracing.
-    const emitVentStruts = (
+    // the two hip diagonals at distance `ext` from the apex (matches
+    // legacy `R1' / R2'`), AND cover it with two triangular shell
+    // faces so the extension is roofed (not left open). Each cover
+    // triangle shares the flying ridge (apex→tip), the vent strut
+    // (tip→strutEnd) and the hip diagonal (strutEnd→apex).
+    const emitVentExtension = (
       ridgeTip: Point3D,
       apex: Point3D,
       hipLeftEnd: Point3D,     // hip diagonal apex → left eave corner
@@ -318,29 +321,42 @@ export function derivePitchedRoof(
           apex[2] + (hipEnd[2] - apex[2]) * t,
         ];
       };
+      const sl = strutEnd(hipLeftEnd);
+      const sr = strutEnd(hipRightEnd);
       members.push({
         id: `${seg.id}.vent_strut.${endName}.left`,
-        start: ridgeTip, end: strutEnd(hipLeftEnd),
+        start: ridgeTip, end: sl,
         role: "vent_strut", source_segment_id: seg.id,
       });
       members.push({
         id: `${seg.id}.vent_strut.${endName}.right`,
-        start: ridgeTip, end: strutEnd(hipRightEnd),
+        start: ridgeTip, end: sr,
         role: "vent_strut", source_segment_id: seg.id,
+      });
+      // Shell covers over the flying-ridge extension (one per side).
+      planes.push({
+        id: `${seg.id}.vent_cover.${endName}.left`,
+        vertices: [apex, ridgeTip, sl],
+        role: "hip_face", source_segment_id: seg.id, side_of_segment: endName,
+      });
+      planes.push({
+        id: `${seg.id}.vent_cover.${endName}.right`,
+        vertices: [apex, ridgeTip, sr],
+        role: "hip_face", source_segment_id: seg.id, side_of_segment: endName,
       });
     };
     if (startRes === "closed" && ridgeExtStart > 0) {
       // Hip diagonals at start: from apex (ridgeStart3D) to backLeft
       // and backRight eave corners. Struts angle down to those hip
       // diagonals; we brace them at distance `ridgeExtStart` from apex.
-      emitVentStruts(
+      emitVentExtension(
         ridgeMemberStart, ridgeStart3D,
         to3D(backLeft, eaveZ), to3D(backRight, eaveZ),
         ridgeExtStart, "start",
       );
     }
     if (endRes === "closed" && ridgeExtEnd > 0) {
-      emitVentStruts(
+      emitVentExtension(
         ridgeMemberEnd, ridgeEnd3D,
         to3D(frontLeft, eaveZ), to3D(frontRight, eaveZ),
         ridgeExtEnd, "end",

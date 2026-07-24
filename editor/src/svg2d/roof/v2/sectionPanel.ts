@@ -192,7 +192,7 @@ export function v2SectionPanel(
 
 // Roles rendered as crossing marks in section views.
 const MEMBER_MARK_ROLES = new Set<string>([
-  "rafter", "purlin", "ring_beam", "ridge", "hip", "valley",
+  "rafter", "purlin", "ring_beam", "ridge", "hip", "valley", "tie_beam",
 ]);
 const MEMBER_MARK_COLORS: Record<string, string> = {
   rafter: "#94a3b8",       // slate
@@ -201,4 +201,5 @@ const MEMBER_MARK_COLORS: Record<string, string> = {
   ridge: "#dc2626",        // red
   hip: "#ea580c",          // orange
   valley: "#2563eb",       // blue
+  tie_beam: "#0ea5e9",     // sky — wall-top tie
 };

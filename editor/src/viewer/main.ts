@@ -50,6 +50,8 @@ import { computeMergedV2Spec } from "../svg2d/roof/v2/computeFromHouse";
 import { ridgeRunFt, slopeAreaSft } from "../svg2d/roof/v2/bom";
 import { expandRoomWalls } from "../svg2d/expand";
 import { generateAllPillarSvgs } from "../svg2d/pillar/index";
+import { computeWallAreas } from "../estimate/wallArea";
+import { wallAreaHtml } from "../estimate/wallAreaHtml";
 import { setDimensionUnits } from "../svg2d/format";
 import { setTextScale, computeTextScale, houseSpanUnits } from "../svg2d/config";
 import {
@@ -543,6 +545,16 @@ function rebuildSvgMap(): void {
     }
   });
   window.pillarSvgManifest = pillarManifest;
+
+  // Quantities: external + internal wall areas (net of openings) + gable ends.
+  // Wrapped so a compute/geometry error can't take out the whole template load.
+  safe("wall area", () => {
+    const report = computeWallAreas(cfg);
+    svgMap.set("2d/quantities/wall_area.html", wallAreaHtml(report));
+    window.quantitiesManifest = [
+      { filename: "2d/quantities/wall_area.html", displayName: "Wall areas" },
+    ];
+  });
 }
 
 function patchFetch(): void {
@@ -629,10 +641,12 @@ declare global {
     elevationsLoaded?: boolean;
     roofPanelsLoaded?: boolean;
     layoutLoaded?: boolean;
+    quantitiesLoaded?: boolean;
     loadFloorPlans?: () => Promise<void>;
     loadElevations?: () => Promise<void>;
     loadRoofPanels?: () => Promise<void>;
     loadLayout?: () => Promise<void>;
+    loadQuantities?: () => Promise<void>;
     // Published from rebuildSvgMap so the 2D tabs build cards from the
     // actual floors (config-driven, no hardcoded floor list).
     floorPlanManifest?: { filename: string; displayName: string }[];
@@ -642,6 +656,9 @@ declare global {
     // Published from rebuildSvgMap so the roof-panels loader can render
     // the two HTML BOM cards after the SVG panels.
     roofBomManifest?: { filename: string; displayName: string }[];
+    // Published from rebuildSvgMap so the Quantities tab renders the
+    // wall-area report card.
+    quantitiesManifest?: { filename: string; displayName: string }[];
     // Exposed by wireExports below so the inline <script> in
     // index.html can trigger a save without needing to import
     // fileIO. Filename is a hint for the save dialog.
@@ -868,6 +885,7 @@ function reloadActiveTab(): void {
   window.elevationsLoaded = false;
   window.roofPanelsLoaded = false;
   window.layoutLoaded = false;
+  window.quantitiesLoaded = false;
   const activeView = document.querySelector(".view-container.active");
   if (!activeView) return;
   const id = activeView.id;
@@ -875,6 +893,7 @@ function reloadActiveTab(): void {
   else if (id === "view-elevations") void window.loadElevations?.();
   else if (id === "view-roof") void window.loadRoofPanels?.();
   else if (id === "view-layout") void window.loadLayout?.();
+  else if (id === "view-quantities") void window.loadQuantities?.();
   // 3D tab reacts automatically via React subscription — no manual call.
 }
 
