@@ -3,15 +3,16 @@
 // gable-end triangles above the eaves. Pure + synchronous — no bpy, no DOM —
 // so it can run in the viewer panel builder, in Node tests, or a CLI.
 //
-// Definitions (surface-based, chosen for paint/plaster estimation):
-//   * EXTERNAL area = the OUTSIDE faces of walls that face out of the building
-//     footprint (what exterior paint covers) + gable-end triangles.
-//   * INTERNAL area = the INSIDE (room-facing) faces of every wall that bounds
-//     a room — this includes the inner face of external walls and BOTH faces of
-//     interior partitions (what interior paint covers).
+// Definitions are FACE-based (a wall may have one face outside and one inside):
+//   * EXTERNAL area = the OUTSIDE (weather-facing) faces of perimeter walls —
+//     what exterior paint covers — plus gable-end triangles.
+//   * INTERNAL area = the protected INSIDE faces: the inner face of perimeter
+//     walls plus BOTH faces of interior partitions — what interior paint covers.
 // A wall face is classified by sampling a point just beyond it: if that point
-// lies inside a room on ANY floor it faces an interior space (handles
-// double-height voids); otherwise it faces outside → external.
+// lies inside a room on ANY floor it is protected/interior (so double-height
+// voids and covered verandahs read as interior); otherwise it faces outside.
+// The per-wall inventory then labels each wall external (has a weather face) or
+// internal (fully protected) — one row per wall, not per face.
 //
 // Coordinates are Inkscape-style (X-right, Y-down); areas are accumulated in
 // square project units and converted for display via the config `units` block
@@ -114,23 +115,29 @@ export interface FloorAreas {
   external: AreaTriple;
   internal: AreaTriple;
 }
-export interface WallTakeoffRow {
+// One row per WALL (a room side or a standalone wall), not per face — so the
+// inventory reads "this wall is external / internal" once. A wall's two faces
+// are split into the exterior-paint area (its weather-facing outside, if any)
+// and the interior-paint area (its protected inside face(s)).
+export interface WallInvRow {
   floor: number;
-  wall: string; // e.g. "Bedroom_1 / west" or "Washbasin_Wall"
-  face: "external" | "internal";
+  room: string; // owning room, or the standalone wall's name
+  wall: string; // side ("north"…) or "(wall)"
+  type: "external" | "internal"; // does it have a weather-facing (outside) face?
   lengthU: number;
   heightU: number;
-  areaU: number; // net of openings
+  extAreaU: number; // exterior-paint area (outside face), net openings
+  intAreaU: number; // interior-paint area (inside face(s)), net openings
 }
 export interface GableRow { segment: string; side: string; baseU: number; heightU: number; areaU: number }
 
 export interface WallAreaReport {
-  external: AreaTriple; // walls only (gables added into `grandExternal`)
-  internal: AreaTriple;
+  external: AreaTriple; // exterior-paint faces (perimeter outsides). gables → grandExternal
+  internal: AreaTriple; // interior-paint faces (all insides + both faces of partitions)
   gables: { area: number; rows: GableRow[] };
   grandExternal: number; // external.net + gables.area
   perFloor: FloorAreas[];
-  rows: WallTakeoffRow[];
+  inventory: WallInvRow[]; // one row per wall
   units: AreaUnits;
 }
 
@@ -151,7 +158,7 @@ export function computeWallAreas(config: HouseConfig): WallAreaReport {
   const rects = allRoomRects(config);
 
   const external = triple(), internal = triple();
-  const rows: WallTakeoffRow[] = [];
+  const inventory: WallInvRow[] = [];
   const perFloor: FloorAreas[] = [];
 
   const floors = (config.floors ?? []) as Bag[];
@@ -180,25 +187,30 @@ export function computeWallAreas(config: HouseConfig): WallAreaReport {
           const len = side === "north" || side === "south" ? rw : rl;
           const face = len * h;
           const op = openingsArea(wc);
+          const faceNet = Math.max(0, face - op);
           // INSIDE (room-facing) face is always interior.
           add(internal, face, op); add(fInt, face, op);
-          rows.push({ floor: fi, wall: `${o.name ?? "Room"} / ${side} (inner)`, face: "internal", lengthU: len, heightU: h, areaU: Math.max(0, face - op) });
+          let extA = 0, intA = faceNet;
           // OUTSIDE face — classify.
           const [nx, ny] = OUT_NORMAL[side];
           const cx = side === "east" ? rx + rw : side === "west" ? rx : rx + rw / 2;
           const cy = side === "south" ? ry + rl : side === "north" ? ry : ry + rl / 2;
           const px = cx + nx * probe, py = cy + ny * probe;
+          let type: "external" | "internal";
           if (inAnyRoom(rects, px, py)) {
-            // faces another room — skip if the neighbour declares the matching
-            // wall (its inner face already counts this surface).
+            type = "internal"; // outside face is protected (another room / void)
+            // Count the far face too, unless the neighbour models the same
+            // partition (then its inner face already counts this surface).
             if (!neighbourDeclares(declared, { x: rx, y: ry, w: rw, l: rl }, side, px, py, wallT)) {
               add(internal, face, op); add(fInt, face, op);
-              rows.push({ floor: fi, wall: `${o.name ?? "Room"} / ${side} (outer)`, face: "internal", lengthU: len, heightU: h, areaU: Math.max(0, face - op) });
+              intA += faceNet;
             }
           } else {
+            type = "external"; // outside face is weather-facing
             add(external, face, op); add(fExt, face, op);
-            rows.push({ floor: fi, wall: `${o.name ?? "Room"} / ${side}`, face: "external", lengthU: len, heightU: h, areaU: Math.max(0, face - op) });
+            extA = faceNet;
           }
+          inventory.push({ floor: fi, room: String(o.name ?? "Room"), wall: side, type, lengthU: len, heightU: h, extAreaU: extA, intAreaU: intA });
         }
       } else if (o.type === "wall") {
         const sx = num(o.start_x), sy = num(o.start_y), ex = num(o.end_x), ey = num(o.end_y);
@@ -207,18 +219,18 @@ export function computeWallAreas(config: HouseConfig): WallAreaReport {
         const h = o.height !== undefined ? num(o.height) : floorWallH;
         const face = len * h;
         const op = openingsArea(o);
+        const faceNet = Math.max(0, face - op);
         const mx = (sx + ex) / 2, my = (sy + ey) / 2;
         // unit perpendicular
         const dx = (ex - sx) / len, dy = (ey - sy) / len;
-        const nlen = 1;
-        const perps: [number, number][] = [[-dy * nlen, dx * nlen], [dy * nlen, -dx * nlen]];
+        const perps: [number, number][] = [[-dy, dx], [dy, -dx]];
+        let extA = 0, intA = 0, anyExt = false;
         for (const [pnx, pny] of perps) {
           const px = mx + pnx * probe, py = my + pny * probe;
-          const isInt = inAnyRoom(rects, px, py);
-          if (isInt) { add(internal, face, op); add(fInt, face, op); }
-          else { add(external, face, op); add(fExt, face, op); }
-          rows.push({ floor: fi, wall: `${o.name ?? "Wall"}`, face: isInt ? "internal" : "external", lengthU: len, heightU: h, areaU: Math.max(0, face - op) });
+          if (inAnyRoom(rects, px, py)) { add(internal, face, op); add(fInt, face, op); intA += faceNet; }
+          else { add(external, face, op); add(fExt, face, op); extA += faceNet; anyExt = true; }
         }
+        inventory.push({ floor: fi, room: String(o.name ?? "Wall"), wall: "(wall)", type: anyExt ? "external" : "internal", lengthU: len, heightU: h, extAreaU: extA, intAreaU: intA });
       }
     }
     perFloor.push({ floor: num(fl.floor_number, fi), name: String(fl.name ?? `Floor ${fi}`), external: fExt, internal: fInt });
@@ -228,7 +240,7 @@ export function computeWallAreas(config: HouseConfig): WallAreaReport {
   return {
     external, internal, gables,
     grandExternal: external.net + gables.area,
-    perFloor, rows, units,
+    perFloor, inventory, units,
   };
 }
 

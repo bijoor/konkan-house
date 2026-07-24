@@ -25,6 +25,10 @@ const STYLE = `
     .wa-card tr.total td { font-weight: 700; border-top: 2px solid #cbd5e1; }
     .wa-card details { margin-top: 0.5rem; }
     .wa-card summary { cursor: pointer; font-size: 0.85rem; color: #334155; font-weight: 600; padding: 0.3rem 0; }
+    .wa-card tr.ext td { background: #fdf4f0; }
+    .wa-card .tag { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 0.08rem 0.4rem; border-radius: 4px; }
+    .wa-card .tag-external { background: #B85028; color: #fff; }
+    .wa-card .tag-internal { background: #e2e8f0; color: #475569; }
   </style>`;
 
 export function wallAreaHtml(r: WallAreaReport): string {
@@ -41,14 +45,15 @@ export function wallAreaHtml(r: WallAreaReport): string {
     `<tr class="${cls}"><td>${escapeHtml(label)}</td><td class="num">${fmtA(areaU)}</td><td class="num">${fmtM2(areaU)}</td></tr>`;
   summaryRows.push(line("External walls (net of openings)", r.external.net));
   if (r.gables.area > 0) summaryRows.push(line("Gable ends (above eaves)", r.gables.area));
-  summaryRows.push(line("External — total", r.grandExternal, "total"));
-  summaryRows.push(line("Internal walls (both faces, net of openings)", r.internal.net));
+  summaryRows.push(line("External — total (exterior paint)", r.grandExternal, "total"));
+  summaryRows.push(line("Internal wall faces (interior paint)", r.internal.net));
 
   const summary = `
     <h3>Wall area summary</h3>
-    <p class="note">External = outward faces of perimeter walls + gable ends (exterior paint).
-      Internal = room-facing surfaces of every wall, both sides of partitions and the inner
-      face of external walls (interior paint). Door/window openings deducted.</p>
+    <p class="note">External = the outside, weather-facing faces of perimeter walls + gable
+      ends → exterior paint. Internal = the protected inside faces (the inner face of
+      external walls + both faces of interior partitions) → interior paint. Door/window
+      openings deducted.</p>
     <table>
       <thead><tr><th>Surface</th><th class="num">${escapeHtml(sq)}</th><th class="num">m²</th></tr></thead>
       <tbody>${summaryRows.join("")}</tbody>
@@ -69,32 +74,42 @@ export function wallAreaHtml(r: WallAreaReport): string {
       <tbody>${floorRows || `<tr><td colspan="3">No walls.</td></tr>`}</tbody>
     </table>`;
 
-  // ---- Per-wall takeoff (collapsible) ----
-  const takeoffRows = r.rows
-    .filter((row) => row.areaU > 0)
+  // ---- Per-wall inventory (one row per wall) ----
+  const tag = (t: "external" | "internal") =>
+    `<span class="tag tag-${t}">${t === "external" ? "External" : "Internal"}</span>`;
+  const cell = (v: number) => (v > 0 ? fmtA(v) : "—");
+  const invRows = r.inventory
     .map((row) =>
-      `<tr><td>${escapeHtml(r.perFloor[row.floor]?.name ?? `F${row.floor}`)}</td>` +
+      `<tr class="${row.type === "external" ? "ext" : ""}">` +
+      `<td>${escapeHtml(r.perFloor[row.floor]?.name ?? `F${row.floor}`)}</td>` +
+      `<td>${escapeHtml(row.room)}</td>` +
       `<td>${escapeHtml(row.wall)}</td>` +
-      `<td>${row.face}</td>` +
-      `<td class="num">${fmtLen(row.lengthU)}</td>` +
-      `<td class="num">${fmtLen(row.heightU)}</td>` +
-      `<td class="num">${fmtA(row.areaU)}</td></tr>`)
+      `<td>${tag(row.type)}</td>` +
+      `<td class="num">${fmtLen(row.lengthU)}×${fmtLen(row.heightU)}</td>` +
+      `<td class="num">${cell(row.extAreaU)}</td>` +
+      `<td class="num">${cell(row.intAreaU)}</td></tr>`)
     .join("");
-  const gableTakeoff = r.gables.rows
+  const gableRows = r.gables.rows
     .map((g) =>
-      `<tr><td>—</td><td>Gable · ${escapeHtml(g.segment)}${g.side ? " / " + escapeHtml(g.side) : ""}</td>` +
-      `<td>external</td><td class="num">${fmtLen(g.baseU)}</td><td class="num">${fmtLen(g.heightU)}</td>` +
-      `<td class="num">${fmtA(g.areaU)}</td></tr>`)
+      `<tr class="ext"><td>Roof</td><td>—</td>` +
+      `<td>gable · ${escapeHtml(g.segment)}${g.side ? " / " + escapeHtml(g.side) : ""}</td>` +
+      `<td>${tag("external")}</td>` +
+      `<td class="num">${fmtLen(g.baseU)}×${fmtLen(g.heightU)}</td>` +
+      `<td class="num">${fmtA(g.areaU)}</td><td class="num">—</td></tr>`)
     .join("");
-  const takeoff = `
-    <details>
-      <summary>Per-wall takeoff (${r.rows.filter((x) => x.areaU > 0).length + r.gables.rows.length} faces)</summary>
+  const extCount = r.inventory.filter((x) => x.type === "external").length;
+  const inventory = `
+    <details open>
+      <summary>Wall inventory — ${extCount} external of ${r.inventory.length} walls</summary>
+      <p class="note">One row per wall. <b>Exterior</b> = its weather-facing outside area
+        (exterior paint); <b>Interior</b> = its protected inside face(s) (interior paint).
+        Areas in ${escapeHtml(sq)}, net of openings.</p>
       <table>
-        <thead><tr><th>Floor</th><th>Wall / face</th><th>Type</th>
-          <th class="num">Length</th><th class="num">Height</th><th class="num">Area (${escapeHtml(sq)})</th></tr></thead>
-        <tbody>${takeoffRows}${gableTakeoff}</tbody>
+        <thead><tr><th>Floor</th><th>Room</th><th>Wall</th><th>Type</th>
+          <th class="num">L×H</th><th class="num">Exterior</th><th class="num">Interior</th></tr></thead>
+        <tbody>${invRows}${gableRows}</tbody>
       </table>
     </details>`;
 
-  return `${STYLE}<div class="wa-card">${summary}${perFloor}${takeoff}</div>`;
+  return `${STYLE}<div class="wa-card">${summary}${perFloor}${inventory}</div>`;
 }

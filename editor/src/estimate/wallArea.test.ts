@@ -23,6 +23,31 @@ describe("computeWallAreas", () => {
     expect(r.internal.net).toBe(perim); // four inner faces
     expect(r.gables.area).toBe(0);
     expect(r.grandExternal).toBe(perim);
+    // inventory: one row per wall, all four external (perimeter), each with an
+    // outside face (exterior paint) and an inside face (interior paint).
+    expect(r.inventory).toHaveLength(4);
+    expect(r.inventory.every((w) => w.type === "external")).toBe(true);
+    const west = r.inventory.find((w) => w.wall === "west")!;
+    expect(west.extAreaU).toBe(200 * H);
+    expect(west.intAreaU).toBe(200 * H);
+  });
+
+  it("inventory labels each wall once: perimeter=external, partition=internal", () => {
+    const r = computeWallAreas(
+      cfg([
+        { type: "room", name: "A", x: 0, y: 0, width: 100, length: 100, walls: { north: {}, south: {}, east: {}, west: {} } },
+        { type: "room", name: "B", x: 100, y: 0, width: 100, length: 100, walls: { north: {}, south: {}, east: {}, west: {} } },
+      ]),
+    );
+    const aEast = r.inventory.find((w) => w.room === "A" && w.wall === "east")!;
+    expect(aEast.type).toBe("internal");      // partition between A and B
+    expect(aEast.extAreaU).toBe(0);
+    // Both rooms model the shared wall, so A/east counts only its own inner face
+    // (B/west's inner face covers the other side — deduped, not double-counted).
+    expect(aEast.intAreaU).toBe(100 * H);
+    const aWest = r.inventory.find((w) => w.room === "A" && w.wall === "west")!;
+    expect(aWest.type).toBe("external");       // outer perimeter
+    expect(aWest.extAreaU).toBe(100 * H);
   });
 
   it("two adjacent rooms: shared partition is internal (both faces, deduped once)", () => {
