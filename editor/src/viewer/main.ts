@@ -784,6 +784,35 @@ function wireLayoutApi(): void {
   };
 }
 
+// Full-screen "Preparing PDF…" overlay shown while an export runs — jsPDF +
+// html2canvas can take a few seconds with no other feedback. Created lazily;
+// show/hide are idempotent.
+let pdfBusyEl: HTMLDivElement | null = null;
+function showPdfBusy(text = "Preparing PDF…"): void {
+  if (!pdfBusyEl) {
+    const style = document.createElement("style");
+    style.textContent =
+      "#pdf-busy{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35)}" +
+      "#pdf-busy .c{display:flex;align-items:center;gap:.75rem;background:#fff;color:#1e293b;padding:.9rem 1.4rem;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.3);font:600 .95rem system-ui,sans-serif}" +
+      "#pdf-busy .s{width:18px;height:18px;border:3px solid #cbd5e1;border-top-color:#B85028;border-radius:50%;animation:pdfspin .7s linear infinite}" +
+      "@keyframes pdfspin{to{transform:rotate(360deg)}}";
+    document.head.appendChild(style);
+    pdfBusyEl = document.createElement("div");
+    pdfBusyEl.id = "pdf-busy";
+    pdfBusyEl.innerHTML = '<div class="c"><span class="s" aria-hidden="true"></span><span class="t"></span></div>';
+    document.body.appendChild(pdfBusyEl);
+  }
+  (pdfBusyEl.querySelector(".t") as HTMLElement).textContent = text;
+  pdfBusyEl.style.display = "flex";
+}
+function hidePdfBusy(): void {
+  if (pdfBusyEl) pdfBusyEl.style.display = "none";
+}
+// Yield one frame so the overlay actually paints before a heavy sync task
+// (html2canvas / svg2pdf) blocks the main thread.
+const nextPaint = (): Promise<void> =>
+  new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+
 // Grab the currently-open lightbox SVG (as source text) and save
 // via the native dialog / browser download.
 function wireExports(): void {
@@ -807,6 +836,8 @@ function wireExports(): void {
   // vectors — crisp lines, selectable text) and save via the native dialog.
   // Both libs are dynamic-imported so they stay out of the initial bundle.
   window.exportSvgElementAsPdf = async (svg: SVGSVGElement, defaultName: string) => {
+    showPdfBusy();
+    await nextPaint();
     try {
       const { width, height } = svgIntrinsicSize(svg);
       const [{ jsPDF }, { svg2pdf }] = await Promise.all([
@@ -838,6 +869,7 @@ function wireExports(): void {
         height: dh,
       });
       const bytes = pdf.output("arraybuffer");
+      hidePdfBusy(); // bytes ready — drop the overlay before the save dialog
       await saveBinary(
         new Uint8Array(bytes),
         defaultName,
@@ -848,6 +880,8 @@ function wireExports(): void {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (msg !== "Cancelled") alert(`PDF export failed: ${msg}`);
+    } finally {
+      hidePdfBusy();
     }
   };
 
@@ -856,6 +890,8 @@ function wireExports(): void {
   // on A4 pages (paginating when the table is taller than one page), then save
   // via the native dialog — same path as the SVG export above.
   window.exportHtmlElementAsPdf = async (el: HTMLElement, defaultName: string) => {
+    showPdfBusy();
+    await nextPaint();
     try {
       const [{ jsPDF }, html2canvasMod] = await Promise.all([
         import("jspdf"),
@@ -886,6 +922,7 @@ function wireExports(): void {
         page++;
       }
       const bytes = pdf.output("arraybuffer");
+      hidePdfBusy(); // bytes ready — drop the overlay before the save dialog
       await saveBinary(
         new Uint8Array(bytes),
         defaultName,
@@ -896,6 +933,8 @@ function wireExports(): void {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (msg !== "Cancelled") alert(`PDF export failed: ${msg}`);
+    } finally {
+      hidePdfBusy();
     }
   };
 }
